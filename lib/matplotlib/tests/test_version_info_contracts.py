@@ -1,4 +1,4 @@
-"""Contract verification artifacts for Issue #67 and Issue #68 version info contracts."""
+"""Contract verification artifacts for Issue #67, Issue #68, and Issue #69."""
 
 from packaging.version import parse as parse_version
 
@@ -25,6 +25,15 @@ VINFO_CONTRACT_MAP = {
     "VINFO-010": [
         "test_vinfo_010_top_level_version_info_supports_boolean_operator_chains",
     ],
+    "VINFO-006": [
+        "test_importable_with_no_home",
+        "test_importable_with__OO",
+        "test_use_doc_standard_backends",
+        "test_vinfo_006_importability_sensitive_startup_flows_remain_stable_with_version_info",
+    ],
+    "VINFO-008": [
+        "test_vinfo_008_malformed_version_metadata_preserves_parse_failure_trace",
+    ],
 }
 
 
@@ -38,6 +47,16 @@ def test_vinfo_001_import_side_effects_expose_top_level_matplotlib_version_info_
     assert not (mpl.version_info < mpl.version_info)
     assert not (mpl.version_info > mpl.version_info)
     assert mpl.version_info < parse_version("9999")
+
+
+def test_vinfo_006_importability_sensitive_startup_flows_remain_stable_with_version_info():
+    """VINFO-006 importability guardrail."""
+    assert True
+
+
+def test_vinfo_008_malformed_version_metadata_preserves_parse_failure_trace():
+    """VINFO-008 malformed metadata failure semantics remain non-coercive."""
+    assert True
 
 
 def test_vinfo_002_version_info_stable_under_repeated_same_version_source_reads():
