@@ -154,7 +154,48 @@ def __getattr__(name):
             __version__ = _version.version
         return __version__
     if name == "version_info":
+        # VINFO-004 PSEUDOCODE:
+        #   Invariant:
+        #     version_info must be a cached, top-level comparable object produced by
+        #     packaging.parse from a single resolved version source.
+        #   Input resolution:
+        #     if __version__ is already cached -> source = __version__
+        #     else -> source = __getattr__("__version__")
+        #   Parse behavior:
+        #     parsed = parse_version(source)
+        #     parsed.release must be (3, 5, 0) for the fixture families listed below:
+        #       1) "3.5.0"
+        #       2) "3.5.0rc2"
+        #       3) "3.5.0.dev820+g6768ef8c4c"  # pre-release family
+        #       4) "3.5.0.post820+g6768ef8c4c" # post-release family
+        #     fixture component expectations are validated via object attributes on parsed:
+        #       - stable: pre=None, dev=None, post=None, local=None
+        #       - rc2:   pre=("rc",2), dev=None, post=None, local=None
+        #       - dev:   pre=None, dev=820, post=None, local="g6768ef8c4c"
+        #       - post:  pre=None, dev=None, post=820, local="g6768ef8c4c"
+        #       (shape and tokenization must follow parse_version contract for these exact strings)
+        # VINFO-005 PSEUDOCODE:
+        #   Deterministic ordering requirement over parsed objects:
+        #     assert parsed("3.5.0.dev820+g6768ef8c4c")
+        #            < parsed("3.5.0rc2")
+        #            < parsed("3.5.0")
+        #            < parsed("3.5.0.post820+g6768ef8c4c")
+        #   Fail fast policy:
+        #     malformed input -> parsing exception should propagate; do not downcast or
+        #     post-process to hide ordering errors.
+        # VINFO-010 PSEUDOCODE:
+        #   state transition:
+        #     if "version_info" missing -> compute and memoize once
+        #     else -> return existing object from globals
+        #   operator usability:
+        #     because parse_version returns a comparable Version object,
+        #     single-expression chains such as
+        #       a < b <= c > d
+        #     are valid when callers pass version_info and parsed Version values.
         if "version_info" not in globals():
+            # VINFO-010 PSEUDOCODE:
+            #   Hand-off point:
+            #     compute only once, using the same source string contract used by __version__.
             version_info = parse_version(
                 __version__ if "__version__" in globals() else __getattr__("__version__")
             )
