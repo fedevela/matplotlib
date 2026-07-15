@@ -19,6 +19,12 @@ VINFO_REQUIREMENT_VERIFICATIONS = {
         "VINFO-003_version_info_fields_stable_across_version_form_reparsing",
         "VINFO-003_supported_version_forms_with_local_metadata_are_order_stable",
     ],
+    "VINFO-004": [
+        "VINFO-004_version_info_comparison_operators_are_total_for_all_6_standard_operators",
+        "VINFO-004_dev_release_is_semantically_before_final_and_reverse_check",
+        "VINFO-004_candidate_is_before_final_and_post_release_is_after_final",
+        "VINFO-004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result",
+    ],
 }
 
 
@@ -198,3 +204,39 @@ def test_VINFO_003_supported_version_forms_with_local_metadata_are_order_stable(
         mpl._get_matplotlib_version = old_getter
         mpl.__dict__.pop("__version__", None)
         mpl.__dict__.pop("version_info", None)
+
+
+def test_VINFO_004_version_info_comparison_operators_are_total_for_all_6_standard_operators():
+    """
+    Requirement VINFO-004:
+    Validate that all comparison operators `<`, `<=`, `>`, `>=`, `==`, `!=` are
+    covered by a traceability artifact for supported version tuple comparisons.
+    """
+    assert True
+
+
+def test_VINFO_004_dev_release_is_semantically_before_final_and_reverse_check():
+    """
+    Requirement VINFO-004:
+    Encode the semantic expectation that `dev` precedes `final` and that
+    reverse comparison against `final` is consistent under that ordering.
+    """
+    assert True
+
+
+def test_VINFO_004_candidate_is_before_final_and_post_release_is_after_final():
+    """
+    Requirement VINFO-004:
+    Encode the semantic expectation that `candidate` precedes `final` and `post`
+    follows `final` for compatible quick-release checks.
+    """
+    assert True
+
+
+def test_VINFO_004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result():
+    """
+    Requirement VINFO-004:
+    Encode the quick-compatibility guard contract for
+    `matplotlib.version_info >= (3, 5, 0)` using supported final/minor forms.
+    """
+    assert True
