@@ -1,6 +1,11 @@
 """Contract verification artifacts for Issue #67, Issue #68, and Issue #69."""
 
-from packaging.version import parse as parse_version
+import os
+import subprocess
+import sys
+
+import pytest
+from packaging.version import InvalidVersion, parse as parse_version
 
 
 VINFO_CONTRACT_MAP = {
@@ -49,32 +54,81 @@ def test_vinfo_001_import_side_effects_expose_top_level_matplotlib_version_info_
     assert mpl.version_info < parse_version("9999")
 
 
-def test_vinfo_006_importability_sensitive_startup_flows_remain_stable_with_version_info():
+def test_vinfo_006_importability_sensitive_startup_flows_remain_stable_with_version_info(
+    tmpdir,
+):
     """VINFO-006 importability guardrail."""
-    # VINFO-006 PSEUDOCODE:
-    #   1) Ensure no new import-time control flow is added in the top-level
-    #      `version_info` path that would change process exit for:
-    #      - test_importable_with__OO
-    #      - test_importable_with_no_home
-    #      - test_use_doc_standard_backends
-    #   2) If version symbol resolution is exercised during those flows,
-    #      reuse existing source resolution and cache semantics in __init__.
-    #   3) Return true only when no new exceptions are added by the version
-    #      symbol introduction itself.
-    assert True
+    import matplotlib as mpl
+
+    assert hasattr(mpl, "version_info")
+    assert mpl.version_info == mpl.version_info
+
+    no_home_cmd = [
+        sys.executable,
+        "-c",
+        (
+            "import pathlib, matplotlib as mpl; "
+            "pathlib.Path.home = "
+            "lambda *args: (_ for _ in ()).throw(ZeroDivisionError('home')); "
+            "_ = mpl.version_info; import matplotlib.pyplot"
+        ),
+    ]
+    proc = subprocess.run(
+        no_home_cmd,
+        env={**os.environ, "MPLCONFIGDIR": str(tmpdir)},
+        check=False,
+    )
+    assert proc.returncode == 0
+
+    oo_cmd = [
+        sys.executable,
+        "-OO",
+        "-c",
+        (
+            "import matplotlib as mpl; "
+            "_ = mpl.version_info; "
+            "import matplotlib.pyplot as plt; "
+            "import matplotlib.cbook as cbook; "
+            "import matplotlib.patches as mpatches"
+        ),
+    ]
+    proc = subprocess.run(oo_cmd, env={**os.environ, "MPLBACKEND": ""}, check=False)
+    assert proc.returncode == 0
+
+    assert mpl.version_info == parse_version(mpl.__version__)
+
+    def parse_backends(key):
+        backends = []
+        for line in mpl.use.__doc__.split(key)[1].split("\n"):
+            if not line.strip():
+                break
+            backends += [e.strip() for e in line.split(",") if e]
+        return backends
+
+    assert set(parse_backends("- interactive backends:\n")) == set(
+        mpl.rcsetup.interactive_bk
+    )
+    assert set(parse_backends("- non-interactive backends:\n")) == set(
+        mpl.rcsetup.non_interactive_bk
+    )
 
 
-def test_vinfo_008_malformed_version_metadata_preserves_parse_failure_trace():
+def test_vinfo_008_malformed_version_metadata_preserves_parse_failure_trace(monkeypatch):
     """VINFO-008 malformed metadata failure semantics remain non-coercive."""
-    # VINFO-008 PSEUDOCODE:
-    #   1) Resolve a malformed/mismatched version source in version parse path.
-    #   2) Force recomputation by invalidating cached `version_info`.
-    #   3) Invoke `mpl.version_info`:
-    #      a) if parser raises, propagate unchanged; do not map into fallback.
-    #      b) if no raise occurred, test artifact does not own behavior changes.
-    #   4) Preserve deterministic traceback semantics (exception type/message from
-    #      parse path remains transparent to callers).
-    assert True
+    import matplotlib as mpl
+
+    malformed_version = "not-a-version"
+    monkeypatch.setattr(mpl, "__version__", malformed_version)
+    # Force a malformed version source through the parsing path.
+    monkeypatch.delattr(mpl, "version_info", raising=False)
+
+    with pytest.raises(
+        InvalidVersion,
+        match=r"Invalid version: 'not-a-version'",
+    ):
+        _ = mpl.version_info
+
+    assert "version_info" not in mpl.__dict__
 
 
 def test_vinfo_002_version_info_stable_under_repeated_same_version_source_reads():
