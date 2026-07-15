@@ -148,6 +148,20 @@ _VersionInfo = namedtuple("version_info", "major minor micro releaselevel serial
 
 
 def _parse_version_info(version):
+    # VINFO-002: parsed version contract.
+    # IN:
+    #   version: string-like version from existing source-of-truth path.
+    # OUT:
+    #   _VersionInfo tuple shaped (major, minor, micro, releaselevel, serial),
+    #   where releaselevel/serial derive from pre/dev/post/none precedence.
+    # PROCESS:
+    #   parse version once via packaging parser -> derive major/minor/micro defaults.
+    #   if pre-release present: map a/b/rc to alpha/beta/candidate.
+    #   elif dev-release present: label development with dev serial.
+    #   elif post-release present: label post with post serial.
+    #   else: label final with serial 0.
+    # ERROR/NO-INPUT PATH:
+    #   no explicit failure path; caller is responsible for supplying version metadata.
     parsed = parse_version(version)
     release = tuple(parsed.release) + (0, 0, 0)
     major, minor, micro = release[:3]
@@ -175,6 +189,23 @@ def _parse_version_info(version):
 
 
 def __getattr__(name):
+    # VINFO-002: top-level attribute contract for lazy lazy-loaded version members.
+    # REQUIREMENT VINFO-002:
+    #   A. `from matplotlib import version_info` must resolve as an importable
+    #      top-level symbol, even without private helper imports by callers.
+    #   B. `import matplotlib; matplotlib.version_info` must expose same object.
+    # CONTROL-FLOW:
+    #   IF name == "__version__":
+    #     obtain source-of-truth version via _get_matplotlib_version,
+    #     cache in module globals as __version__, return it.
+    #   ELIF name == "version_info":
+    #     IF __version__ cached:
+    #         use cached version string.
+    #     ELSE:
+    #         compute via _get_matplotlib_version and cache as __version__.
+    #     parse computed version via _parse_version_info and return parsed tuple.
+    #   ELSE:
+    #     fail fast with module AttributeError.
     if name == "__version__":
         global __version__  # cache it.
         __version__ = _get_matplotlib_version()
