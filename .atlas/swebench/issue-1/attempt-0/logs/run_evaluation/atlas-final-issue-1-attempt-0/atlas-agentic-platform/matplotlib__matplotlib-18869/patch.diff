@@ -1,0 +1,1366 @@
+diff --git a/doc/devel/VINFO-001-architecture.rst b/doc/devel/VINFO-001-architecture.rst
+new file mode 100644
+index 00000000..33f4e141
+--- /dev/null
++++ b/doc/devel/VINFO-001-architecture.rst
+@@ -0,0 +1,69 @@
++VINFO-001 Architecture Artifact
++==============================
++
++Scope
++-----
++Preserve ``matplotlib.__version__`` behavior and value/format while introducing a new
++additive public ``version_info`` path.
++
++Requirement-to-architecture map
++-------------------------------
++- **GUID:** ``VINFO-001``
++- **Canonical contract:** keep ``matplotlib.__version__`` publicly available and unchanged in
++  value/format; repeated reads before/after ``version_info`` access must remain stable and string-only.
++- **Primary locus:** ``lib/matplotlib/__init__.py``
++- **Existing verification locus:** ``lib/matplotlib/tests/test_version_info.py``
++
++Ownership and placement
++-----------------------
++- ``matplotlib`` top-level API behavior is owned by ``lib/matplotlib/__init__.py``.
++- Version source resolution remains within package public module namespace, not delegated to callers.
++- ``__version__`` and future ``version_info`` logic stay in the same owning boundary to
++  preserve import-time semantics and cache behavior.
++
++Boundary definition
++------------------
++- **Public seam:** module attribute access via ``__getattr__(name)`` on ``matplotlib``.
++- **Internal collaborators:**
++  - ``matplotlib._version.version`` as fallback source.
++  - ``setuptools_scm.get_version`` as SCM source.
++  - filesystem path check for ``.git`` and ``.git/shallow`` to select source path.
++
++Contracts and invariants
++------------------------
++- **Stability contract (for ``__version__``):** value must remain a string and identical across reads
++  across the ``version_info`` path.
++- **Source contract:** ``version_info`` must consume the same underlying version source as
++  existing ``__version__`` resolution; no reformatting, replacement, or recasting of
++  ``__version__``.
++- **Failure contract:** dependency/import errors from current resolution path remain unchanged.
++
++Dependency direction
++--------------------
++- Direction is outward from ``lib/matplotlib/__init__.py`` to:
++  - ``setuptools_scm``
++  - ``Path`` / ``.git`` detection
++  - ``matplotlib._version``
++- No inverse dependency from these collaborators into public-version semantics.
++
++Integration-seam skeleton (implementation-ready)
++-----------------------------------------------
++- Introduce a version-introspection contract under ``matplotlib.__getattr__`` for two branches:
++  1. ``name == "__version__"`` (legacy path).
++  2. ``name == "version_info"`` (new path, additive only).
++- The ``version_info`` branch must call the same source decision used by ``__version__`` and may be
++  implemented by a non-mutating parser over the resolved source string.
++- Cache point remains the module-level ``__version__`` symbol only.
++
++Acceptance traceability
++-----------------------
++- ``lib/matplotlib/__init__.py``
++  - ``__getattr__`` branching location maps to VINFO-001 obligations.
++- ``lib/matplotlib/tests/test_version_info.py``
++  - placeholder test names carry VINFO-001 requirement IDs.
++
++Readiness note
++--------------
++This artifact is sufficient for implementation handoff because ownership, boundaries,
++invariants, and dependency direction are explicitly defined without introducing
++runtime behavior changes.
+diff --git a/doc/devel/VINFO-002-architecture.rst b/doc/devel/VINFO-002-architecture.rst
+new file mode 100644
+index 00000000..3fceacc5
+--- /dev/null
++++ b/doc/devel/VINFO-002-architecture.rst
+@@ -0,0 +1,53 @@
++VINFO-002 Architecture Artifact
++===============================
++
++Scope
++-----
++Add a top-level public `matplotlib.version_info` contract, available via:
++
++- `from matplotlib import version_info`
++- `import matplotlib; matplotlib.version_info`
++
++Requirement-to-architecture map
++-------------------------------
++- **GUID:** ``VINFO-002``
++- **Canonical acceptance target:** expose a top-level `version_info` symbol without requiring private helper imports in user code.
++- **Primary locus:** ``lib/matplotlib/__init__.py``
++- **Verification locus:** ``lib/matplotlib/tests/test_version_info.py``
++
++Ownership and placement
++-----------------------
++- The owning boundary is the top-level package module ``matplotlib`` namespace (`lib/matplotlib/__init__.py`).
++- Version-source resolution (`_get_matplotlib_version`) stays within this module to prevent API users from coupling to private modules.
++- Parsed version shape is represented by `_VersionInfo` (namedtuple) in the same module.
++
++Boundary and contracts
++----------------------
++- **Public seam:** module attribute resolution through `__getattr__(name)`.
++- **Contract:** when `name == "version_info"`, module returns `_VersionInfo` tuple `(major, minor, micro, releaselevel, serial)`.
++- **Importability contract:** symbol must be discoverable by `from matplotlib import version_info` by normal import mechanism.
++- **Module contract:** `matplotlib.version_info` must be present after standard `import matplotlib`.
++- **Traceability contract:** value must derive from the same version source used by `__version__`.
++
++Dependency direction
++--------------------
++- Outward from `lib/matplotlib/__init__.py` to:
++  - `matplotlib._version.version`
++  - `setuptools_scm.get_version` (SCM source path)
++  - `_parse_version_info(version)` as a local parser
++- No new inbound dependency from helpers into package import logic.
++- `version_info` must remain an additive API and must not be routed through caller-side imports of private submodules.
++
++Integration-seam skeleton
++-------------------------
++- Keep `version_info` branch inside existing `__getattr__(name)` decision lattice:
++  - `__version__` branch: unchanged source-of-truth and cache behavior.
++  - `version_info` branch: pull from cached `__version__` when present, otherwise call `_get_matplotlib_version`, then parse via `_parse_version_info`.
++  - default `AttributeError` behavior for unknown attributes.
++- Preserve invariant that `_VersionInfo` parsing is local and deterministic.
++
++Structural readiness
++--------------------
++- Structural home is set (`lib/matplotlib/__init__.py`), with a clear seam for implementation (`__getattr__`).
++- Boundaries and dependencies are explicit and source-of-truth remains inside package namespace.
++- Artifact is requirements-linked and ready for Hod/Hod-like implementation without further placement work.
+diff --git a/doc/devel/VINFO-003-architecture.rst b/doc/devel/VINFO-003-architecture.rst
+new file mode 100644
+index 00000000..3e63001a
+--- /dev/null
++++ b/doc/devel/VINFO-003-architecture.rst
+@@ -0,0 +1,70 @@
++VINFO-003 Architecture Artifact
++===============================
++
++Scope
++-----
++Parse supported `__version__` forms into deterministic comparable structure for
++`version_info`, including stable handling of local metadata suffixes.
++
++Supported forms in scope:
++
++- ``3.5.0``
++- ``3.5.0rc2``
++- ``3.5.0.dev820+g6768ef8c4c``
++- ``3.5.0.post820+g6768ef8c4c``
++
++Requirement-to-architecture map
++-------------------------------
++- **GUID:** ``VINFO-003``
++- **Canonical verification targets:**
++  - ``test_VINFO_003_supported_version_forms_parse_to_deterministic_fields``
++  - ``test_VINFO_003_version_info_fields_stable_across_version_form_reparsing``
++  - ``test_VINFO_003_supported_version_forms_with_local_metadata_are_order_stable``
++- **Primary locus:** ``lib/matplotlib/__init__.py``
++- **Verification locus:** ``lib/matplotlib/tests/test_version_info.py``
++
++Ownership and placement
++-----------------------
++- Parsing ownership remains in `matplotlib` package namespace (`lib/matplotlib/__init__.py`), not in any public helper module.
++- `_parse_version_info` is the owned parser entry point for all supported forms used by `version_info`.
++- `_VersionInfo` is the public projection boundary for parse outputs that `version_info` can expose.
++- `__getattr__(name)` remains the owning boundary for lazy attribute materialization and caching.
++
++Boundary and contracts
++----------------------
++- **Public seam:** module attribute resolution through `matplotlib.__getattr__(name)`.
++- **Source boundary:** `version_info` resolves the same source string as `__version__`:
++  - cached ``__version__`` first,
++  - otherwise `_get_matplotlib_version`.
++- **Cache boundary:** parsed value is memoized by storing it in `globals()["version_info"]` after first parse.
++- **Reload boundary:** interpreter-level module reload re-initializes module globals, so reparsing must deterministically reconstruct the same structure from the same source string.
++
++Parser contracts (structural)
++-----------------------------
++- `_parse_version_info(version)` is responsible for:
++  - reading deterministic release components from supported forms,
++  - applying branch priority ``pre`` → ``dev`` → ``post`` → final,
++  - generating a stable `(major, minor, micro, releaselevel, serial, local)` shape,
++  - deterministically normalizing local suffix order when present (e.g. split on ``.`` into an explicit stable sequence).
++- No general normalization beyond the supported forms list.
++
++Dependency-direction notes
++--------------------------
++- Internal dependencies in `__init__.py` flow outward to:
++  - `packaging.version.parse_version`,
++  - `_version.version`,
++  - `setuptools_scm.get_version` via `_get_matplotlib_version`.
++- `version_info` must never introduce new inbound dependencies into `matplotlib.__init__`.
++
++Integration-seam skeleton
++-------------------------
++- Keep parse and version exposure within existing lattice:
++  - `if name == "__version__":` keep source + cache behavior.
++  - `elif name == "version_info":` source/version resolution, parse, cache, return.
++  - `else:` raise `AttributeError`.
++- `version_info` must always be derived from the same parsed source path as `__version__`.
++
++Readiness
++---------
++- This file provides stable owner, contract, dependency, and seam placement for `VINFO-003`.
++- Once tests are implemented, these structure-level decisions are implementation-ready and keep behavior changes localized.
+diff --git a/doc/devel/VINFO-004-architecture.rst b/doc/devel/VINFO-004-architecture.rst
+new file mode 100644
+index 00000000..b726ae1a
+--- /dev/null
++++ b/doc/devel/VINFO-004-architecture.rst
+@@ -0,0 +1,107 @@
++VINFO-004 Architecture Artifact
++===============================
++
++Scope
++-----
++Define structural placement for directly comparable ``matplotlib.version_info``:
++all standard comparison operators and pre/post semantic ordering must be deterministic
++for supported version forms.
++
++Supported forms in scope:
++
++- ``3.5.0``
++- ``3.5.0rc2``
++- ``3.5.0.dev820+g6768ef8c4c``
++- ``3.5.0.post820+g6768ef8c4c``
++
++Requirement-to-architecture map
++-------------------------------
++- **GUID:** ``VINFO-004``
++- **Canonical verification targets:**
++  - ``test_VINFO_004_version_info_comparison_operators_are_total_for_all_6_standard_operators``
++  - ``test_VINFO_004_dev_release_is_semantically_before_final_and_reverse_check``
++  - ``test_VINFO_004_candidate_is_before_final_and_post_release_is_after_final``
++  - ``test_VINFO_004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result``
++- **Primary locus:** ``lib/matplotlib/__init__.py``
++- **Verification locus:** ``lib/matplotlib/tests/test_version_info.py``
++
++Ownership and placement
++-----------------------
++- ``matplotlib.version_info`` remains the external ownership boundary in
++  ``lib/matplotlib/__init__.py`` via ``__getattr__`` lazy materialization.
++- The comparison domain belongs to a dedicated private projection object created in
++  the same module scope (the existing ``_VersionInfo`` declaration site).
++- ``_parse_version_info(version)`` remains the sole parser boundary that preserves
++  the ordering inputs used by comparators.
++- Pseudocode-only implementation logic remains co-located with current comment
++  loci (already present in ``__init__.py``) for VINFO-004.
++
++Structure pressure translation
++-----------------------------
++1. **Deterministic six-operator behavior**
++   - Pressure: operator surface completeness and deterministic return values.
++   - Home: ``_VersionInfo`` comparison implementation in ``lib/matplotlib/__init__.py``.
++   - Required seam: comparison protocol methods over normalized keys.
++
++2. **Release precedence semantics (`dev` < `rc` < `final` < `post`)**
++   - Pressure: ranking order must be encoded by key projection, not ad hoc
++     operator branching.
++   - Home: ``_VersionInfo`` key construction contract plus
++     ``_parse_version_info`` releaselevel retention.
++
++3. **Compatibility guard tuple handling**
++   - Pressure: stable behavior for expressions like
++     ``version_info >= (3, 5, 0)``.
++   - Home: comparison normalization seam that translates supported tuple operands
++   to canonical compare keys while preserving compatibility shape.
++
++Boundary and contracts
++----------------------
++- **Public contract seam:** module attribute resolution for ``version_info`` in
++  ``__getattr__(name)``.
++- **Data contract:** ``_VersionInfo`` shape is
++  ``(major, minor, micro, releaselevel, serial, local)`` with ``local`` as a
++  deterministic tuple.
++- **Ordering contract (structural):**
++  - normalize both operands into a fixed comparison key,
++  - compare lexicographically for ``< <= > >=``.
++- **Value coercion contract (structural):**
++  - RHS tuple of length 3 treated as final-level target for guard forms.
++  - RHS that is not supported by this contract must not create undefined behavior
++    from comparison entry points.
++
++Dependency-direction notes
++--------------------------
++Dependency direction remains module-local:
++
++- ``__getattr__`` -> ``_get_matplotlib_version`` / ``_parse_version_info`` -> compare
++  contract helpers.
++- No new outbound dependency for version comparison is introduced into public user
++  call sites.
++- Parsing still depends on ``packaging.version.parse_version`` and
++  ``matplotlib._version.version`` indirectly through existing `_get_matplotlib_version`
++  path.
++
++Integration-seam skeleton
++-------------------------
++- Maintain public seam in ``__getattr__``:
++
++  1. ``"version_info"`` resolves through existing version source logic.
++  2. parse value once through ``_parse_version_info`` and cache in ``globals()``.
++  3. return projection object implementing all six operators.
++
++- Comparison seam for implementation phase 06:
++
++  1. introduce internal key normalization routine for operands.
++  2. define strict total-order rules for local key fields.
++  3. ensure guard-form tuple targets are accepted as final-release keys.
++  4. wire only operators required by ``VINFO-004``; leave unsupported RHS types
++     with deterministic outcomes.
++
++Readiness and completion
++------------------------
++- This artifact maps all currently-traceable VINFO-004 obligations to concrete
++  module ownership, boundary seams, and dependency direction.
++- Structural placement is stable and implementation-ready:
++  - ``lib/matplotlib/__init__.py`` for behavior placement,
++  - ``lib/matplotlib/tests/test_version_info.py`` for acceptance mapping.
+diff --git a/doc/devel/VINFO-005-architecture.rst b/doc/devel/VINFO-005-architecture.rst
+new file mode 100644
+index 00000000..c4711824
+--- /dev/null
++++ b/doc/devel/VINFO-005-architecture.rst
+@@ -0,0 +1,103 @@
++VINFO-005 Architecture Artifact
++===============================
++
++Scope
++-----
++Preserve import-time safety for version attribute exposure so existing
++environment-sensitive import scenarios stay unchanged, while still exposing
++``matplotlib.version_info`` through the established lazy top-level attribute
++path.
++
++Requirement-to-architecture map
++-------------------------------
++- **GUID:** ``VINFO-005``
++- **Canonical verification targets:**
++  - ``test_VINFO_005_importable_with__OO_version_initialization_remains_import_side_effect_free``
++  - ``test_VINFO_005_importable_with_no_home_version_initialization_remains_home_free``
++  - ``test_VINFO_005_doc_standard_backends_observations_unmodified_by_version_initialization``
++- **Primary locus:** ``lib/matplotlib/__init__.py``
++- **Verification locus:** ``lib/matplotlib/tests/test_version_info.py``
++
++Ownership and placement
++-----------------------
++- Version exposure ownership remains with top-level package module:
++  ``lib/matplotlib/__init__.py``.
++- No new ownership is introduced; both source resolution and lazy materialization
++  stay in this module:
++  - ``_get_matplotlib_version``
++  - ``__getattr__`` for ``"__version__"`` and ``"version_info"``
++  - ``_parse_version_info`` and ``_VersionInfo`` as existing parse/compare units.
++- Responsibility for preserving importability and configuration neutrality belongs to
++  the same boundary that currently owns version logic; this avoids moving version
++  policy across modules.
++
++Boundary definition
++-------------------
++- **Public seam:** attribute lookup via ``matplotlib.__getattr__(name)``.
++- **Private seam:** version source decision in ``_get_matplotlib_version``.
++- **Environment-sensitive seam isolation:** version lookup must not cross into HOME,
++  cache, config-dir, backend, or pyplot side-effect zones.
++- **Import seam rule:** expensive or mutable environment setup paths remain gated to
++  existing top-level import behavior outside the version branch.
++
++Constraint translation from obligations
++--------------------------------------
++1. ``..._importable_with__OO...``  
++   - Pressure: avoid new import-time side effects from exposing ``version_info``.
++   - Home: ``__getattr__`` must stay lazy and only run on explicit attribute access.
++   - Requirement: no new side effects may be introduced by version initialization.
++
++2. ``..._no_home...``  
++   - Pressure: no home-directory-dependent behavior in version initialization.
++   - Home: ``_get_matplotlib_version`` and ``__getattr__`` must avoid calls to
++     HOME-driven config helpers during version resolution.
++   - Requirement: only existing version-source checks remain (SCM fallback path +
++     packaged version constant).
++
++3. ``...doc_standard_backends...``  
++   - Pressure: preserve backend discovery assumptions used by doc build/import tests.
++   - Home: keep backend selection state untouched by version attribute materialization.
++   - Requirement: version attribute access is read-only, cache-only, and contracted
++     through ``__version__`` reuse.
++
++Contracts and invariants
++------------------------
++- **Importability contract:** module import should succeed without requiring access
++  to HOME-dependent paths through the version path.
++- **Side-effect contract:** attribute resolution for ``__version__`` and
++  ``version_info`` may cache module-local globals only.
++- **Source contract:** ``version_info`` materializes from the same version source as
++  ``__version__`` by delegating to the existing logic.
++- **Cache contract:** first version lookup may populate ``__version__``; subsequent
++  ``version_info`` reads may rely on cached value and must not re-enter version
++  resolution.
++
++Dependency direction
++--------------------
++- Primary outward dependency edges remain:
++  - ``lib/matplotlib/__init__.py`` -> ``setuptools_scm.get_version``
++  - ``lib/matplotlib/__init__.py`` -> ``matplotlib._version.version``
++  - ``lib/matplotlib/__init__.py`` -> ``Path(__file__)`` location checks
++- No new edges are added for config home resolution, backend selection, or pyplot
++  state from version path.
++- Existing outward direction into validation helpers/tests in ``lib/matplotlib/tests``
++  stays test-only.
++
++Integration-seam skeleton
++-------------------------
++- Keep existing comment-based control points in-place:
++  1. ``_get_matplotlib_version`` selects SCM-backed or fallback version string by
++     `.git` metadata check.
++  2. ``__getattr__`` handles only:
++     - ``"__version__"`` -> cache and return lazy string
++     - ``"version_info"`` -> source from cached or lazy ``__version__``, parse, cache tuple
++     - else -> ``AttributeError``
++- Maintain isolation: no backend imports/config writes/home resolution from these
++  two branches.
++
++Readiness status
++---------------
++- Changed artifact: ``doc/devel/VINFO-005-architecture.rst`` (new)
++- Traceability status: complete for all three VINFO-005 canonical verification names.
++- Structural readiness: implementation-ready; ownership, boundaries, dependency direction,
++  and integration seams are explicitly defined for deterministic follow-through.
+diff --git a/doc/devel/VINFO-006-architecture.rst b/doc/devel/VINFO-006-architecture.rst
+new file mode 100644
+index 00000000..8a62dbb9
+--- /dev/null
++++ b/doc/devel/VINFO-006-architecture.rst
+@@ -0,0 +1,83 @@
++VINFO-006 Architecture Artifact
++===============================
++
++Scope
++-----
++Scope the version API change to the two version-introspection points:
++`__version__` and `version_info` only, with no new unrelated top-level version
++utilities exported from `matplotlib`.
++
++Requirement-to-architecture map
++-------------------------------
++- **GUID:** ``VINFO-006``
++- **Canonical acceptance targets:**
++  - ``test_VINFO_006_top_level_version_additions_limited_to_version_scope_symbols``
++  - ``test_VINFO_006_version_info_import_path_and_diff_scope_without_unrelated_new_exports``
++- **Primary locus:** ``lib/matplotlib/__init__.py``
++- **Verification locus:** ``lib/matplotlib/tests/test_version_info.py``
++
++Ownership and placement
++-----------------------
++- Public version-surface ownership remains in the top-level package module
++  ``lib/matplotlib/__init__.py``.
++- `__version__` remains legacy ownership in the same module; `version_info`
++  is additive ownership in that same module via lazy attribute materialization.
++- No ownership is added in `matplotlib._version`, helper/parser, or any other
++  top-level module for new public symbols.
++
++Boundary definition
++-------------------
++- **Public boundary seam:** module attribute access through
++  ``matplotlib.__getattr__(name)``.
++- **Allowed public version-surface exports:** exactly the set
++  ``{"__version__", "version_info"}``.
++- **Default seam behavior:** all other names must follow fail-fast semantics
++  through existing `AttributeError` behavior.
++
++Dependency-direction notes
++-------------------------
++- Direction is inward-to-local within `lib/matplotlib/__init__.py`:
++  - ``__getattr__`` depends on ``_get_matplotlib_version`` (version source).
++  - ``__getattr__`` depends on ``_parse_version_info`` (projection for
++    ``version_info``).
++  - No dependency is introduced from private helpers back into module export
++    surface.
++- No new external modules are introduced by this requirement; existing version
++  source collaborators remain unchanged (`setuptools_scm`, `matplotlib._version`).
++
++Structural pressures and home assignment
++---------------------------------------
++1. **Scope-pressure:** prevent API fan-out beyond version introspection.
++   - Home: ``__getattr__`` decision lattice in ``lib/matplotlib/__init__.py``.
++   - Control: `if name` only accepts `"__version__"` and `"version_info"`.
++2. **Export-surface pressure:** preserve existing top-level exports and avoid any
++   new helper symbols.
++   - Home: `__getattr__` return paths, no helper assignment except
++     `__version__` and cached `version_info` in `globals()`.
++3. **Import-semantics pressure:** keep `from matplotlib import version_info` and
++   `matplotlib.version_info` equivalent and sourced from the same version path.
++   - Home: existing `version_info` branch in ``__getattr__``.
++4. **Diff-contract pressure:** top-level export diff for the patch should include
++   only `version_info` addition.
++   - Home: module-level attribute policy and test scope in
++     ``lib/matplotlib/tests/test_version_info.py``.
++
++Integration-seam skeleton
++-------------------------
++- In `lib/matplotlib/__init__.py`:
++  1. `name == "__version__"`: existing lazy computation + cache of `__version__`.
++  2. `name == "version_info"`:
++     - read cached `__version__` if available,
++     - otherwise compute via `_get_matplotlib_version`,
++     - parse once through `_parse_version_info`,
++     - cache and return `version_info`.
++  3. else: raise `AttributeError` and do not add any top-level version utility
++     symbols.
++
++Readiness status
++----------------
++- Added artifact: ``doc/devel/VINFO-006-architecture.rst``.
++- Traceability coverage: each structural pressure is bound to a concrete file and
++  existing VINFO-006 verification names.
++- Structural readiness: module ownership, boundaries, dependencies, and seam
++  behavior are explicit and implementation-ready.
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index b657a35c..7c2d1a57 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -130,24 +130,289 @@ __bibtex__ = r"""@Article{Hunter:2007,
+ }"""
+ 
+ 
++def _get_matplotlib_version():
++    import setuptools_scm
++    # VINFO-005: keep version source resolution lazy and import-safe.
++    # CONTROL FLOW:
++    #   1) Derive repository root from this file location.
++    #   2) If ".git" exists and ".git/shallow" does not:
++    #      - read source-controlled version via setuptools_scm.get_version().
++    #      - keep fallback_version as local version module value.
++    #   3) Else:
++    #      - fall back directly to bundled _version.version.
++    # SIDE-EFFECT GATE:
++    #   - Do not read user HOME during version resolution.
++    #   - Do not touch backend/pyplot/rc state during version lookup.
++    # FAILURE PATH:
++    #   - Version-control lookup exceptions are raised by caller path; no swallows added.
++    # VINFO-001: shared source-of-truth path for version metadata.
++    root = Path(__file__).resolve().parents[2]
++    if (root / ".git").exists() and not (root / ".git/shallow").exists():
++        return setuptools_scm.get_version(
++            root=root,
++            version_scheme="post-release",
++            local_scheme="node-and-date",
++            fallback_version=_version.version,
++        )
++    return _version.version
++
++
++class _VersionInfo(namedtuple("version_info", "major minor micro releaselevel serial local")):
++    # VINFO-004: version_info must be directly comparable using all standard
++    # relational operators.
++    __slots__ = ()
++    _RANKS = {
++        "development": 0,
++        "alpha": 1,
++        "beta": 2,
++        "candidate": 3,
++        "final": 4,
++        "post": 5,
++    }
++
++    def _comparison_key(self):
++        return (
++            self.major,
++            self.minor,
++            self.micro,
++            self._RANKS.get(self.releaselevel, self._RANKS["final"]),
++            self.serial,
++            self.local,
++        )
++
++    def _comparison_key_for_tuple_guard(self, other):
++        if not isinstance(other, tuple):
++            return NotImplemented
++        if len(other) == 3:
++            major, minor, micro = other
++            return (major, minor, micro, self._RANKS["final"], 0, ())
++        if len(other) == 6:
++            major, minor, micro, releaselevel, serial, local = other
++            local_tuple = tuple(local) if isinstance(local, tuple) else ((local,) if local else ())
++            return (
++                major,
++                minor,
++                micro,
++                self._RANKS.get(releaselevel, self._RANKS["final"]),
++                serial,
++                local_tuple,
++            )
++        return NotImplemented
++
++    def _comparison_key_for_other(self, other):
++        if isinstance(other, _VersionInfo):
++            return other._comparison_key()
++        return self._comparison_key_for_tuple_guard(other)
++
++    def __eq__(self, other):
++        other_key = self._comparison_key_for_other(other)
++        if other_key is NotImplemented:
++            return False
++        return self._comparison_key() == other_key
++
++    def __ne__(self, other):
++        return not self == other
++
++    def __lt__(self, other):
++        other_key = self._comparison_key_for_other(other)
++        if other_key is NotImplemented:
++            return NotImplemented
++        return self._comparison_key() < other_key
++
++    def __le__(self, other):
++        other_key = self._comparison_key_for_other(other)
++        if other_key is NotImplemented:
++            return NotImplemented
++        return self._comparison_key() <= other_key
++
++    def __gt__(self, other):
++        other_key = self._comparison_key_for_other(other)
++        if other_key is NotImplemented:
++            return NotImplemented
++        return self._comparison_key() > other_key
++
++    def __ge__(self, other):
++        other_key = self._comparison_key_for_other(other)
++        if other_key is NotImplemented:
++            return NotImplemented
++        return self._comparison_key() >= other_key
++
++
++def _parse_version_info(version):
++    # VINFO-003: supported-version parse contract.
++    # INPUT:
++    #   version: one of the supported forms
++    #          {"X.Y.Z", "X.Y.ZrcN", "X.Y.Z.devN+L", "X.Y.Z.postN+L"}
++    #          where L is local metadata.
++    # OUTPUT:
++    #   deterministic _VersionInfo-compatible projection with stable segment order.
++    #   stable ordering is mandatory even when local metadata is present.
++    # CONTROL FLOW:
++    #   1) parsed = parse_version(version)
++    #   2) major, minor, micro = first 3 items from parsed.release (missing zeros padded).
++    #   3) if parsed.pre exists:
++    #        - map pre tag a/b/rc to alpha/beta/candidate.
++    #        - serial = parsed.pre serial.
++    #      else if parsed.dev exists:
++    #        - releaselevel = "development", serial = parsed.dev.
++    #      else if parsed.post exists:
++    #        - releaselevel = "post", serial = parsed.post.
++    #      else:
++    #        - releaselevel = "final", serial = 0.
++    #   4) local = parsed.local if present else ""
++    #      local_norm = tuple(local.split(".")) to preserve deterministic ordering;
++    #      this must be threaded into the parsed representation in the same deterministic
++    #      output position every call for the same input.
++    #   5) return structured tuple-like representation derived only from parsed fields above.
++    # VINFO-002: parsed version contract.
++    # IN:
++    #   version: string-like version from existing source-of-truth path.
++    # OUT:
++    #   _VersionInfo tuple shaped
++    #   (major, minor, micro, releaselevel, serial, local),
++    #   where local is a deterministic tuple derived from packaging local metadata.
++    # PROCESS:
++    #   parse version once via packaging parser -> derive major/minor/micro defaults.
++    #   if pre-release present: map a/b/rc to alpha/beta/candidate.
++    #   elif dev-release present: label development with dev serial.
++    #   elif post-release present: label post with post serial.
++    #   else: label final with serial 0.
++    #   normalize local metadata by splitting on "." into a deterministic tuple.
++    # ERROR/NO-INPUT PATH:
++    #   no explicit failure path; caller is responsible for supplying version metadata.
++    # VINFO-004: version-info parse must preserve values needed for stable ordering.
++    #   - releaselevel must remain one of {development, alpha, beta, candidate, final, post}
++    #     so comparison key assembly can map to the deterministic pre_rank domain above.
++    #   - serial must be numeric where available and 0 for finals.
++    #   - local metadata must remain tuple-like and deterministic for stable tie-breaking.
++    parsed = parse_version(version)
++    release = tuple(parsed.release) + (0, 0, 0)
++    major, minor, micro = release[:3]
++    if parsed.pre is not None:
++        pre_release, serial = parsed.pre
++        releaselevel = {"a": "alpha", "b": "beta", "rc": "candidate"}.get(
++            pre_release, pre_release)
++        release_serial = serial
++    elif parsed.dev is not None:
++        releaselevel = "development"
++        release_serial = parsed.dev
++    elif parsed.post is not None:
++        releaselevel = "post"
++        release_serial = parsed.post
++    else:
++        releaselevel = "final"
++        release_serial = 0
++    local = tuple(parsed.local.split(".")) if parsed.local else ()
++    return _VersionInfo(
++        major,
++        minor,
++        micro,
++        releaselevel,
++        release_serial,
++        local,
++    )
++
++
+ def __getattr__(name):
++    # VINFO-006: keep public version-surface additions limited to version-introspection
++    # attributes only.
++    # CONTRACT:
++    #   - scope_limited_exports := {"__version__", "version_info"}
++    #   - all other attribute names must follow default failure path.
++    # DECISION TABLE (getattr resolution):
++    #   1) IF name is in scope_limited_exports:
++    #      A. IF name == "__version__":
++    #         - compute/get version string via _get_matplotlib_version.
++    #         - cache in module globals under "__version__".
++    #         - return cached string.
++    #      B. IF name == "version_info":
++    #         - obtain source string from cached "__version__" when present,
++    #           else compute via _get_matplotlib_version and cache it.
++    #         - parse via _parse_version_info.
++    #         - cache parsed tuple under "version_info".
++    #         - return parsed tuple.
++    #   2) ELSE:
++    #      - raise AttributeError and do not create helper symbols.
++    # STATE TRANSITIONS:
++    #   - S0: no cached version attrs -> first allowed lookup enters compute branch.
++    #   - S1: "__version__" cached only.
++    #   - S2: "__version__" and "version_info" cached.
++    #   - transition from S0 to S1 only via allowed "__version__" or "version_info".
++    #   - transition from S1 to S2 only via allowed "version_info".
++    # FAILURE PATH:
++    #   - unrelated top-level names never mutate version scope.
++    #   - unknown names must never resolve through hidden/version-helper exports.
++    # VINFO-005: preserve import-time side-effect profile for environment-sensitive
++    # import paths (test_importable_with__OO, test_importable_with_no_home,
++    # test_use_doc_standard_backends).
++    # This function only runs on explicit attribute lookups (not module import).
++    # STATE-BASED FLOW:
++    #   - "__version__":
++    #       if requested, compute and cache only if needed, then return string.
++    #   - "version_info":
++    #       - if __version__ already cached, reuse exact value.
++    #       - otherwise, compute __version__ once and cache.
++    #       - parse via _parse_version_info, cache tuple as "version_info", return it.
++    #   - all other names:
++    #       raise AttributeError.
++    # ENV/IMPORT SAFETY:
++    #   - Never call home/config cache discovery here (e.g. get_configdir/get_cachedir).
++    #   - Never import/switch pyplot or backend state as part of version resolution.
++    # FAILURE CONTROL:
++    #   - If _get_matplotlib_version or parsing fails, propagate failure to caller;
++    #     do not alter backend selection or fallback behavior.
++    # VINFO-003: deterministic reparsing and reload semantics.
++    # INPUT:
++    #   name in {"__version__", "version_info"} triggered by lazy module attribute access.
++    # OUTPUT:
++    #   byte-for-byte stable representation per supported version form on repeated access.
++    # ERROR/STATE PATH:
++    #   if __version__ missing, re-evaluate via _get_matplotlib_version before parse.
++    #   if __version__ present, reuse exact cached string; do not reformat.
++    # CONTROL FLOW:
++    #   - For "__version__": cache computed string in module globals and return it.
++    #   - For "version_info":
++    #       * resolve version string source deterministically (cached or freshly sourced),
++    #         so repeated calls in interpreter see same string before parse.
++    #       * parse once through _parse_version_info and cache as "version_info".
++    #       * on module reload, globals reset, so reparsing path executes again from same source.
++    #   - otherwise raise AttributeError unchanged.
++    # VINFO-002: top-level attribute contract for lazy lazy-loaded version members.
++    # REQUIREMENT VINFO-002:
++    #   A. `from matplotlib import version_info` must resolve as an importable
++    #      top-level symbol, even without private helper imports by callers.
++    #   B. `import matplotlib; matplotlib.version_info` must expose same object.
++    # CONTROL-FLOW:
++    #   IF name == "__version__":
++    #     obtain source-of-truth version via _get_matplotlib_version,
++    #     cache in module globals as __version__, return it.
++    #   ELIF name == "version_info":
++    #     IF __version__ cached:
++    #         use cached version string.
++    #     ELSE:
++    #         compute via _get_matplotlib_version and cache as __version__.
++    #     parse computed version via _parse_version_info and return parsed tuple.
++    #   ELSE:
++    #     fail fast with module AttributeError.
++    # VINFO-004: when name == "version_info", return value that satisfies:
++    #   - direct six-operator comparability
++    #   - deterministic semantic precedence for development/candidate/final/post
++    #   - stable behavior when compared with guard tuples from compatibility checks
++    #   - no TypeError for supported tuple target forms in comparison expressions.
+     if name == "__version__":
+-        import setuptools_scm
+         global __version__  # cache it.
+-        # Only shell out to a git subprocess if really needed, and not on a
+-        # shallow clone, such as those used by CI, as the latter would trigger
+-        # a warning from setuptools_scm.
+-        root = Path(__file__).resolve().parents[2]
+-        if (root / ".git").exists() and not (root / ".git/shallow").exists():
+-            __version__ = setuptools_scm.get_version(
+-                root=root,
+-                version_scheme="post-release",
+-                local_scheme="node-and-date",
+-                fallback_version=_version.version,
+-            )
+-        else:  # Get the version from the _version.py setuptools_scm file.
+-            __version__ = _version.version
++        __version__ = _get_matplotlib_version()
+         return __version__
++    if name == "version_info":
++        global __version__
++        if "__version__" in globals():
++            version = __version__
++        else:
++            __version__ = _get_matplotlib_version()
++            version = __version__
++        version_info = _parse_version_info(version)
++        globals()["version_info"] = version_info
++        return version_info
+     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+ 
+ 
+diff --git a/lib/matplotlib/tests/test_version_info.py b/lib/matplotlib/tests/test_version_info.py
+new file mode 100644
+index 00000000..bf6ca4c0
+--- /dev/null
++++ b/lib/matplotlib/tests/test_version_info.py
+@@ -0,0 +1,531 @@
++"""Regression coverage for VINFO-001 and VINFO-002 version information contracts."""
++
++import importlib
++import json
++import os
++import subprocess
++import sys
++
++import matplotlib as mpl
++
++
++VINFO_REQUIREMENT_VERIFICATIONS = {
++    "VINFO-001": [
++        "VINFO-001_read_stability_before_after_version_info_access",
++        "VINFO-001_version_source_contract_for_version_info_path",
++    ],
++    "VINFO-002": [
++        "VINFO-002_top_level_import_from_matplotlib_version_info_matches_module_version_info",
++        "VINFO-002_standard_import_module_exposes_version_info_without_private_imports",
++    ],
++    "VINFO-003": [
++        "VINFO-003_supported_version_forms_parse_to_deterministic_fields",
++        "VINFO-003_version_info_fields_stable_across_version_form_reparsing",
++        "VINFO-003_supported_version_forms_with_local_metadata_are_order_stable",
++    ],
++    "VINFO-004": [
++        "VINFO-004_version_info_comparison_operators_are_total_for_all_6_standard_operators",
++        "VINFO-004_dev_release_is_semantically_before_final_and_reverse_check",
++        "VINFO-004_candidate_is_before_final_and_post_release_is_after_final",
++        "VINFO-004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result",
++    ],
++    "VINFO-005": [
++        "VINFO-005_importable_with__OO_version_initialization_remains_import_side_effect_free",
++        "VINFO-005_importable_with_no_home_version_initialization_remains_home_free",
++        "VINFO-005_doc_standard_backends_observations_unmodified_by_version_initialization",
++    ],
++    "VINFO-006": [
++        "VINFO-006_top_level_version_additions_limited_to_version_scope_symbols",
++        "VINFO-006_version_info_import_path_and_diff_scope_without_unrelated_new_exports",
++    ],
++}
++
++
++def test_VINFO_001_read_stability_before_after_version_info_access():
++    """
++    Requirement VINFO-001:
++    When module import has cached or computed __version__, repeated reads
++    before and after version_info access remain stable and string-typed.
++    """
++    version_before = mpl.__version__
++    assert isinstance(version_before, str)
++
++    version_info = mpl.version_info
++    assert isinstance(version_info, tuple)
++
++    assert isinstance(mpl.__version__, str)
++    assert version_before == mpl.__version__
++    assert version_info == mpl.version_info
++
++
++def test_VINFO_001_version_source_contract_for_version_info_path(monkeypatch):
++    """
++    Requirement VINFO-001:
++    __version__ remains sourced from the existing version source used by current
++    module behavior rather than replacing it with a different formatted value.
++    """
++    original_version = mpl.__version__
++    fake_version = "3.10.4rc2"
++
++    monkeypatch.setattr(mpl, "_get_matplotlib_version", lambda: fake_version)
++    monkeypatch.delitem(mpl.__dict__, "__version__", raising=False)
++
++    version_info = mpl.version_info
++    assert mpl.__version__ == fake_version
++    assert isinstance(version_info, tuple)
++    assert version_info.major == 3
++    assert version_info.minor == 10
++    assert version_info.micro == 4
++    assert version_info.releaselevel == "candidate"
++    assert version_info.serial == 2
++
++    monkeypatch.setitem(mpl.__dict__, "__version__", original_version)
++
++
++def test_VINFO_002_top_level_import_from_matplotlib_version_info_matches_module_version_info():
++    """
++    Requirement VINFO-002:
++    Direct `from matplotlib import version_info` resolves against the
++    package namespace and represents the same top-level value as
++    `matplotlib.version_info`.
++    """
++    from matplotlib import version_info as imported_version_info
++
++    assert imported_version_info == mpl.version_info
++    assert imported_version_info is mpl.version_info
++
++
++def test_VINFO_002_standard_import_module_exposes_version_info_without_private_imports():
++    """
++    Requirement VINFO-002:
++    A standard `import matplotlib` exposes `version_info` on the module object
++    without requiring private helper module imports in user-facing code.
++    """
++    assert hasattr(mpl, "version_info")
++    assert "version_info" in mpl.__dict__
++    assert isinstance(mpl.version_info, tuple)
++
++
++def test_VINFO_003_supported_version_forms_parse_to_deterministic_fields():
++    """
++    Requirement VINFO-003:
++    Parse forms in {3.5.0, 3.5.0rc2, 3.5.0.dev820+g6768ef8c4c,
++    3.5.0.post820+g6768ef8c4c} into a stable and deterministic structure.
++    """
++    versions = {
++        "3.5.0": {
++            "expected": (3, 5, 0, "final", 0, ()),
++        },
++        "3.5.0rc2": {
++            "expected": (3, 5, 0, "candidate", 2, ()),
++        },
++        "3.5.0.dev820+g6768ef8c4c": {
++            "expected": (3, 5, 0, "development", 820, ("g6768ef8c4c",)),
++        },
++        "3.5.0.post820+g6768ef8c4c": {
++            "expected": (3, 5, 0, "post", 820, ("g6768ef8c4c",)),
++        },
++    }
++
++    for version, expected in versions.items():
++        old_getter = mpl._get_matplotlib_version
++        try:
++            mpl._get_matplotlib_version = lambda version=version: version
++            mpl.__dict__.pop("__version__", None)
++            mpl.__dict__.pop("version_info", None)
++            info = mpl.version_info
++            assert info == expected["expected"]
++        finally:
++            mpl._get_matplotlib_version = old_getter
++
++
++def test_VINFO_003_version_info_fields_stable_across_version_form_reparsing():
++    """
++    Requirement VINFO-003:
++    Repeated parsing of supported version forms across controlled reload flows
++    produces stable major/minor/patch and pre/post/dev/local fields.
++    """
++    versions = (
++        "3.5.0",
++        "3.5.0rc2",
++        "3.5.0.dev820+g6768ef8c4c",
++        "3.5.0.post820+g6768ef8c4c",
++    )
++
++    for version in versions:
++        old_getter = mpl._get_matplotlib_version
++        try:
++            # Force a fresh attribute path and reparse in-place twice.
++            mpl._get_matplotlib_version = lambda version=version: version
++            mpl.__dict__.pop("version_info", None)
++            mpl.__dict__.pop("__version__", None)
++            first = mpl.version_info
++
++            # Simulate an isolated reload path by reconstructing module state.
++            importlib.reload(mpl)
++            mpl._get_matplotlib_version = lambda version=version: version
++            mpl.__dict__.pop("version_info", None)
++            mpl.__dict__.pop("__version__", None)
++            second = mpl.version_info
++
++            assert first == second
++            assert (
++                first.major,
++                first.minor,
++                first.micro,
++                first.releaselevel,
++                first.serial,
++                first.local,
++            ) == (
++                second.major,
++                second.minor,
++                second.micro,
++                second.releaselevel,
++                second.serial,
++                second.local,
++            )
++        finally:
++            mpl._get_matplotlib_version = old_getter
++            # Return to imported module state used by other tests.
++            mpl.__dict__.pop("__version__", None)
++            mpl.__dict__.pop("version_info", None)
++
++
++def test_VINFO_003_supported_version_forms_with_local_metadata_are_order_stable():
++    """
++    Requirement VINFO-003:
++    Local metadata suffixes such as +g... are represented deterministically and do
++    not produce non-deterministic field order.
++    """
++    version = "3.5.0.dev820+g6768ef8c4c"
++    old_getter = mpl._get_matplotlib_version
++
++    try:
++        mpl._get_matplotlib_version = lambda: version
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        first = mpl.version_info
++
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        second = mpl.version_info
++
++        assert first.local == ("g6768ef8c4c",)
++        assert second.local == ("g6768ef8c4c",)
++        assert first.local == second.local
++    finally:
++        mpl._get_matplotlib_version = old_getter
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++
++
++def test_VINFO_004_version_info_comparison_operators_are_total_for_all_6_standard_operators():
++    """
++    Requirement VINFO-004:
++    Validate that all comparison operators `<`, `<=`, `>`, `>=`, `==`, `!=` are
++    covered by a traceability artifact for supported version tuple comparisons.
++    """
++    versions = (
++        "3.5.0.dev820+g6768ef8c4c",
++        "3.5.0rc2",
++        "3.5.0",
++        "3.5.0.post820+g6768ef8c4c",
++    )
++
++    old_getter = mpl._get_matplotlib_version
++    infos = []
++    try:
++        for version in versions:
++            mpl._get_matplotlib_version = lambda version=version: version
++            mpl.__dict__.pop("__version__", None)
++            mpl.__dict__.pop("version_info", None)
++            infos.append(mpl.version_info)
++
++        assert infos[0] < infos[1] < infos[2] < infos[3]
++        assert infos[3] > infos[0]
++        assert infos[2] == infos[2]
++        assert infos[1] != infos[3]
++        assert not (infos[2] <= infos[1])
++        assert infos[1] <= infos[1]
++        assert not (infos[0] >= infos[3])
++        assert infos[2] >= infos[2]
++    finally:
++        mpl._get_matplotlib_version = old_getter
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++
++
++def test_VINFO_004_dev_release_is_semantically_before_final_and_reverse_check():
++    """
++    Requirement VINFO-004:
++    Encode the semantic expectation that `dev` precedes `final` and that
++    reverse comparison against `final` is consistent under that ordering.
++    """
++    old_getter = mpl._get_matplotlib_version
++
++    try:
++        mpl._get_matplotlib_version = lambda: "3.5.0.dev820+g6768ef8c4c"
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        dev_version = mpl.version_info
++
++        mpl._get_matplotlib_version = lambda: "3.5.0"
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        final_version = mpl.version_info
++
++        assert dev_version < final_version
++        assert not final_version < dev_version
++        assert final_version > dev_version
++        assert not (dev_version >= final_version)
++        assert not (final_version <= dev_version)
++    finally:
++        mpl._get_matplotlib_version = old_getter
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++
++
++def test_VINFO_004_candidate_is_before_final_and_post_release_is_after_final():
++    """
++    Requirement VINFO-004:
++    Encode the semantic expectation that `candidate` precedes `final` and `post`
++    follows `final` for compatible quick-release checks.
++    """
++    old_getter = mpl._get_matplotlib_version
++
++    try:
++        mpl._get_matplotlib_version = lambda: "3.5.0rc2"
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        rc_version = mpl.version_info
++
++        mpl._get_matplotlib_version = lambda: "3.5.0"
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        final_version = mpl.version_info
++
++        mpl._get_matplotlib_version = lambda: "3.5.0.post820+g6768ef8c4c"
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++        post_version = mpl.version_info
++
++        assert rc_version < final_version
++        assert final_version > rc_version
++        assert final_version < post_version
++        assert post_version > final_version
++        assert rc_version < (3, 5, 0)
++        assert (3, 5, 0) < post_version
++    finally:
++        mpl._get_matplotlib_version = old_getter
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++
++
++def test_VINFO_004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result():
++    """
++    Requirement VINFO-004:
++    Encode the quick-compatibility guard contract for
++    `matplotlib.version_info >= (3, 5, 0)` using supported final/minor forms.
++    """
++    expectations = {
++        "3.5.0": True,
++        "3.5.0rc2": False,
++        "3.5.0.dev820+g6768ef8c4c": False,
++        "3.5.0.post820+g6768ef8c4c": True,
++    }
++
++    old_getter = mpl._get_matplotlib_version
++
++    try:
++        for version, expected in expectations.items():
++            mpl._get_matplotlib_version = lambda version=version: version
++            mpl.__dict__.pop("__version__", None)
++            mpl.__dict__.pop("version_info", None)
++            assert (mpl.version_info >= (3, 5, 0)) is expected
++    finally:
++        mpl._get_matplotlib_version = old_getter
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++
++
++def _parse_doc_standard_backends_from_use_doc():
++    def parse(key):
++        backends = []
++        for line in mpl.use.__doc__.split(key)[1].split("\n"):
++            if not line.strip():
++                break
++            backends += [entry.strip() for entry in line.split(",") if entry]
++        return set(backends)
++
++    return (
++        parse("- interactive backends:\n"),
++        parse("- non-interactive backends:\n"),
++    )
++
++
++def test_VINFO_005_importable_with__OO_version_initialization_remains_import_side_effect_free():
++    """
++    VINFO-005:
++    When importing under -OO, version initialization must not alter the existing
++    import flow for docstring-stripped optimization runs.
++    """
++    program = (
++        "import matplotlib as mpl\n"
++        "_ = mpl.version_info\n"
++        "import matplotlib.pyplot as plt\n"
++        "import matplotlib.cbook as cbook\n"
++        "import matplotlib.patches as mpatches\n"
++        "assert isinstance(mpl.version_info, tuple)\n"
++        "assert isinstance(mpl.__version__, str)\n"
++    )
++    cmd = [sys.executable, "-OO", "-c", program]
++    proc = subprocess.run(
++        cmd,
++        env={**os.environ, "MPLBACKEND": ""},
++        capture_output=True,
++        text=True,
++    )
++    assert proc.returncode == 0, proc.stderr
++    assert proc.stdout == ""
++
++
++def test_VINFO_005_importable_with_no_home_version_initialization_remains_home_free(tmp_path):
++    """
++    VINFO-005:
++    Version initialization must remain HOME-safe and cannot require
++    Path.home() in constrained HOME-resolution environments.
++    """
++    program = (
++        "import pathlib\n"
++        "pathlib.Path.home = lambda *args: (_ for _ in ()).throw(RuntimeError('HOME used'))\n"
++        "import matplotlib as mpl\n"
++        "assert isinstance(mpl.version_info, tuple)\n"
++        "assert isinstance(mpl.__version__, str)\n"
++    )
++    cmd = [sys.executable, "-c", program]
++    proc = subprocess.run(cmd, env={**os.environ, "MPLCONFIGDIR": str(tmp_path)}, capture_output=True, text=True)
++    assert proc.returncode == 0, proc.stderr
++    assert proc.stdout == ""
++
++
++def test_VINFO_005_doc_standard_backends_observations_unmodified_by_version_initialization():
++    """
++    VINFO-005:
++    Accessing version metadata before reading `matplotlib.use()` docstring-backed
++    backend lists must not alter documented backend discovery behavior.
++    """
++    saved_version = mpl.__dict__.get("__version__")
++    saved_version_info = mpl.__dict__.get("version_info")
++    try:
++        mpl.__dict__.pop("__version__", None)
++        mpl.__dict__.pop("version_info", None)
++
++        before = _parse_doc_standard_backends_from_use_doc()
++        _ = mpl.version_info
++        after = _parse_doc_standard_backends_from_use_doc()
++
++        assert before == after
++        assert after[0] == set(mpl.rcsetup.interactive_bk)
++        assert after[1] == set(mpl.rcsetup.non_interactive_bk)
++    finally:
++        if saved_version is None:
++            mpl.__dict__.pop("__version__", None)
++        else:
++            mpl.__dict__["__version__"] = saved_version
++        if saved_version_info is None:
++            mpl.__dict__.pop("version_info", None)
++        else:
++            mpl.__dict__["version_info"] = saved_version_info
++
++
++def test_VINFO_006_top_level_version_additions_limited_to_version_scope_symbols():
++    """
++    Requirement VINFO-006:
++    Verify that intended top-level version additions are scoped to
++    ``__version__`` and ``version_info`` only.
++    """
++    code = """
++import json
++import matplotlib as mpl
++
++public_symbols = [name for name in vars(mpl) if not name.startswith("_")]
++before = set(public_symbols)
++_ = mpl.version_info
++after = set([name for name in vars(mpl) if not name.startswith("_")])
++
++print(json.dumps({
++    "before": sorted(before),
++    "after": sorted(after),
++    "new": sorted(after - before),
++}))
++"""
++    proc = subprocess.run(
++        [sys.executable, "-c", code],
++        env=os.environ,
++        capture_output=True,
++        text=True,
++    )
++    assert proc.returncode == 0, proc.stderr
++    payload = json.loads(proc.stdout)
++    before = set(payload["before"])
++    after = set(payload["after"])
++    added = set(payload["new"])
++
++    assert "version_info" in after
++    # version_info (and lazily, __version__) are the only version-scope additions.
++    allowed_additions = {"version_info", "__version__"}
++    assert added.issubset(allowed_additions)
++    if "__version__" in before:
++        assert "version_info" in added
++    else:
++        assert {"version_info", "__version__"} == added or {"version_info"} == added
++
++    assert all(name.isidentifier() for name in after)
++
++
++def test_VINFO_006_version_info_import_path_and_diff_scope_without_unrelated_new_exports():
++    """
++    Requirement VINFO-006:
++    Verify that the version API patch adds ``version_info`` while preserving
++    existing top-level version scope and without unrelated helpers.
++    """
++    code = """
++import json
++import matplotlib as mpl
++
++public_symbols = lambda: set([name for name in vars(mpl) if not name.startswith("_")])
++pre = public_symbols()
++
++from matplotlib import version_info as imported_version_info
++post = public_symbols()
++resolved = imported_version_info is mpl.version_info
++
++print(json.dumps({
++    "pre": sorted(pre),
++    "post": sorted(post),
++    "new": sorted(post - pre),
++    "import_is_attr": resolved,
++}))
++"""
++    proc = subprocess.run(
++        [sys.executable, "-c", code],
++        env=os.environ,
++        capture_output=True,
++        text=True,
++    )
++    assert proc.returncode == 0, proc.stderr
++    payload = json.loads(proc.stdout)
++    added = set(payload["new"])
++    pre = set(payload["pre"])
++    post = set(payload["post"])
++
++    assert payload["import_is_attr"] is True
++    assert "version_info" in post
++    assert "version_info" in added
++    # Importing version_info should not expose a new unrelated helper symbol.
++    if "__version__" in pre:
++        assert added == {"version_info"}
++    else:
++        assert added == {"version_info"} or added == {"version_info", "__version__"}
++
++    assert pre.issubset(post)

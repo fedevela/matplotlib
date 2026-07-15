@@ -132,20 +132,6 @@ __bibtex__ = r"""@Article{Hunter:2007,
 
 def _get_matplotlib_version():
     import setuptools_scm
-    # VINFO-005: keep version source resolution lazy and import-safe.
-    # CONTROL FLOW:
-    #   1) Derive repository root from this file location.
-    #   2) If ".git" exists and ".git/shallow" does not:
-    #      - read source-controlled version via setuptools_scm.get_version().
-    #      - keep fallback_version as local version module value.
-    #   3) Else:
-    #      - fall back directly to bundled _version.version.
-    # SIDE-EFFECT GATE:
-    #   - Do not read user HOME during version resolution.
-    #   - Do not touch backend/pyplot/rc state during version lookup.
-    # FAILURE PATH:
-    #   - Version-control lookup exceptions are raised by caller path; no swallows added.
-    # VINFO-001: shared source-of-truth path for version metadata.
     root = Path(__file__).resolve().parents[2]
     if (root / ".git").exists() and not (root / ".git/shallow").exists():
         return setuptools_scm.get_version(
@@ -158,8 +144,6 @@ def _get_matplotlib_version():
 
 
 class _VersionInfo(namedtuple("version_info", "major minor micro releaselevel serial local")):
-    # VINFO-004: version_info must be directly comparable using all standard
-    # relational operators.
     __slots__ = ()
     _RANKS = {
         "development": 0,
@@ -239,52 +223,6 @@ class _VersionInfo(namedtuple("version_info", "major minor micro releaselevel se
 
 
 def _parse_version_info(version):
-    # VINFO-003: supported-version parse contract.
-    # INPUT:
-    #   version: one of the supported forms
-    #          {"X.Y.Z", "X.Y.ZrcN", "X.Y.Z.devN+L", "X.Y.Z.postN+L"}
-    #          where L is local metadata.
-    # OUTPUT:
-    #   deterministic _VersionInfo-compatible projection with stable segment order.
-    #   stable ordering is mandatory even when local metadata is present.
-    # CONTROL FLOW:
-    #   1) parsed = parse_version(version)
-    #   2) major, minor, micro = first 3 items from parsed.release (missing zeros padded).
-    #   3) if parsed.pre exists:
-    #        - map pre tag a/b/rc to alpha/beta/candidate.
-    #        - serial = parsed.pre serial.
-    #      else if parsed.dev exists:
-    #        - releaselevel = "development", serial = parsed.dev.
-    #      else if parsed.post exists:
-    #        - releaselevel = "post", serial = parsed.post.
-    #      else:
-    #        - releaselevel = "final", serial = 0.
-    #   4) local = parsed.local if present else ""
-    #      local_norm = tuple(local.split(".")) to preserve deterministic ordering;
-    #      this must be threaded into the parsed representation in the same deterministic
-    #      output position every call for the same input.
-    #   5) return structured tuple-like representation derived only from parsed fields above.
-    # VINFO-002: parsed version contract.
-    # IN:
-    #   version: string-like version from existing source-of-truth path.
-    # OUT:
-    #   _VersionInfo tuple shaped
-    #   (major, minor, micro, releaselevel, serial, local),
-    #   where local is a deterministic tuple derived from packaging local metadata.
-    # PROCESS:
-    #   parse version once via packaging parser -> derive major/minor/micro defaults.
-    #   if pre-release present: map a/b/rc to alpha/beta/candidate.
-    #   elif dev-release present: label development with dev serial.
-    #   elif post-release present: label post with post serial.
-    #   else: label final with serial 0.
-    #   normalize local metadata by splitting on "." into a deterministic tuple.
-    # ERROR/NO-INPUT PATH:
-    #   no explicit failure path; caller is responsible for supplying version metadata.
-    # VINFO-004: version-info parse must preserve values needed for stable ordering.
-    #   - releaselevel must remain one of {development, alpha, beta, candidate, final, post}
-    #     so comparison key assembly can map to the deterministic pre_rank domain above.
-    #   - serial must be numeric where available and 0 for finals.
-    #   - local metadata must remain tuple-like and deterministic for stable tie-breaking.
     parsed = parse_version(version)
     release = tuple(parsed.release) + (0, 0, 0)
     major, minor, micro = release[:3]
@@ -314,102 +252,15 @@ def _parse_version_info(version):
 
 
 def __getattr__(name):
-    # VINFO-006: keep public version-surface additions limited to version-introspection
-    # attributes only.
-    # CONTRACT:
-    #   - scope_limited_exports := {"__version__", "version_info"}
-    #   - all other attribute names must follow default failure path.
-    # DECISION TABLE (getattr resolution):
-    #   1) IF name is in scope_limited_exports:
-    #      A. IF name == "__version__":
-    #         - compute/get version string via _get_matplotlib_version.
-    #         - cache in module globals under "__version__".
-    #         - return cached string.
-    #      B. IF name == "version_info":
-    #         - obtain source string from cached "__version__" when present,
-    #           else compute via _get_matplotlib_version and cache it.
-    #         - parse via _parse_version_info.
-    #         - cache parsed tuple under "version_info".
-    #         - return parsed tuple.
-    #   2) ELSE:
-    #      - raise AttributeError and do not create helper symbols.
-    # STATE TRANSITIONS:
-    #   - S0: no cached version attrs -> first allowed lookup enters compute branch.
-    #   - S1: "__version__" cached only.
-    #   - S2: "__version__" and "version_info" cached.
-    #   - transition from S0 to S1 only via allowed "__version__" or "version_info".
-    #   - transition from S1 to S2 only via allowed "version_info".
-    # FAILURE PATH:
-    #   - unrelated top-level names never mutate version scope.
-    #   - unknown names must never resolve through hidden/version-helper exports.
-    # VINFO-005: preserve import-time side-effect profile for environment-sensitive
-    # import paths (test_importable_with__OO, test_importable_with_no_home,
-    # test_use_doc_standard_backends).
-    # This function only runs on explicit attribute lookups (not module import).
-    # STATE-BASED FLOW:
-    #   - "__version__":
-    #       if requested, compute and cache only if needed, then return string.
-    #   - "version_info":
-    #       - if __version__ already cached, reuse exact value.
-    #       - otherwise, compute __version__ once and cache.
-    #       - parse via _parse_version_info, cache tuple as "version_info", return it.
-    #   - all other names:
-    #       raise AttributeError.
-    # ENV/IMPORT SAFETY:
-    #   - Never call home/config cache discovery here (e.g. get_configdir/get_cachedir).
-    #   - Never import/switch pyplot or backend state as part of version resolution.
-    # FAILURE CONTROL:
-    #   - If _get_matplotlib_version or parsing fails, propagate failure to caller;
-    #     do not alter backend selection or fallback behavior.
-    # VINFO-003: deterministic reparsing and reload semantics.
-    # INPUT:
-    #   name in {"__version__", "version_info"} triggered by lazy module attribute access.
-    # OUTPUT:
-    #   byte-for-byte stable representation per supported version form on repeated access.
-    # ERROR/STATE PATH:
-    #   if __version__ missing, re-evaluate via _get_matplotlib_version before parse.
-    #   if __version__ present, reuse exact cached string; do not reformat.
-    # CONTROL FLOW:
-    #   - For "__version__": cache computed string in module globals and return it.
-    #   - For "version_info":
-    #       * resolve version string source deterministically (cached or freshly sourced),
-    #         so repeated calls in interpreter see same string before parse.
-    #       * parse once through _parse_version_info and cache as "version_info".
-    #       * on module reload, globals reset, so reparsing path executes again from same source.
-    #   - otherwise raise AttributeError unchanged.
-    # VINFO-002: top-level attribute contract for lazy lazy-loaded version members.
-    # REQUIREMENT VINFO-002:
-    #   A. `from matplotlib import version_info` must resolve as an importable
-    #      top-level symbol, even without private helper imports by callers.
-    #   B. `import matplotlib; matplotlib.version_info` must expose same object.
-    # CONTROL-FLOW:
-    #   IF name == "__version__":
-    #     obtain source-of-truth version via _get_matplotlib_version,
-    #     cache in module globals as __version__, return it.
-    #   ELIF name == "version_info":
-    #     IF __version__ cached:
-    #         use cached version string.
-    #     ELSE:
-    #         compute via _get_matplotlib_version and cache as __version__.
-    #     parse computed version via _parse_version_info and return parsed tuple.
-    #   ELSE:
-    #     fail fast with module AttributeError.
-    # VINFO-004: when name == "version_info", return value that satisfies:
-    #   - direct six-operator comparability
-    #   - deterministic semantic precedence for development/candidate/final/post
-    #   - stable behavior when compared with guard tuples from compatibility checks
-    #   - no TypeError for supported tuple target forms in comparison expressions.
     if name == "__version__":
-        global __version__  # cache it.
-        __version__ = _get_matplotlib_version()
-        return __version__
+        version = globals().get("__version__")
+        if version is None:
+            version = globals()["__version__"] = _get_matplotlib_version()
+        return version
     if name == "version_info":
-        global __version__
-        if "__version__" in globals():
-            version = __version__
-        else:
-            __version__ = _get_matplotlib_version()
-            version = __version__
+        version = globals().get("__version__")
+        if version is None:
+            version = globals()["__version__"] = _get_matplotlib_version()
         version_info = _parse_version_info(version)
         globals()["version_info"] = version_info
         return version_info
