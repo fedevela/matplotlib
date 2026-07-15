@@ -132,6 +132,19 @@ __bibtex__ = r"""@Article{Hunter:2007,
 
 def _get_matplotlib_version():
     import setuptools_scm
+    # VINFO-005: keep version source resolution lazy and import-safe.
+    # CONTROL FLOW:
+    #   1) Derive repository root from this file location.
+    #   2) If ".git" exists and ".git/shallow" does not:
+    #      - read source-controlled version via setuptools_scm.get_version().
+    #      - keep fallback_version as local version module value.
+    #   3) Else:
+    #      - fall back directly to bundled _version.version.
+    # SIDE-EFFECT GATE:
+    #   - Do not read user HOME during version resolution.
+    #   - Do not touch backend/pyplot/rc state during version lookup.
+    # FAILURE PATH:
+    #   - Version-control lookup exceptions are raised by caller path; no swallows added.
     # VINFO-001: shared source-of-truth path for version metadata.
     root = Path(__file__).resolve().parents[2]
     if (root / ".git").exists() and not (root / ".git/shallow").exists():
@@ -301,6 +314,25 @@ def _parse_version_info(version):
 
 
 def __getattr__(name):
+    # VINFO-005: preserve import-time side-effect profile for environment-sensitive
+    # import paths (test_importable_with__OO, test_importable_with_no_home,
+    # test_use_doc_standard_backends).
+    # This function only runs on explicit attribute lookups (not module import).
+    # STATE-BASED FLOW:
+    #   - "__version__":
+    #       if requested, compute and cache only if needed, then return string.
+    #   - "version_info":
+    #       - if __version__ already cached, reuse exact value.
+    #       - otherwise, compute __version__ once and cache.
+    #       - parse via _parse_version_info, cache tuple as "version_info", return it.
+    #   - all other names:
+    #       raise AttributeError.
+    # ENV/IMPORT SAFETY:
+    #   - Never call home/config cache discovery here (e.g. get_configdir/get_cachedir).
+    #   - Never import/switch pyplot or backend state as part of version resolution.
+    # FAILURE CONTROL:
+    #   - If _get_matplotlib_version or parsing fails, propagate failure to caller;
+    #     do not alter backend selection or fallback behavior.
     # VINFO-003: deterministic reparsing and reload semantics.
     # INPUT:
     #   name in {"__version__", "version_info"} triggered by lazy module attribute access.
