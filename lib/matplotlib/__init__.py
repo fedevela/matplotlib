@@ -154,6 +154,16 @@ def __getattr__(name):
             __version__ = _version.version
         return __version__
     if name == "version_info":
+        # VINFO-006 PSEUDOCODE:
+        #   Startup-sensitive contract:
+        #   - Access to `version_info` must not add import side effects
+        #     beyond the existing module import execution.
+        #   - Existing startup flows (including `test_importable_with__OO`,
+        #     `test_importable_with_no_home`, `test_use_doc_standard_backends`)
+        #     keep succeeding when `mpl.version_info` is referenced.
+        #   Failure policy:
+        #   - Preserve the current attribute contract by only resolving
+        #     `version_info` through this branch.
         # VINFO-004 PSEUDOCODE:
         #   Invariant:
         #     version_info must be a cached, top-level comparable object produced by
@@ -187,6 +197,16 @@ def __getattr__(name):
         #   state transition:
         #     if "version_info" missing -> compute and memoize once
         #     else -> return existing object from globals
+        # VINFO-008 PSEUDOCODE:
+        #   Parse failure contract:
+        #   - Let `source` be the resolved string from __version__ logic.
+        #   - Execute `parse_version(source)` directly.
+        #   - If parsing raises:
+        #       * allow the exception and traceback to propagate unchanged;
+        #       * do not coerce, normalize, or replace malformed data with
+        #         a fallback version object.
+        #   - This ensures malformed metadata surfaces deterministically,
+        #     preserving legacy failure behavior for callers/import paths.
         #   operator usability:
         #     because parse_version returns a comparable Version object,
         #     single-expression chains such as

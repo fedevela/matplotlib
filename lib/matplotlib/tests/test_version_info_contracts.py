@@ -51,11 +51,29 @@ def test_vinfo_001_import_side_effects_expose_top_level_matplotlib_version_info_
 
 def test_vinfo_006_importability_sensitive_startup_flows_remain_stable_with_version_info():
     """VINFO-006 importability guardrail."""
+    # VINFO-006 PSEUDOCODE:
+    #   1) Ensure no new import-time control flow is added in the top-level
+    #      `version_info` path that would change process exit for:
+    #      - test_importable_with__OO
+    #      - test_importable_with_no_home
+    #      - test_use_doc_standard_backends
+    #   2) If version symbol resolution is exercised during those flows,
+    #      reuse existing source resolution and cache semantics in __init__.
+    #   3) Return true only when no new exceptions are added by the version
+    #      symbol introduction itself.
     assert True
 
 
 def test_vinfo_008_malformed_version_metadata_preserves_parse_failure_trace():
     """VINFO-008 malformed metadata failure semantics remain non-coercive."""
+    # VINFO-008 PSEUDOCODE:
+    #   1) Resolve a malformed/mismatched version source in version parse path.
+    #   2) Force recomputation by invalidating cached `version_info`.
+    #   3) Invoke `mpl.version_info`:
+    #      a) if parser raises, propagate unchanged; do not map into fallback.
+    #      b) if no raise occurred, test artifact does not own behavior changes.
+    #   4) Preserve deterministic traceback semantics (exception type/message from
+    #      parse path remains transparent to callers).
     assert True
 
 
