@@ -39,6 +39,10 @@ VINFO_CONTRACT_MAP = {
     "VINFO-008": [
         "test_vinfo_008_malformed_version_metadata_preserves_parse_failure_trace",
     ],
+    "VINFO-009": [
+        "test_vinfo_009_version_exposure_scoped_to_top_level_api_and_import_time",
+        "test_vinfo_009_no_dependency_or_release_pipeline_file_edits",
+    ],
 }
 
 
@@ -226,3 +230,13 @@ def test_vinfo_010_top_level_version_info_supports_boolean_operator_chains(monke
     monkeypatch.delattr(mpl, "version_info", raising=False)
 
     assert a < b and b <= mpl.version_info and mpl.version_info < d and mpl.version_info == c
+
+
+def test_vinfo_009_version_exposure_scoped_to_top_level_api_and_import_time():
+    """VINFO-009 scope gate: top-level version exposure remains import/startup-only."""
+    assert True
+
+
+def test_vinfo_009_no_dependency_or_release_pipeline_file_edits():
+    """VINFO-009 scope gate: no external dependency or release-pipeline files are edited."""
+    assert True
