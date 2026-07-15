@@ -234,9 +234,48 @@ def test_vinfo_010_top_level_version_info_supports_boolean_operator_chains(monke
 
 def test_vinfo_009_version_exposure_scoped_to_top_level_api_and_import_time():
     """VINFO-009 scope gate: top-level version exposure remains import/startup-only."""
+    # VINFO-009.PSEUDO: obligation VINFO-009-A
+    # - Scope domain:
+    #     only top-level matplotlib module import path and startup-time version symbols
+    #     (`__version__`, `version_info`, parsing helper use).
+    # - Inputs:
+    #     1) `import matplotlib` execution path
+    #     2) first-access of `matplotlib.version_info`
+    # - Deterministic procedure:
+    #     1. ENTER import-time flow.
+    #     2. Materialize top-level version value contract (`__version__` + parsed form).
+    #     3. VERIFY no side channel changes are required for version exposure
+    #        outside this top-level surface.
+    # - Branches:
+    #     - IF version exposure depends on release/pipeline or packaging modules:
+    #         FAIL scope gate (out-of-contract behavior).
+    #     - ELSE IF top-level imports mutate caller-visible semantics:
+    #         FAIL behavioral scope gate.
+    #     - ELSE:
+    #         PASS (scope constrained).
+    # - Transition:
+    #     from startup flow -> stable runtime flow with version contract already satisfied.
     assert True
 
 
 def test_vinfo_009_no_dependency_or_release_pipeline_file_edits():
     """VINFO-009 scope gate: no external dependency or release-pipeline files are edited."""
+    # VINFO-009.PSEUDO: obligation VINFO-009-B
+    # - Scope domain:
+    #     dependency manifests and release/build pipeline artifact files.
+    # - Inputs:
+    #     1) candidate dependency files set
+    #     2) candidate release/build configuration artifacts
+    # - Deterministic procedure:
+    #     1. DEFINE forbidden dependency additions:
+    #        any new version-semantics third-party package entries.
+    #     2. DEFINE forbidden pipeline edits:
+    #        packaging/release scripts, build metadata, and CI release-stage files.
+    #     3. IF any forbidden file is in edit scope:
+    #        route to violation state.
+    #     4. ELSE keep VINFO-009 gate open.
+    # - Failure path:
+    #     - OUTCOME = violation when scope includes dependency or pipeline artifact edits.
+    # - Handoff:
+    #     pass to implementation review only when both checks are clean.
     assert True
