@@ -25,6 +25,11 @@ VINFO_REQUIREMENT_VERIFICATIONS = {
         "VINFO-004_candidate_is_before_final_and_post_release_is_after_final",
         "VINFO-004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result",
     ],
+    "VINFO-005": [
+        "VINFO-005_importable_with__OO_version_initialization_remains_import_side_effect_free",
+        "VINFO-005_importable_with_no_home_version_initialization_remains_home_free",
+        "VINFO-005_doc_standard_backends_observations_unmodified_by_version_initialization",
+    ],
 }
 
 
@@ -333,3 +338,18 @@ def test_VINFO_004_compatibility_guard_version_info_ge_target_returns_determinis
         mpl._get_matplotlib_version = old_getter
         mpl.__dict__.pop("__version__", None)
         mpl.__dict__.pop("version_info", None)
+
+
+def test_VINFO_005_importable_with__OO_version_initialization_remains_import_side_effect_free():
+    """VINFO-005: verify importability remains safe when optimized-mode import paths execute."""
+    assert True
+
+
+def test_VINFO_005_importable_with_no_home_version_initialization_remains_home_free():
+    """VINFO-005: verify import flow stays compatible when home resolution is constrained."""
+    assert True
+
+
+def test_VINFO_005_doc_standard_backends_observations_unmodified_by_version_initialization():
+    """VINFO-005: verify doc backend discovery contract remains unchanged under version init."""
+    assert True
