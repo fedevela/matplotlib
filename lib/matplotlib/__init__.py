@@ -144,36 +144,85 @@ def _get_matplotlib_version():
     return _version.version
 
 
-_VersionInfo = namedtuple(
-    "version_info", "major minor micro releaselevel serial local"
-)
-# VINFO-004: comparison logic contract for version_info ordering and equality.
-# Ownership note:
-#   Comparisons must be implemented on the _VersionInfo value object so callers can
-#   use "<", "<=", ">", ">=", "==", "!=" directly against another _VersionInfo
-#   or a target tuple such as (3, 5, 0) without ambiguity or exceptions.
-# Deterministic ordering strategy (to be implemented in __eq__/__lt__/etc. scaffolding):
-#   1) Normalize both operands into a fixed-length comparable key:
-#      key = (major, minor, micro, pre_rank, serial, local_tuple)
-#   2) pre_rank uses semantic precedence:
-#        development -> 0
-#        alpha       -> 1
-#        beta        -> 2
-#        candidate   -> 3
-#        final       -> 4
-#        post        -> 5
-#   3) For comparison with tuple-like operands:
-#        - Require len >= 3 and all positional fields present.
-#        - Treat RHS tuple (M, m, u) as semantic final target key
-#          (M, m, u, pre_rank(final=4), serial=0, local=()).
-#        - Keep 3-field guard compatibility while preserving deterministic ordering.
-#   4) For __eq__/__ne__, compare all comparable key fields; return false/true for
-#      non-structured non-tuple operands instead of raising.
-#   5) For ordering operators (<, <=, >, >=), compare normalized keys lexicographically.
-#      This guarantees:
-#      - development < candidate < final < post for same numeric release triple.
-#      - post-release ordered after final under supported forms.
-#      - (3,5,0).devN < (3,5,0) < (3,5,0).post820... for supported inputs.
+class _VersionInfo(namedtuple("version_info", "major minor micro releaselevel serial local")):
+    # VINFO-004: version_info must be directly comparable using all standard
+    # relational operators.
+    __slots__ = ()
+    _RANKS = {
+        "development": 0,
+        "alpha": 1,
+        "beta": 2,
+        "candidate": 3,
+        "final": 4,
+        "post": 5,
+    }
+
+    def _comparison_key(self):
+        return (
+            self.major,
+            self.minor,
+            self.micro,
+            self._RANKS.get(self.releaselevel, self._RANKS["final"]),
+            self.serial,
+            self.local,
+        )
+
+    def _comparison_key_for_tuple_guard(self, other):
+        if not isinstance(other, tuple):
+            return NotImplemented
+        if len(other) == 3:
+            major, minor, micro = other
+            return (major, minor, micro, self._RANKS["final"], 0, ())
+        if len(other) == 6:
+            major, minor, micro, releaselevel, serial, local = other
+            local_tuple = tuple(local) if isinstance(local, tuple) else ((local,) if local else ())
+            return (
+                major,
+                minor,
+                micro,
+                self._RANKS.get(releaselevel, self._RANKS["final"]),
+                serial,
+                local_tuple,
+            )
+        return NotImplemented
+
+    def _comparison_key_for_other(self, other):
+        if isinstance(other, _VersionInfo):
+            return other._comparison_key()
+        return self._comparison_key_for_tuple_guard(other)
+
+    def __eq__(self, other):
+        other_key = self._comparison_key_for_other(other)
+        if other_key is NotImplemented:
+            return False
+        return self._comparison_key() == other_key
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __lt__(self, other):
+        other_key = self._comparison_key_for_other(other)
+        if other_key is NotImplemented:
+            return NotImplemented
+        return self._comparison_key() < other_key
+
+    def __le__(self, other):
+        other_key = self._comparison_key_for_other(other)
+        if other_key is NotImplemented:
+            return NotImplemented
+        return self._comparison_key() <= other_key
+
+    def __gt__(self, other):
+        other_key = self._comparison_key_for_other(other)
+        if other_key is NotImplemented:
+            return NotImplemented
+        return self._comparison_key() > other_key
+
+    def __ge__(self, other):
+        other_key = self._comparison_key_for_other(other)
+        if other_key is NotImplemented:
+            return NotImplemented
+        return self._comparison_key() >= other_key
 
 
 def _parse_version_info(version):

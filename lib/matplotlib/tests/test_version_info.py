@@ -212,7 +212,34 @@ def test_VINFO_004_version_info_comparison_operators_are_total_for_all_6_standar
     Validate that all comparison operators `<`, `<=`, `>`, `>=`, `==`, `!=` are
     covered by a traceability artifact for supported version tuple comparisons.
     """
-    assert True
+    versions = (
+        "3.5.0.dev820+g6768ef8c4c",
+        "3.5.0rc2",
+        "3.5.0",
+        "3.5.0.post820+g6768ef8c4c",
+    )
+
+    old_getter = mpl._get_matplotlib_version
+    infos = []
+    try:
+        for version in versions:
+            mpl._get_matplotlib_version = lambda version=version: version
+            mpl.__dict__.pop("__version__", None)
+            mpl.__dict__.pop("version_info", None)
+            infos.append(mpl.version_info)
+
+        assert infos[0] < infos[1] < infos[2] < infos[3]
+        assert infos[3] > infos[0]
+        assert infos[2] == infos[2]
+        assert infos[1] != infos[3]
+        assert not (infos[2] <= infos[1])
+        assert infos[1] <= infos[1]
+        assert not (infos[0] >= infos[3])
+        assert infos[2] >= infos[2]
+    finally:
+        mpl._get_matplotlib_version = old_getter
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
 
 
 def test_VINFO_004_dev_release_is_semantically_before_final_and_reverse_check():
@@ -221,7 +248,28 @@ def test_VINFO_004_dev_release_is_semantically_before_final_and_reverse_check():
     Encode the semantic expectation that `dev` precedes `final` and that
     reverse comparison against `final` is consistent under that ordering.
     """
-    assert True
+    old_getter = mpl._get_matplotlib_version
+
+    try:
+        mpl._get_matplotlib_version = lambda: "3.5.0.dev820+g6768ef8c4c"
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        dev_version = mpl.version_info
+
+        mpl._get_matplotlib_version = lambda: "3.5.0"
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        final_version = mpl.version_info
+
+        assert dev_version < final_version
+        assert not final_version < dev_version
+        assert final_version > dev_version
+        assert not (dev_version >= final_version)
+        assert not (final_version <= dev_version)
+    finally:
+        mpl._get_matplotlib_version = old_getter
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
 
 
 def test_VINFO_004_candidate_is_before_final_and_post_release_is_after_final():
@@ -230,7 +278,34 @@ def test_VINFO_004_candidate_is_before_final_and_post_release_is_after_final():
     Encode the semantic expectation that `candidate` precedes `final` and `post`
     follows `final` for compatible quick-release checks.
     """
-    assert True
+    old_getter = mpl._get_matplotlib_version
+
+    try:
+        mpl._get_matplotlib_version = lambda: "3.5.0rc2"
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        rc_version = mpl.version_info
+
+        mpl._get_matplotlib_version = lambda: "3.5.0"
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        final_version = mpl.version_info
+
+        mpl._get_matplotlib_version = lambda: "3.5.0.post820+g6768ef8c4c"
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        post_version = mpl.version_info
+
+        assert rc_version < final_version
+        assert final_version > rc_version
+        assert final_version < post_version
+        assert post_version > final_version
+        assert rc_version < (3, 5, 0)
+        assert (3, 5, 0) < post_version
+    finally:
+        mpl._get_matplotlib_version = old_getter
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
 
 
 def test_VINFO_004_compatibility_guard_version_info_ge_target_returns_deterministic_semantic_result():
@@ -239,4 +314,22 @@ def test_VINFO_004_compatibility_guard_version_info_ge_target_returns_determinis
     Encode the quick-compatibility guard contract for
     `matplotlib.version_info >= (3, 5, 0)` using supported final/minor forms.
     """
-    assert True
+    expectations = {
+        "3.5.0": True,
+        "3.5.0rc2": False,
+        "3.5.0.dev820+g6768ef8c4c": False,
+        "3.5.0.post820+g6768ef8c4c": True,
+    }
+
+    old_getter = mpl._get_matplotlib_version
+
+    try:
+        for version, expected in expectations.items():
+            mpl._get_matplotlib_version = lambda version=version: version
+            mpl.__dict__.pop("__version__", None)
+            mpl.__dict__.pop("version_info", None)
+            assert (mpl.version_info >= (3, 5, 0)) is expected
+    finally:
+        mpl._get_matplotlib_version = old_getter
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
