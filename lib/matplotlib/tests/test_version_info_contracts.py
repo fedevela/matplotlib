@@ -1,4 +1,4 @@
-"""Contract verification artifacts for Issue #67, Issue #68, and Issue #69."""
+"""Contract verification artifacts for Issue #67, Issue #68, Issue #69, and Issue #70."""
 
 import os
 import subprocess
@@ -234,48 +234,105 @@ def test_vinfo_010_top_level_version_info_supports_boolean_operator_chains(monke
 
 def test_vinfo_009_version_exposure_scoped_to_top_level_api_and_import_time():
     """VINFO-009 scope gate: top-level version exposure remains import/startup-only."""
-    # VINFO-009.PSEUDO: obligation VINFO-009-A
-    # - Scope domain:
-    #     only top-level matplotlib module import path and startup-time version symbols
-    #     (`__version__`, `version_info`, parsing helper use).
-    # - Inputs:
-    #     1) `import matplotlib` execution path
-    #     2) first-access of `matplotlib.version_info`
-    # - Deterministic procedure:
-    #     1. ENTER import-time flow.
-    #     2. Materialize top-level version value contract (`__version__` + parsed form).
-    #     3. VERIFY no side channel changes are required for version exposure
-    #        outside this top-level surface.
-    # - Branches:
-    #     - IF version exposure depends on release/pipeline or packaging modules:
-    #         FAIL scope gate (out-of-contract behavior).
-    #     - ELSE IF top-level imports mutate caller-visible semantics:
-    #         FAIL behavioral scope gate.
-    #     - ELSE:
-    #         PASS (scope constrained).
-    # - Transition:
-    #     from startup flow -> stable runtime flow with version contract already satisfied.
-    assert True
+    import json
+    import subprocess
+    import textwrap
+
+    probe = textwrap.dedent(
+        """
+        import json
+        import sys
+        import matplotlib as mpl
+
+        pre_version_modules = set(sys.modules)
+        parsed = str(mpl.version_info)  # may raise if __version__ contract is broken
+        post_version_modules = set(sys.modules)
+        _ = mpl.version_info
+        repeat_modules = set(sys.modules)
+
+        report = {
+            "has_version": hasattr(mpl, "version_info"),
+            "has_version_attr_string": hasattr(mpl, "__version__"),
+            "has_parse_helper": hasattr(mpl, "parse_version"),
+            "version_roundtrip": parsed == str(mpl.__version__),
+            "top_level_version_surface": sorted(
+                name for name in mpl.__dict__ if name in {"__version__", "version_info"}
+            ),
+            "no_growth_after_cache": len(repeat_modules - post_version_modules),
+            "version_import_delta": len(post_version_modules - pre_version_modules),
+        }
+        print(json.dumps(report))
+        """
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=str(os.getcwd()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout.strip())
+
+    assert payload["has_version"]
+    assert payload["has_version_attr_string"]
+    assert payload["has_parse_helper"]
+    assert payload["version_roundtrip"]
+    assert set(payload["top_level_version_surface"]) == {"__version__", "version_info"}
+    assert payload["no_growth_after_cache"] == 0
+    assert payload["version_import_delta"] > 0
 
 
 def test_vinfo_009_no_dependency_or_release_pipeline_file_edits():
     """VINFO-009 scope gate: no external dependency or release-pipeline files are edited."""
-    # VINFO-009.PSEUDO: obligation VINFO-009-B
-    # - Scope domain:
-    #     dependency manifests and release/build pipeline artifact files.
-    # - Inputs:
-    #     1) candidate dependency files set
-    #     2) candidate release/build configuration artifacts
-    # - Deterministic procedure:
-    #     1. DEFINE forbidden dependency additions:
-    #        any new version-semantics third-party package entries.
-    #     2. DEFINE forbidden pipeline edits:
-    #        packaging/release scripts, build metadata, and CI release-stage files.
-    #     3. IF any forbidden file is in edit scope:
-    #        route to violation state.
-    #     4. ELSE keep VINFO-009 gate open.
-    # - Failure path:
-    #     - OUTCOME = violation when scope includes dependency or pipeline artifact edits.
-    # - Handoff:
-    #     pass to implementation review only when both checks are clean.
-    assert True
+    import re
+
+    base_cmd = ["git", "rev-parse", "--verify", "HEAD~1"]
+    if subprocess.call(base_cmd, cwd=str(os.getcwd()), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
+        pytest.skip("VINFO-009 scope gate requires git history to identify file-surface edits.")
+
+    diff = subprocess.run(
+        ["git", "diff", "--name-only", "HEAD~1"],
+        cwd=str(os.getcwd()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert diff.returncode == 0
+
+    changed_paths = [path.strip().replace("\\", "/") for path in diff.stdout.splitlines() if path.strip()]
+
+    forbidden_dependency_patterns = (
+        r"(?:^|/)pyproject\.toml$",
+        r"(?:^|/)setup\.py$",
+        r"(?:^|/)setup\.cfg$",
+        r"(?:^|/)requirements(?:-[^/\\]+)?\.txt$",
+        r"(?:^|/)requirements?/.*\.txt$",
+        r"(?:^|/)Pipfile(?:\.lock)?$",
+        r"(?:^|/)poetry\.lock$",
+        r"(?:^|/)environment(?:-.*)?\.ya?ml$",
+    )
+
+    forbidden_pipeline_patterns = (
+        r"(?:^|/)\.github/workflows/.*",
+        r"(?:^|/)\.github/actions/.*",
+        r"(?:^|/)\.github/[^/]*release[^/]*/?.*",
+        r"(?:^|/)\.github/[^/]*packaging[^/]*/?.*",
+        r"(?:^|/)\.travis\.yml$",
+        r"(?:^|/)azure-pipelines\.ya?ml$",
+        r"(?:^|/)\.circleci/.*",
+        r"(?:^|/)tox\.ini$",
+        r"(?:^|/)nox\.ini$",
+        r"(?:^|/)conda/.*",
+        r"(?:^|/)ci/.*",
+        r"(?:^|/)packaging/.*",
+    )
+
+    forbidden = {
+        path
+        for path in changed_paths
+        for pattern in (*forbidden_dependency_patterns, *forbidden_pipeline_patterns)
+        if re.match(pattern, path)
+    }
+
+    assert not forbidden, f"VINFO-009 violation (scope-expanded files): {sorted(forbidden)}"
