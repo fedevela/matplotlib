@@ -147,6 +147,33 @@ def _get_matplotlib_version():
 _VersionInfo = namedtuple(
     "version_info", "major minor micro releaselevel serial local"
 )
+# VINFO-004: comparison logic contract for version_info ordering and equality.
+# Ownership note:
+#   Comparisons must be implemented on the _VersionInfo value object so callers can
+#   use "<", "<=", ">", ">=", "==", "!=" directly against another _VersionInfo
+#   or a target tuple such as (3, 5, 0) without ambiguity or exceptions.
+# Deterministic ordering strategy (to be implemented in __eq__/__lt__/etc. scaffolding):
+#   1) Normalize both operands into a fixed-length comparable key:
+#      key = (major, minor, micro, pre_rank, serial, local_tuple)
+#   2) pre_rank uses semantic precedence:
+#        development -> 0
+#        alpha       -> 1
+#        beta        -> 2
+#        candidate   -> 3
+#        final       -> 4
+#        post        -> 5
+#   3) For comparison with tuple-like operands:
+#        - Require len >= 3 and all positional fields present.
+#        - Treat RHS tuple (M, m, u) as semantic final target key
+#          (M, m, u, pre_rank(final=4), serial=0, local=()).
+#        - Keep 3-field guard compatibility while preserving deterministic ordering.
+#   4) For __eq__/__ne__, compare all comparable key fields; return false/true for
+#      non-structured non-tuple operands instead of raising.
+#   5) For ordering operators (<, <=, >, >=), compare normalized keys lexicographically.
+#      This guarantees:
+#      - development < candidate < final < post for same numeric release triple.
+#      - post-release ordered after final under supported forms.
+#      - (3,5,0).devN < (3,5,0) < (3,5,0).post820... for supported inputs.
 
 
 def _parse_version_info(version):
@@ -191,6 +218,11 @@ def _parse_version_info(version):
     #   normalize local metadata by splitting on "." into a deterministic tuple.
     # ERROR/NO-INPUT PATH:
     #   no explicit failure path; caller is responsible for supplying version metadata.
+    # VINFO-004: version-info parse must preserve values needed for stable ordering.
+    #   - releaselevel must remain one of {development, alpha, beta, candidate, final, post}
+    #     so comparison key assembly can map to the deterministic pre_rank domain above.
+    #   - serial must be numeric where available and 0 for finals.
+    #   - local metadata must remain tuple-like and deterministic for stable tie-breaking.
     parsed = parse_version(version)
     release = tuple(parsed.release) + (0, 0, 0)
     major, minor, micro = release[:3]
@@ -253,6 +285,11 @@ def __getattr__(name):
     #     parse computed version via _parse_version_info and return parsed tuple.
     #   ELSE:
     #     fail fast with module AttributeError.
+    # VINFO-004: when name == "version_info", return value that satisfies:
+    #   - direct six-operator comparability
+    #   - deterministic semantic precedence for development/candidate/final/post
+    #   - stable behavior when compared with guard tuples from compatibility checks
+    #   - no TypeError for supported tuple target forms in comparison expressions.
     if name == "__version__":
         global __version__  # cache it.
         __version__ = _get_matplotlib_version()
