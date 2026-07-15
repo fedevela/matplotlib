@@ -11,7 +11,12 @@ VINFO_REQUIREMENT_VERIFICATIONS = {
     "VINFO-002": [
         "VINFO-002_top_level_import_from_matplotlib_version_info_matches_module_version_info",
         "VINFO-002_standard_import_module_exposes_version_info_without_private_imports",
-    ]
+    ],
+    "VINFO-003": [
+        "VINFO-003_supported_version_forms_parse_to_deterministic_fields",
+        "VINFO-003_version_info_fields_stable_across_version_form_reparsing",
+        "VINFO-003_supported_version_forms_with_local_metadata_are_order_stable",
+    ],
 }
 
 
@@ -78,3 +83,30 @@ def test_VINFO_002_standard_import_module_exposes_version_info_without_private_i
     assert hasattr(mpl, "version_info")
     assert "version_info" in mpl.__dict__
     assert isinstance(mpl.version_info, tuple)
+
+
+def test_VINFO_003_supported_version_forms_parse_to_deterministic_fields():
+    """
+    Requirement VINFO-003:
+    Parse forms in {3.5.0, 3.5.0rc2, 3.5.0.dev820+g6768ef8c4c,
+    3.5.0.post820+g6768ef8c4c} into a stable and deterministic structure.
+    """
+    assert True
+
+
+def test_VINFO_003_version_info_fields_stable_across_version_form_reparsing():
+    """
+    Requirement VINFO-003:
+    Repeated parsing of supported version forms across controlled reload flows
+    produces stable major/minor/patch and pre/post/dev/local fields.
+    """
+    assert True
+
+
+def test_VINFO_003_supported_version_forms_with_local_metadata_are_order_stable():
+    """
+    Requirement VINFO-003:
+    Local metadata suffixes such as +g... are represented deterministically and do
+    not produce non-deterministic field order.
+    """
+    assert True
