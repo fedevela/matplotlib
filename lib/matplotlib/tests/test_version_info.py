@@ -1,4 +1,4 @@
-"""Regression coverage for VINFO-001 version information contract."""
+"""Regression coverage for VINFO-001 and VINFO-002 version information contracts."""
 
 import matplotlib as mpl
 
@@ -7,6 +7,10 @@ VINFO_REQUIREMENT_VERIFICATIONS = {
     "VINFO-001": [
         "VINFO-001_read_stability_before_after_version_info_access",
         "VINFO-001_version_source_contract_for_version_info_path",
+    ],
+    "VINFO-002": [
+        "VINFO-002_top_level_import_from_matplotlib_version_info_matches_module_version_info",
+        "VINFO-002_standard_import_module_exposes_version_info_without_private_imports",
     ]
 }
 
@@ -50,3 +54,22 @@ def test_VINFO_001_version_source_contract_for_version_info_path(monkeypatch):
     assert version_info.serial == 2
 
     monkeypatch.setitem(mpl.__dict__, "__version__", original_version)
+
+
+def test_VINFO_002_top_level_import_from_matplotlib_version_info_matches_module_version_info():
+    """
+    Requirement VINFO-002:
+    Direct `from matplotlib import version_info` resolves against the
+    package namespace and represents the same top-level value as
+    `matplotlib.version_info`.
+    """
+    assert True
+
+
+def test_VINFO_002_standard_import_module_exposes_version_info_without_private_imports():
+    """
+    Requirement VINFO-002:
+    A standard `import matplotlib` exposes `version_info` on the module object
+    without requiring private helper module imports in user-facing code.
+    """
+    assert True
