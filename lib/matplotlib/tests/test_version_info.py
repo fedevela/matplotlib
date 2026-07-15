@@ -1,6 +1,7 @@
 """Regression coverage for VINFO-001 and VINFO-002 version information contracts."""
 
 import importlib
+import json
 import os
 import subprocess
 import sys
@@ -443,7 +444,43 @@ def test_VINFO_006_top_level_version_additions_limited_to_version_scope_symbols(
     Verify that intended top-level version additions are scoped to
     ``__version__`` and ``version_info`` only.
     """
-    pass
+    code = """
+import json
+import matplotlib as mpl
+
+public_symbols = [name for name in vars(mpl) if not name.startswith("_")]
+before = set(public_symbols)
+_ = mpl.version_info
+after = set([name for name in vars(mpl) if not name.startswith("_")])
+
+print(json.dumps({
+    "before": sorted(before),
+    "after": sorted(after),
+    "new": sorted(after - before),
+}))
+"""
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        env=os.environ,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    before = set(payload["before"])
+    after = set(payload["after"])
+    added = set(payload["new"])
+
+    assert "version_info" in after
+    # version_info (and lazily, __version__) are the only version-scope additions.
+    allowed_additions = {"version_info", "__version__"}
+    assert added.issubset(allowed_additions)
+    if "__version__" in before:
+        assert "version_info" in added
+    else:
+        assert {"version_info", "__version__"} == added or {"version_info"} == added
+
+    assert all(name.isidentifier() for name in after)
 
 
 def test_VINFO_006_version_info_import_path_and_diff_scope_without_unrelated_new_exports():
@@ -452,4 +489,43 @@ def test_VINFO_006_version_info_import_path_and_diff_scope_without_unrelated_new
     Verify that the version API patch adds ``version_info`` while preserving
     existing top-level version scope and without unrelated helpers.
     """
-    pass
+    code = """
+import json
+import matplotlib as mpl
+
+public_symbols = lambda: set([name for name in vars(mpl) if not name.startswith("_")])
+pre = public_symbols()
+
+from matplotlib import version_info as imported_version_info
+post = public_symbols()
+resolved = imported_version_info is mpl.version_info
+
+print(json.dumps({
+    "pre": sorted(pre),
+    "post": sorted(post),
+    "new": sorted(post - pre),
+    "import_is_attr": resolved,
+}))
+"""
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        env=os.environ,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    added = set(payload["new"])
+    pre = set(payload["pre"])
+    post = set(payload["post"])
+
+    assert payload["import_is_attr"] is True
+    assert "version_info" in post
+    assert "version_info" in added
+    # Importing version_info should not expose a new unrelated helper symbol.
+    if "__version__" in pre:
+        assert added == {"version_info"}
+    else:
+        assert added == {"version_info"} or added == {"version_info", "__version__"}
+
+    assert pre.issubset(post)
