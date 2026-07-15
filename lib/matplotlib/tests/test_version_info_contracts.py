@@ -79,23 +79,59 @@ def test_vinfo_007_version_info_construction_reuses_existing_top_level_parse_hel
     assert version_info == parse_version(mpl.__version__)
 
 
-def test_vinfo_004_parse_to_version_info_inputs_match_expected_components():
-    # Fixture obligations:
-    # 1) "3.5.0"
-    # 2) "3.5.0rc2"
-    # 3) "3.5.0.dev820+g6768ef8c4c"
-    # 4) "3.5.0.post820+g6768ef8c4c"
-    assert True
+def test_vinfo_004_parse_to_version_info_inputs_match_expected_components(monkeypatch):
+    import matplotlib as mpl
+
+    fixtures = (
+        ("3.5.0", (3, 5, 0), None, None, None, None),
+        ("3.5.0rc2", (3, 5, 0), ("rc", 2), None, None, None),
+        ("3.5.0.dev820+g6768ef8c4c", (3, 5, 0), None, 820, None, "g6768ef8c4c"),
+        (
+            "3.5.0.post820+g6768ef8c4c",
+            (3, 5, 0),
+            None,
+            None,
+            820,
+            "g6768ef8c4c",
+        ),
+    )
+
+    for version_text, release, pre, dev, post, local in fixtures:
+        monkeypatch.setattr(mpl, "__version__", version_text)
+        monkeypatch.delattr(mpl, "version_info", raising=False)
+        version_info = mpl.version_info
+
+        assert version_info.release == release
+        assert version_info.pre == pre
+        assert version_info.dev == dev
+        assert version_info.post == post
+        assert version_info.local == local
+        assert version_info == parse_version(version_text)
 
 
 def test_vinfo_005_pre_release_ordering_dev_rc_final_post_is_deterministic():
-    # Required ordering family behavior:
-    # dev < rc < final < post
-    # including current development and post-release cases.
-    assert True
+    dev = parse_version("3.5.0.dev820+g6768ef8c4c")
+    rc = parse_version("3.5.0rc2")
+    final = parse_version("3.5.0")
+    post = parse_version("3.5.0.post820+g6768ef8c4c")
+
+    assert dev < rc
+    assert rc < final
+    assert final < post
+    assert dev < rc < final < post
 
 
-def test_vinfo_010_top_level_version_info_supports_boolean_operator_chains():
-    # Placeholder for single-expression ordering checks using top-level version_info:
-    # a < b and b <= c and c > d
-    assert True
+def test_vinfo_010_top_level_version_info_supports_boolean_operator_chains(monkeypatch):
+    import matplotlib as mpl
+
+    # Validate single-expression boolean chaining against the top-level object.
+    # This confirms the object returned by matplotlib.version_info can participate
+    # in chained comparisons without callers re-tokenizing version strings.
+    a = parse_version("3.5.0.dev820+g6768ef8c4c")
+    b = parse_version("3.5.0rc2")
+    c = parse_version("3.5.0")
+    d = parse_version("3.5.0.post820+g6768ef8c4c")
+    monkeypatch.setattr(mpl, "__version__", "3.5.0")
+    monkeypatch.delattr(mpl, "version_info", raising=False)
+
+    assert a < b and b <= mpl.version_info and mpl.version_info < d and mpl.version_info == c
