@@ -44,7 +44,7 @@ Parser contracts (structural)
 - `_parse_version_info(version)` is responsible for:
   - reading deterministic release components from supported forms,
   - applying branch priority ``pre`` → ``dev`` → ``post`` → final,
-  - generating a stable `(major, minor, micro, releaselevel, serial)` baseline shape,
+  - generating a stable `(major, minor, micro, releaselevel, serial, local)` shape,
   - deterministically normalizing local suffix order when present (e.g. split on ``.`` into an explicit stable sequence).
 - No general normalization beyond the supported forms list.
 

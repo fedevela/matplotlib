@@ -144,7 +144,9 @@ def _get_matplotlib_version():
     return _version.version
 
 
-_VersionInfo = namedtuple("version_info", "major minor micro releaselevel serial")
+_VersionInfo = namedtuple(
+    "version_info", "major minor micro releaselevel serial local"
+)
 
 
 def _parse_version_info(version):
@@ -177,14 +179,16 @@ def _parse_version_info(version):
     # IN:
     #   version: string-like version from existing source-of-truth path.
     # OUT:
-    #   _VersionInfo tuple shaped (major, minor, micro, releaselevel, serial),
-    #   where releaselevel/serial derive from pre/dev/post/none precedence.
+    #   _VersionInfo tuple shaped
+    #   (major, minor, micro, releaselevel, serial, local),
+    #   where local is a deterministic tuple derived from packaging local metadata.
     # PROCESS:
     #   parse version once via packaging parser -> derive major/minor/micro defaults.
     #   if pre-release present: map a/b/rc to alpha/beta/candidate.
     #   elif dev-release present: label development with dev serial.
     #   elif post-release present: label post with post serial.
     #   else: label final with serial 0.
+    #   normalize local metadata by splitting on "." into a deterministic tuple.
     # ERROR/NO-INPUT PATH:
     #   no explicit failure path; caller is responsible for supplying version metadata.
     parsed = parse_version(version)
@@ -204,12 +208,14 @@ def _parse_version_info(version):
     else:
         releaselevel = "final"
         release_serial = 0
+    local = tuple(parsed.local.split(".")) if parsed.local else ()
     return _VersionInfo(
         major,
         minor,
         micro,
         releaselevel,
         release_serial,
+        local,
     )
 
 

@@ -1,5 +1,7 @@
 """Regression coverage for VINFO-001 and VINFO-002 version information contracts."""
 
+import importlib
+
 import matplotlib as mpl
 
 
@@ -91,7 +93,31 @@ def test_VINFO_003_supported_version_forms_parse_to_deterministic_fields():
     Parse forms in {3.5.0, 3.5.0rc2, 3.5.0.dev820+g6768ef8c4c,
     3.5.0.post820+g6768ef8c4c} into a stable and deterministic structure.
     """
-    assert True
+    versions = {
+        "3.5.0": {
+            "expected": (3, 5, 0, "final", 0, ()),
+        },
+        "3.5.0rc2": {
+            "expected": (3, 5, 0, "candidate", 2, ()),
+        },
+        "3.5.0.dev820+g6768ef8c4c": {
+            "expected": (3, 5, 0, "development", 820, ("g6768ef8c4c",)),
+        },
+        "3.5.0.post820+g6768ef8c4c": {
+            "expected": (3, 5, 0, "post", 820, ("g6768ef8c4c",)),
+        },
+    }
+
+    for version, expected in versions.items():
+        old_getter = mpl._get_matplotlib_version
+        try:
+            mpl._get_matplotlib_version = lambda version=version: version
+            mpl.__dict__.pop("__version__", None)
+            mpl.__dict__.pop("version_info", None)
+            info = mpl.version_info
+            assert info == expected["expected"]
+        finally:
+            mpl._get_matplotlib_version = old_getter
 
 
 def test_VINFO_003_version_info_fields_stable_across_version_form_reparsing():
@@ -100,7 +126,50 @@ def test_VINFO_003_version_info_fields_stable_across_version_form_reparsing():
     Repeated parsing of supported version forms across controlled reload flows
     produces stable major/minor/patch and pre/post/dev/local fields.
     """
-    assert True
+    versions = (
+        "3.5.0",
+        "3.5.0rc2",
+        "3.5.0.dev820+g6768ef8c4c",
+        "3.5.0.post820+g6768ef8c4c",
+    )
+
+    for version in versions:
+        old_getter = mpl._get_matplotlib_version
+        try:
+            # Force a fresh attribute path and reparse in-place twice.
+            mpl._get_matplotlib_version = lambda version=version: version
+            mpl.__dict__.pop("version_info", None)
+            mpl.__dict__.pop("__version__", None)
+            first = mpl.version_info
+
+            # Simulate an isolated reload path by reconstructing module state.
+            importlib.reload(mpl)
+            mpl._get_matplotlib_version = lambda version=version: version
+            mpl.__dict__.pop("version_info", None)
+            mpl.__dict__.pop("__version__", None)
+            second = mpl.version_info
+
+            assert first == second
+            assert (
+                first.major,
+                first.minor,
+                first.micro,
+                first.releaselevel,
+                first.serial,
+                first.local,
+            ) == (
+                second.major,
+                second.minor,
+                second.micro,
+                second.releaselevel,
+                second.serial,
+                second.local,
+            )
+        finally:
+            mpl._get_matplotlib_version = old_getter
+            # Return to imported module state used by other tests.
+            mpl.__dict__.pop("__version__", None)
+            mpl.__dict__.pop("version_info", None)
 
 
 def test_VINFO_003_supported_version_forms_with_local_metadata_are_order_stable():
@@ -109,4 +178,23 @@ def test_VINFO_003_supported_version_forms_with_local_metadata_are_order_stable(
     Local metadata suffixes such as +g... are represented deterministically and do
     not produce non-deterministic field order.
     """
-    assert True
+    version = "3.5.0.dev820+g6768ef8c4c"
+    old_getter = mpl._get_matplotlib_version
+
+    try:
+        mpl._get_matplotlib_version = lambda: version
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        first = mpl.version_info
+
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+        second = mpl.version_info
+
+        assert first.local == ("g6768ef8c4c",)
+        assert second.local == ("g6768ef8c4c",)
+        assert first.local == second.local
+    finally:
+        mpl._get_matplotlib_version = old_getter
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
