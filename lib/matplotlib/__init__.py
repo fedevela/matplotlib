@@ -148,6 +148,31 @@ _VersionInfo = namedtuple("version_info", "major minor micro releaselevel serial
 
 
 def _parse_version_info(version):
+    # VINFO-003: supported-version parse contract.
+    # INPUT:
+    #   version: one of the supported forms
+    #          {"X.Y.Z", "X.Y.ZrcN", "X.Y.Z.devN+L", "X.Y.Z.postN+L"}
+    #          where L is local metadata.
+    # OUTPUT:
+    #   deterministic _VersionInfo-compatible projection with stable segment order.
+    #   stable ordering is mandatory even when local metadata is present.
+    # CONTROL FLOW:
+    #   1) parsed = parse_version(version)
+    #   2) major, minor, micro = first 3 items from parsed.release (missing zeros padded).
+    #   3) if parsed.pre exists:
+    #        - map pre tag a/b/rc to alpha/beta/candidate.
+    #        - serial = parsed.pre serial.
+    #      else if parsed.dev exists:
+    #        - releaselevel = "development", serial = parsed.dev.
+    #      else if parsed.post exists:
+    #        - releaselevel = "post", serial = parsed.post.
+    #      else:
+    #        - releaselevel = "final", serial = 0.
+    #   4) local = parsed.local if present else ""
+    #      local_norm = tuple(local.split(".")) to preserve deterministic ordering;
+    #      this must be threaded into the parsed representation in the same deterministic
+    #      output position every call for the same input.
+    #   5) return structured tuple-like representation derived only from parsed fields above.
     # VINFO-002: parsed version contract.
     # IN:
     #   version: string-like version from existing source-of-truth path.
@@ -189,6 +214,22 @@ def _parse_version_info(version):
 
 
 def __getattr__(name):
+    # VINFO-003: deterministic reparsing and reload semantics.
+    # INPUT:
+    #   name in {"__version__", "version_info"} triggered by lazy module attribute access.
+    # OUTPUT:
+    #   byte-for-byte stable representation per supported version form on repeated access.
+    # ERROR/STATE PATH:
+    #   if __version__ missing, re-evaluate via _get_matplotlib_version before parse.
+    #   if __version__ present, reuse exact cached string; do not reformat.
+    # CONTROL FLOW:
+    #   - For "__version__": cache computed string in module globals and return it.
+    #   - For "version_info":
+    #       * resolve version string source deterministically (cached or freshly sourced),
+    #         so repeated calls in interpreter see same string before parse.
+    #       * parse once through _parse_version_info and cache as "version_info".
+    #       * on module reload, globals reset, so reparsing path executes again from same source.
+    #   - otherwise raise AttributeError unchanged.
     # VINFO-002: top-level attribute contract for lazy lazy-loaded version members.
     # REQUIREMENT VINFO-002:
     #   A. `from matplotlib import version_info` must resolve as an importable
