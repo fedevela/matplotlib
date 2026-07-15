@@ -251,6 +251,28 @@ def _parse_version_info(version):
     )
 
 
+def _parse_to_version_info(version):
+    parsed = parse_version(version)
+    release = tuple(parsed.release) + (0, 0, 0)
+    major, minor, micro = release[:3]
+    if parsed.pre is not None:
+        releaselevel = {"a": "alpha", "b": "beta", "rc": "candidate"}.get(
+            parsed.pre[0], parsed.pre[0]
+        )
+        serial = parsed.pre[1]
+    elif parsed.post is not None:
+        micro += 1
+        releaselevel = "alpha"
+        serial = parsed.post
+    elif parsed.dev is not None:
+        releaselevel = "alpha"
+        serial = parsed.dev
+    else:
+        releaselevel = "final"
+        serial = 0
+    return (major, minor, micro, releaselevel, serial)
+
+
 def __getattr__(name):
     if name == "__version__":
         version = globals().get("__version__")
