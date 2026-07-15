@@ -33,6 +33,10 @@ VINFO_REQUIREMENT_VERIFICATIONS = {
         "VINFO-005_importable_with_no_home_version_initialization_remains_home_free",
         "VINFO-005_doc_standard_backends_observations_unmodified_by_version_initialization",
     ],
+    "VINFO-006": [
+        "VINFO-006_top_level_version_additions_limited_to_version_scope_symbols",
+        "VINFO-006_version_info_import_path_and_diff_scope_without_unrelated_new_exports",
+    ],
 }
 
 
@@ -431,3 +435,21 @@ def test_VINFO_005_doc_standard_backends_observations_unmodified_by_version_init
             mpl.__dict__.pop("version_info", None)
         else:
             mpl.__dict__["version_info"] = saved_version_info
+
+
+def test_VINFO_006_top_level_version_additions_limited_to_version_scope_symbols():
+    """
+    Requirement VINFO-006:
+    Verify that intended top-level version additions are scoped to
+    ``__version__`` and ``version_info`` only.
+    """
+    pass
+
+
+def test_VINFO_006_version_info_import_path_and_diff_scope_without_unrelated_new_exports():
+    """
+    Requirement VINFO-006:
+    Verify that the version API patch adds ``version_info`` while preserving
+    existing top-level version scope and without unrelated helpers.
+    """
+    pass
