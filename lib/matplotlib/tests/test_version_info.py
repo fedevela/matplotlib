@@ -1,6 +1,9 @@
 """Regression coverage for VINFO-001 and VINFO-002 version information contracts."""
 
 import importlib
+import os
+import subprocess
+import sys
 
 import matplotlib as mpl
 
@@ -340,16 +343,91 @@ def test_VINFO_004_compatibility_guard_version_info_ge_target_returns_determinis
         mpl.__dict__.pop("version_info", None)
 
 
+def _parse_doc_standard_backends_from_use_doc():
+    def parse(key):
+        backends = []
+        for line in mpl.use.__doc__.split(key)[1].split("\n"):
+            if not line.strip():
+                break
+            backends += [entry.strip() for entry in line.split(",") if entry]
+        return set(backends)
+
+    return (
+        parse("- interactive backends:\n"),
+        parse("- non-interactive backends:\n"),
+    )
+
+
 def test_VINFO_005_importable_with__OO_version_initialization_remains_import_side_effect_free():
-    """VINFO-005: verify importability remains safe when optimized-mode import paths execute."""
-    assert True
+    """
+    VINFO-005:
+    When importing under -OO, version initialization must not alter the existing
+    import flow for docstring-stripped optimization runs.
+    """
+    program = (
+        "import matplotlib as mpl\n"
+        "_ = mpl.version_info\n"
+        "import matplotlib.pyplot as plt\n"
+        "import matplotlib.cbook as cbook\n"
+        "import matplotlib.patches as mpatches\n"
+        "assert isinstance(mpl.version_info, tuple)\n"
+        "assert isinstance(mpl.__version__, str)\n"
+    )
+    cmd = [sys.executable, "-OO", "-c", program]
+    proc = subprocess.run(
+        cmd,
+        env={**os.environ, "MPLBACKEND": ""},
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout == ""
 
 
-def test_VINFO_005_importable_with_no_home_version_initialization_remains_home_free():
-    """VINFO-005: verify import flow stays compatible when home resolution is constrained."""
-    assert True
+def test_VINFO_005_importable_with_no_home_version_initialization_remains_home_free(tmp_path):
+    """
+    VINFO-005:
+    Version initialization must remain HOME-safe and cannot require
+    Path.home() in constrained HOME-resolution environments.
+    """
+    program = (
+        "import pathlib\n"
+        "pathlib.Path.home = lambda *args: (_ for _ in ()).throw(RuntimeError('HOME used'))\n"
+        "import matplotlib as mpl\n"
+        "assert isinstance(mpl.version_info, tuple)\n"
+        "assert isinstance(mpl.__version__, str)\n"
+    )
+    cmd = [sys.executable, "-c", program]
+    proc = subprocess.run(cmd, env={**os.environ, "MPLCONFIGDIR": str(tmp_path)}, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout == ""
 
 
 def test_VINFO_005_doc_standard_backends_observations_unmodified_by_version_initialization():
-    """VINFO-005: verify doc backend discovery contract remains unchanged under version init."""
-    assert True
+    """
+    VINFO-005:
+    Accessing version metadata before reading `matplotlib.use()` docstring-backed
+    backend lists must not alter documented backend discovery behavior.
+    """
+    saved_version = mpl.__dict__.get("__version__")
+    saved_version_info = mpl.__dict__.get("version_info")
+    try:
+        mpl.__dict__.pop("__version__", None)
+        mpl.__dict__.pop("version_info", None)
+
+        before = _parse_doc_standard_backends_from_use_doc()
+        _ = mpl.version_info
+        after = _parse_doc_standard_backends_from_use_doc()
+
+        assert before == after
+        assert after[0] == set(mpl.rcsetup.interactive_bk)
+        assert after[1] == set(mpl.rcsetup.non_interactive_bk)
+    finally:
+        if saved_version is None:
+            mpl.__dict__.pop("__version__", None)
+        else:
+            mpl.__dict__["__version__"] = saved_version
+        if saved_version_info is None:
+            mpl.__dict__.pop("version_info", None)
+        else:
+            mpl.__dict__["version_info"] = saved_version_info
