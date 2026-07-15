@@ -130,46 +130,63 @@ __bibtex__ = r"""@Article{Hunter:2007,
 }"""
 
 
+def _get_matplotlib_version():
+    import setuptools_scm
+    # VINFO-001: shared source-of-truth path for version metadata.
+    root = Path(__file__).resolve().parents[2]
+    if (root / ".git").exists() and not (root / ".git/shallow").exists():
+        return setuptools_scm.get_version(
+            root=root,
+            version_scheme="post-release",
+            local_scheme="node-and-date",
+            fallback_version=_version.version,
+        )
+    return _version.version
+
+
+_VersionInfo = namedtuple("version_info", "major minor micro releaselevel serial")
+
+
+def _parse_version_info(version):
+    parsed = parse_version(version)
+    release = tuple(parsed.release) + (0, 0, 0)
+    major, minor, micro = release[:3]
+    if parsed.pre is not None:
+        pre_release, serial = parsed.pre
+        releaselevel = {"a": "alpha", "b": "beta", "rc": "candidate"}.get(
+            pre_release, pre_release)
+        release_serial = serial
+    elif parsed.dev is not None:
+        releaselevel = "development"
+        release_serial = parsed.dev
+    elif parsed.post is not None:
+        releaselevel = "post"
+        release_serial = parsed.post
+    else:
+        releaselevel = "final"
+        release_serial = 0
+    return _VersionInfo(
+        major,
+        minor,
+        micro,
+        releaselevel,
+        release_serial,
+    )
+
+
 def __getattr__(name):
-    # VINFO-001: version contract and cache-stability obligation.
-    # Decision table:
-    # - Input state: unresolved attribute access on module namespace.
-    # - Success branch A: name == "__version__"
-    #     1) Resolve repo root from __file__.
-    #     2) If ".git" exists and ".git/shallow" does not exist:
-    #        a) call setuptools_scm.get_version(...) with the same existing args.
-    #        b) receive a version string from source-of-truth SCM lookup.
-    #     3) Else:
-    #        a) read fallback source from _version.version.
-    #     4) Cache computed value in global __version__.
-    #     5) Return cached string value.
-    #     - Output invariant: returned value is stable across calls and remains string.
-    #     - Failure branch: no exception translation; let dependency/import errors
-    #       propagate from lookup logic.
-    # - Success branch B: name == "version_info" (path to be added later by feature work)
-    #     1) Require the same source string used for "__version__" as canonical input.
-    #     2) Do not replace/cast __version__; do not alter or reformat cached string.
-    #     3) Produce/return version metadata derived from the same source.
-    #     4) Preserve behavior that repeated __version__ reads before/after this path
-    #        are identical and non-string mutation never occurs.
-    # - Error branch: any other name => raise AttributeError as before.
     if name == "__version__":
-        import setuptools_scm
         global __version__  # cache it.
-        # Only shell out to a git subprocess if really needed, and not on a
-        # shallow clone, such as those used by CI, as the latter would trigger
-        # a warning from setuptools_scm.
-        root = Path(__file__).resolve().parents[2]
-        if (root / ".git").exists() and not (root / ".git/shallow").exists():
-            __version__ = setuptools_scm.get_version(
-                root=root,
-                version_scheme="post-release",
-                local_scheme="node-and-date",
-                fallback_version=_version.version,
-            )
-        else:  # Get the version from the _version.py setuptools_scm file.
-            __version__ = _version.version
+        __version__ = _get_matplotlib_version()
         return __version__
+    if name == "version_info":
+        global __version__
+        if "__version__" in globals():
+            version = __version__
+        else:
+            __version__ = _get_matplotlib_version()
+            version = __version__
+        return _parse_version_info(version)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
