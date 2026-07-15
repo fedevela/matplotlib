@@ -314,6 +314,34 @@ def _parse_version_info(version):
 
 
 def __getattr__(name):
+    # VINFO-006: keep public version-surface additions limited to version-introspection
+    # attributes only.
+    # CONTRACT:
+    #   - scope_limited_exports := {"__version__", "version_info"}
+    #   - all other attribute names must follow default failure path.
+    # DECISION TABLE (getattr resolution):
+    #   1) IF name is in scope_limited_exports:
+    #      A. IF name == "__version__":
+    #         - compute/get version string via _get_matplotlib_version.
+    #         - cache in module globals under "__version__".
+    #         - return cached string.
+    #      B. IF name == "version_info":
+    #         - obtain source string from cached "__version__" when present,
+    #           else compute via _get_matplotlib_version and cache it.
+    #         - parse via _parse_version_info.
+    #         - cache parsed tuple under "version_info".
+    #         - return parsed tuple.
+    #   2) ELSE:
+    #      - raise AttributeError and do not create helper symbols.
+    # STATE TRANSITIONS:
+    #   - S0: no cached version attrs -> first allowed lookup enters compute branch.
+    #   - S1: "__version__" cached only.
+    #   - S2: "__version__" and "version_info" cached.
+    #   - transition from S0 to S1 only via allowed "__version__" or "version_info".
+    #   - transition from S1 to S2 only via allowed "version_info".
+    # FAILURE PATH:
+    #   - unrelated top-level names never mutate version scope.
+    #   - unknown names must never resolve through hidden/version-helper exports.
     # VINFO-005: preserve import-time side-effect profile for environment-sensitive
     # import paths (test_importable_with__OO, test_importable_with_no_home,
     # test_use_doc_standard_backends).
