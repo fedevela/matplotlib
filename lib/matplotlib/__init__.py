@@ -104,16 +104,6 @@ import warnings
 import numpy
 from packaging.version import parse as parse_version
 
-# VINFO-REQUIREMENT-LINKS:
-# - VINFO-001: matplotlib version_info is a top-level comparable object exposed from
-#   module import resolution (symmetry with existing module attributes).
-# - VINFO-002: version_info must derive from the import-time __version__ source and
-#   remain stable for repeated resolution of the same input value.
-# - VINFO-003: __version__ value/formatting contract must stay unchanged; no
-#   post-processing or re-serialization path is introduced here.
-# - VINFO-007: existing version parsing helper must remain the sole parser source for
-#   comparable version objects (do not add a separate parsing implementation).
-
 # cbook must import matplotlib only within function
 # definitions, so it is safe to import from it here.
 from . import _api, _version, cbook, docstring, rcsetup
@@ -141,20 +131,6 @@ __bibtex__ = r"""@Article{Hunter:2007,
 
 
 def __getattr__(name):
-    # VINFO-001 / VINFO-002 / VINFO-007 / VINFO-003 PSEUDOCODE:
-    # Inputs:
-    #   name: requested module attribute.
-    # Transition:
-    #   1. If name == "__version__":
-    #      - Execute current lazy-loading branch unchanged.
-    #      - Cache and return exactly the existing value as the truth source for version
-    #        string contracts.
-    #   2. If name == "version_info" [future contract target]:
-    #      - Ensure __version__ is available from step 1 (or cached value).
-    #      - Return parse_version(__version__) using this same imported helper.
-    #      - Do not reconstruct using local parsing utilities.
-    # Failure paths:
-    #   - Any attribute other than these two: raise AttributeError (existing behavior).
     if name == "__version__":
         import setuptools_scm
         global __version__  # cache it.
@@ -177,6 +153,13 @@ def __getattr__(name):
         else:  # Get the version from the _version.py setuptools_scm file.
             __version__ = _version.version
         return __version__
+    if name == "version_info":
+        if "version_info" not in globals():
+            version_info = parse_version(
+                __version__ if "__version__" in globals() else __getattr__("__version__")
+            )
+            globals()["version_info"] = version_info
+        return globals()["version_info"]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
