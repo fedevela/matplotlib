@@ -131,6 +131,28 @@ __bibtex__ = r"""@Article{Hunter:2007,
 
 
 def __getattr__(name):
+    # VINFO-001: version contract and cache-stability obligation.
+    # Decision table:
+    # - Input state: unresolved attribute access on module namespace.
+    # - Success branch A: name == "__version__"
+    #     1) Resolve repo root from __file__.
+    #     2) If ".git" exists and ".git/shallow" does not exist:
+    #        a) call setuptools_scm.get_version(...) with the same existing args.
+    #        b) receive a version string from source-of-truth SCM lookup.
+    #     3) Else:
+    #        a) read fallback source from _version.version.
+    #     4) Cache computed value in global __version__.
+    #     5) Return cached string value.
+    #     - Output invariant: returned value is stable across calls and remains string.
+    #     - Failure branch: no exception translation; let dependency/import errors
+    #       propagate from lookup logic.
+    # - Success branch B: name == "version_info" (path to be added later by feature work)
+    #     1) Require the same source string used for "__version__" as canonical input.
+    #     2) Do not replace/cast __version__; do not alter or reformat cached string.
+    #     3) Produce/return version metadata derived from the same source.
+    #     4) Preserve behavior that repeated __version__ reads before/after this path
+    #        are identical and non-string mutation never occurs.
+    # - Error branch: any other name => raise AttributeError as before.
     if name == "__version__":
         import setuptools_scm
         global __version__  # cache it.
