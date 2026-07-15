@@ -217,7 +217,9 @@ def __getattr__(name):
         else:
             __version__ = _get_matplotlib_version()
             version = __version__
-        return _parse_version_info(version)
+        version_info = _parse_version_info(version)
+        globals()["version_info"] = version_info
+        return version_info
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

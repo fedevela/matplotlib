@@ -63,7 +63,10 @@ def test_VINFO_002_top_level_import_from_matplotlib_version_info_matches_module_
     package namespace and represents the same top-level value as
     `matplotlib.version_info`.
     """
-    assert True
+    from matplotlib import version_info as imported_version_info
+
+    assert imported_version_info == mpl.version_info
+    assert imported_version_info is mpl.version_info
 
 
 def test_VINFO_002_standard_import_module_exposes_version_info_without_private_imports():
@@ -72,4 +75,6 @@ def test_VINFO_002_standard_import_module_exposes_version_info_without_private_i
     A standard `import matplotlib` exposes `version_info` on the module object
     without requiring private helper module imports in user-facing code.
     """
-    assert True
+    assert hasattr(mpl, "version_info")
+    assert "version_info" in mpl.__dict__
+    assert isinstance(mpl.version_info, tuple)
