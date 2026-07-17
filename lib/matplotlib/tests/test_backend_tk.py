@@ -67,6 +67,59 @@ def _isolated_tk_test(success_count, func=None):
     return test_func
 
 
+@pytest.mark.backend('TkAgg', skip_on_importerror=True)
+@_isolated_tk_test(success_count=1)
+def test_input_006_tkagg_clear_rebuild_redraw_recreated_widget_invokes_callback():
+    """GUID: INPUT-006 - TkAgg preserves recreated-widget interaction."""
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import Button, RangeSlider
+
+    fig = plt.figure(figsize=(4, 3))
+    state = {"button_clicks": [], "rebuilds": 0, "widgets": []}
+
+    def rebuild():
+        fig.clear()
+        slider = RangeSlider(
+            fig.add_axes([.1, .55, .8, .2]), "", 0, 1,
+            valinit=(.2, .8))
+        button = Button(fig.add_axes([.4, .15, .2, .2]), "Button")
+        slider.on_changed(changed)
+        button.on_clicked(state["button_clicks"].append)
+        state.update(slider=slider, button=button)
+        state["widgets"].append((slider, button))
+        state["rebuilds"] += 1
+        fig.canvas.draw()
+
+    def changed(values):
+        rebuild()
+
+    def click(widget, xy):
+        x, y = widget.ax.transData.transform(xy)
+        tk_y = fig.bbox.height - y
+        tk_canvas.event_generate(
+            "<ButtonPress-1>", x=round(x), y=round(tk_y))
+        tk_canvas.event_generate(
+            "<ButtonRelease-1>", x=round(x), y=round(tk_y))
+        tk_canvas.update()
+
+    rebuild()
+    fig.canvas.manager.show()
+    tk_canvas = fig.canvas.get_tk_widget()
+    tk_canvas.update()
+
+    original_slider = state["slider"]
+    click(original_slider, (.35, .5))
+    recreated_button = state["button"]
+    click(recreated_button, (.5, .5))
+
+    assert state["rebuilds"] == 2
+    assert len(state["button_clicks"]) == 1
+    assert original_slider.ax not in fig.axes
+    assert fig.canvas.mouse_grabber is None
+    plt.close(fig)
+    print("success")
+
+
 @_isolated_tk_test(success_count=6)  # len(bad_boxes)
 def test_blit():
     import matplotlib.pyplot as plt

@@ -3098,6 +3098,7 @@ None}, default: None
 
     def clear(self, keep_observers=False):
         # docstring inherited
+        self.canvas.release_mouse(self.canvas.mouse_grabber)
         super().clear(keep_observers=keep_observers)
         # FigureBase.clear does not clear toolbars, as
         # only Figure can have toolbars

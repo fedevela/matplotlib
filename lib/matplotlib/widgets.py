@@ -900,10 +900,18 @@ class RangeSlider(SliderBase):
         if handle is not self._active_handle:
             self._active_handle = handle
 
-        if self.orientation == "vertical":
-            self._update_val_from_pos(event.ydata)
-        else:
-            self._update_val_from_pos(event.xdata)
+        update_complete = False
+        try:
+            if self.orientation == "vertical":
+                self._update_val_from_pos(event.ydata)
+            else:
+                self._update_val_from_pos(event.xdata)
+            update_complete = True
+        finally:
+            if not update_complete or self.ax not in self.ax.figure.axes:
+                self.drag_active = False
+                event.canvas.release_mouse(self.ax)
+                self._active_handle = None
 
     def _format(self, val):
         """Pretty-print *val*."""

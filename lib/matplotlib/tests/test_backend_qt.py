@@ -27,6 +27,61 @@ except ImportError:
 _test_timeout = 60  # A reasonably safe value for slower architectures.
 
 
+@pytest.mark.backend('QtAgg', skip_on_importerror=True)
+def test_input_006_qtagg_clear_rebuild_redraw_recreated_widget_invokes_callback():
+    """GUID: INPUT-006 - QtAgg preserves recreated-widget interaction."""
+    from matplotlib.backend_bases import MouseButton
+    from matplotlib.widgets import Button, RangeSlider
+
+    QtCore = importlib.import_module(f"{QtWidgets.__package__}.QtCore")
+    QtTest = importlib.import_module(f"{QtWidgets.__package__}.QtTest")
+
+    fig = plt.figure(figsize=(4, 3))
+    state = {"button_clicks": [], "rebuilds": 0, "widgets": []}
+
+    def rebuild():
+        fig.clear()
+        slider = RangeSlider(
+            fig.add_axes([.1, .55, .8, .2]), "", 0, 1,
+            valinit=(.2, .8))
+        button = Button(fig.add_axes([.4, .15, .2, .2]), "Button")
+        slider.on_changed(changed)
+        button.on_clicked(state["button_clicks"].append)
+        state.update(slider=slider, button=button)
+        state["widgets"].append((slider, button))
+        state["rebuilds"] += 1
+        fig.canvas.draw()
+
+    def changed(values):
+        rebuild()
+
+    def click(widget, xy):
+        x, y = widget.ax.transData.transform(xy)
+        ratio = fig.canvas.device_pixel_ratio
+        pos = QtCore.QPoint(
+            round(x / ratio), round((fig.bbox.height - y) / ratio))
+        QtTest.QTest.mouseClick(fig.canvas, left_button, pos=pos)
+        fig.canvas.flush_events()
+
+    rebuild()
+    fig.canvas.manager.show()
+    fig.canvas.flush_events()
+    left_button = next(
+        button for button, mpl_button in fig.canvas.buttond.items()
+        if mpl_button == MouseButton.LEFT)
+
+    original_slider = state["slider"]
+    click(original_slider, (.35, .5))
+    recreated_button = state["button"]
+    click(recreated_button, (.5, .5))
+
+    assert state["rebuilds"] == 2
+    assert len(state["button_clicks"]) == 1
+    assert original_slider.ax not in fig.axes
+    assert fig.canvas.mouse_grabber is None
+    plt.close(fig)
+
+
 @pytest.fixture
 def qt_core(request):
     qt_compat = pytest.importorskip('matplotlib.backends.qt_compat')

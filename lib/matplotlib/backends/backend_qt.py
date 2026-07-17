@@ -283,6 +283,29 @@ class FigureCanvasQT(FigureCanvasBase, QtWidgets.QWidget):
                       guiEvent=event)._process()
 
     def mousePressEvent(self, event):
+        # INPUT-006 -- QtAgg clear-rebuild-redraw interaction logic:
+        #   PRECONDITION: QtAgg is available, a RangeSlider change event is
+        #     being dispatched, and its registered callback may synchronously
+        #     clear the Figure, recreate its widgets, and request a redraw.
+        #   TRANSITION: dispatch the change callback to completion; if its
+        #     originating widget was removed, its widget-level lifecycle must
+        #     retire the old interaction and canvas grab before control returns
+        #     to Qt's event loop.
+        #   REDRAW HANDOFF: coalesce the requested draw through the Qt event
+        #     queue, process it to completion, then treat the recreated widgets
+        #     and their callbacks as the current interactive state.
+        #   NEXT INPUT: when simulated Qt mouse input targets a recreated
+        #     widget, accept a supported native button, translate its logical
+        #     coordinates against the current Figure, and synchronously process
+        #     a new Matplotlib button-press event; ignore unsupported buttons.
+        #   SUCCESS: route that event to the recreated widget and invoke its
+        #     registered callback without consulting any removed widget state
+        #     or requiring another input event or manual recovery.
+        #   FAILURE PATH: if callback dispatch or redraw fails, preserve the
+        #     backend's ordinary error reporting while leaving no stale grab
+        #     that could block later Qt input; do not hang awaiting recovery.
+        #   SCOPE BRANCH: unavailable QtAgg environments and other backends do
+        #     not enter this obligation.
         button = self.buttond.get(event.button())
         if button is not None:
             MouseEvent("button_press_event", self,
