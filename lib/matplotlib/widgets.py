@@ -215,6 +215,16 @@ class Button(AxesWidget):
         self.hovercolor = hovercolor
 
     def _click(self, event):
+        # INPUT-002 -- rebuilt-button next-click logic:
+        #   INPUT: a press routed using the canvas' current interaction state.
+        #   IF the press targets this rebuilt Button and events are enabled,
+        #     acquire the mouse for this Button's Axes.
+        #   ON the matching release, relinquish that acquisition before
+        #     dispatching this Button's registered callback.
+        #   OTHERWISE ignore the event without changing canvas state.
+        #   FAILURE PATH: if stale state names a removed Axes, the press cannot
+        #     be routed here; INPUT-001 cleanup must have removed that state at
+        #     the callback boundary, without requiring another redraw.
         if self.ignore(event) or event.inaxes != self.ax or not self.eventson:
             return
         if event.canvas.mouse_grabber != self.ax:
@@ -866,6 +876,29 @@ class RangeSlider(SliderBase):
 
     def _update(self, event):
         """Update the slider position."""
+        # INPUT-001, INPUT-003, INPUT-007 -- range interaction lifecycle:
+        #   INPUT: a left-button press, motion, or release routed to the
+        #     currently displayed RangeSlider.
+        #   ON press inside this Axes, transition IDLE -> DRAGGING and acquire
+        #     the canvas mouse grab for this Axes.
+        #   WHILE DRAGGING, select the nearest handle, derive its candidate
+        #     value from the event position, and hand it to the value-update
+        #     procedure; that handoff may synchronously clear the Figure,
+        #     rebuild both widgets, and redraw it.
+        #   AFTER that callback handoff completes, if this slider's Axes was
+        #     removed, transition the originating interaction to IDLE, clear
+        #     its active handle, and release any canvas grab owned by that Axes
+        #     before a rebuilt widget can receive the next event (INPUT-001).
+        #   OTHERWISE, on release or an outside press, perform the same
+        #     DRAGGING -> IDLE cleanup through the ordinary release path.
+        #   NEXT INTERACTION: with no stale grab, route a press to the rebuilt
+        #     RangeSlider, repeat value derivation, and invoke its newly
+        #     registered callback without redraw or recreation (INPUT-003).
+        #   LOOP INVARIANT: every clear-rebuild-redraw cycle exits with either
+        #     no grab or a grab owned by a live interaction, so repeated cycles
+        #     cannot block a later rebuilt Button or RangeSlider (INPUT-007).
+        #   FAILURE PATH: cleanup must still restore IDLE/no-stale-grab when
+        #     callback dispatch exits exceptionally; then propagate the error.
         if self.ignore(event) or event.button != 1:
             return
 
@@ -947,6 +980,17 @@ class RangeSlider(SliderBase):
         ----------
         val : tuple or array-like of float
         """
+        # INPUT-004 -- interaction-value delivery logic:
+        #   Normalize the two values produced by the current interaction,
+        #   constrain them to the slider bounds, and update the displayed
+        #   selection, handles, text, and ``self.val`` to the same tuple.
+        #   IF events are enabled, synchronously dispatch that exact normalized
+        #   tuple to each registered change callback before accepting another
+        #   interaction; do not reread values from rebuilt widget state.
+        #   AFTER dispatch, return control to the interaction lifecycle so its
+        #   callback-boundary cleanup can release stale canvas state.
+        #   FAILURE PATH: a callback failure must not substitute old, future,
+        #   or rebuilt-slider values for the tuple already being dispatched.
         val = np.sort(val)
         _api.check_shape((2,), val=val)
         # Reset value to allow _value_in_bounds() to work.
