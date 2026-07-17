@@ -608,15 +608,43 @@ class TestCLF005IncompatibleActiveLayoutEngineContracts:
     def test_clf_005_protected_manual_layout_operation_retains_established_incompatibility_protection(
             self):
         """GUID: CLF-005; an incompatible active engine warns or refuses."""
-        assert True
+        fig = Figure(layout="constrained")
+        fig.subplots()
+
+        with pytest.warns(
+                UserWarning, match="incompatible with subplots_adjust"):
+            fig.subplots_adjust(top=0.8)
 
     def test_clf_005_refused_protected_manual_layout_operation_is_not_applied(self):
         """GUID: CLF-005; refusal preserves the pre-operation layout state."""
-        assert True
+        fig = Figure(layout="constrained")
+        ax = fig.subplots()
+        initial_top = fig.subplotpars.top
+        initial_position = ax.get_position().frozen()
+
+        with pytest.warns(UserWarning):
+            fig.subplots_adjust(top=0.8)
+
+        assert fig.subplotpars.top == initial_top
+        assert ax.get_position().bounds == initial_position.bounds
 
     def test_clf_005_only_genuinely_incompatible_active_engine_retains_protection(self):
         """GUID: CLF-005; disabled constrained layout remains unprotected."""
-        assert True
+        disabled_fig = Figure(constrained_layout=False)
+        disabled_fig.subplots()
+        incompatible_fig = Figure(layout="constrained")
+        incompatible_fig.subplots()
+        incompatible_initial_top = incompatible_fig.subplotpars.top
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            disabled_fig.subplots_adjust(top=0.8)
+        with pytest.warns(
+                UserWarning, match="incompatible with subplots_adjust"):
+            incompatible_fig.subplots_adjust(top=0.8)
+
+        assert disabled_fig.subplotpars.top == 0.8
+        assert incompatible_fig.subplotpars.top == incompatible_initial_top
 
 
 def test_invalid_layouts():
