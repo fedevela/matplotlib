@@ -785,14 +785,30 @@ def test_MPLNORM_006_noninteractive_autoscale_draw_keeps_shared_valid_log_limits
     assert 0 < colorbar.norm.vmin < colorbar.norm.vmax
 
 
-def test_MPLNORM_007_invalid_lognorm_evaluation_retains_limit_error():
+@pytest.mark.parametrize("vmin", [0, -1])
+def test_MPLNORM_007_invalid_lognorm_evaluation_retains_limit_error(vmin):
     """MPLNORM-007: Invalid LogNorm evaluation retains its error contract."""
-    assert True
+    norm = LogNorm(vmin=vmin, vmax=1)
+
+    with pytest.raises(ValueError, match="Invalid vmin or vmax"):
+        norm([1])
 
 
 def test_MPLNORM_008_ordinary_norm_update_retains_mappable_colorbar_sync():
     """MPLNORM-008: Ordinary updates keep mappable and colorbar synchronized."""
-    assert True
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    norm = Normalize(vmin=0, vmax=3)
+    mappable = ax.imshow([[0, 1], [2, 3]], norm=norm)
+    colorbar = fig.colorbar(mappable)
+
+    mappable.set_clim(-1, 4)
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (-1, 4)
+    assert (colorbar.vmin, colorbar.vmax) == (-1, 4)
 
 
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
