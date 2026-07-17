@@ -686,15 +686,6 @@ class RangeSlider(SliderBase):
 
         # Set a value to allow _value_in_bounds() to work.
         self.val = [valmin, valmax]
-        # RANGE-006, RANGE-007, RANGE-008 -- constructor handoff pseudocode:
-        # - Choose the default endpoint pair when no initial value is supplied;
-        #   otherwise carry the supplied candidate into the shared range-value
-        #   flow used by later updates.
-        # - In that flow, require exactly two elements, order them, and constrain
-        #   them through the existing bound validation before retaining or
-        #   displaying either endpoint.
-        # - If exact-shape validation fails, propagate the established ValueError
-        #   and do not complete a partially initialized range representation.
         if valinit is None:
             # Place at the 25th and 75th percentiles
             extent = valmax - valmin
@@ -786,14 +777,6 @@ class RangeSlider(SliderBase):
             )
 
         self._active_handle = None
-        # RANGE-001..RANGE-005: set_val is the single range-application seam
-        # for construction and later updates.  It owns synchronization of the
-        # value, text, and selection polygon; Polygon owns ring closure, so this
-        # boundary supplies only its four explicit selection vertices.
-        # RANGE-006..RANGE-010: construction joins the same compatibility
-        # boundary used by direct updates.  RangeSlider owns the effective pair;
-        # its polygon, text, canvas, and observer collaborators remain downstream
-        # consumers of that owned state rather than alternate value processors.
         self.set_val(valinit)
 
     def _min_in_bounds(self, min):
@@ -820,9 +803,6 @@ class RangeSlider(SliderBase):
 
     def _value_in_bounds(self, vals):
         """Clip min, max values to the bounds."""
-        # RANGE-007: This aggregate validation seam and set_val's corresponding
-        # update path both depend inward on the existing endpoint validators;
-        # construction and updates must not acquire separate bound policies.
         return (self._min_in_bounds(vals[0]), self._max_in_bounds(vals[1]))
 
     def _update_val_from_pos(self, pos):
@@ -834,8 +814,6 @@ class RangeSlider(SliderBase):
         else:
             val = self._max_in_bounds(pos)
             self.set_max(val)
-        if self._active_handle:
-            self._active_handle.set_xdata([val])
 
     def _update(self, event):
         """Update the slider position."""
@@ -915,45 +893,6 @@ class RangeSlider(SliderBase):
         ----------
         val : tuple or array-like of float
         """
-        # RANGE-006..RANGE-010: RangeSlider owns this compatibility boundary.
-        # Shape/order/bound handling is its input contract; polygon and text are
-        # presentation ports, while canvas drawing and observer dispatch are
-        # conditional output ports.  All outputs depend on one effective pair,
-        # and invalid input has no downstream integration path.
-        # RANGE-001, RANGE-002, RANGE-004 -- logic obligation and pseudocode:
-        # - Accept the construction-delegated or directly supplied endpoint pair.
-        # - Order and validate exactly two endpoints before mutating visible state;
-        #   on validation failure, propagate the existing error without a partial
-        #   polygon, text, or value transition.
-        # - Derive both effective endpoints with the existing bound and step rules.
-        # - If the effective endpoints are equal and in bounds, preserve both
-        #   copies so horizontal init, vertical init, and later set_val calls all
-        #   complete with the requested zero-width range.
-        # RANGE-003 -- polygon transition pseudocode:
-        # - Read the selection polygon's four coordinate slots (indices 0..3).
-        # - For vertical orientation, map the lower endpoint to the two lower
-        #   corners and the upper endpoint to the two upper corners; otherwise,
-        #   map them to the corresponding left and right corners.
-        # - Write only those four slots; leave polygon closure to the polygon
-        #   representation and never address a fifth coordinate.
-        # RANGE-005 -- synchronized state and handoff pseudocode:
-        # - From the same effective endpoint pair, update the polygon, format and
-        #   update the displayed text, and commit self.val.
-        # - Once all three representations agree, request a redraw when enabled,
-        #   then notify observers when enabled with that effective pair.
-        # RANGE-006, RANGE-007, RANGE-008 -- compatibility-flow pseudocode:
-        # - Sort the incoming candidate, then require shape (2,); on mismatch,
-        #   raise the established ValueError and stop before any state, display,
-        #   drawing, or observer transition.
-        # - Pass the ordered lower and upper candidates through the existing
-        #   lower-bound and upper-bound validators to obtain the effective pair.
-        # - Retain both distinct effective endpoints, map them to the orientation's
-        #   selection-polygon coordinates, and display their formatted range.
-        # RANGE-009, RANGE-010 -- successful handoff pseudocode:
-        # - Commit the effective pair to self.val after polygon and text updates.
-        # - If drawing is enabled, request an idle draw; otherwise skip drawing.
-        # - After the state commit, if observers are enabled, publish the changed
-        #   event with that same effective pair; otherwise skip notification.
         val = np.sort(val)
         _api.check_shape((2,), val=val)
         val[0] = self._min_in_bounds(val[0])
@@ -961,9 +900,13 @@ class RangeSlider(SliderBase):
         if self.orientation == "vertical":
             self.poly.xy = [(.25, val[0]), (.25, val[1]),
                             (.75, val[1]), (.75, val[0])]
+            for handle, value in zip(self._handles, val):
+                handle.set_ydata([value])
         else:
             self.poly.xy = [(val[0], .25), (val[0], .75),
                             (val[1], .75), (val[1], .25)]
+            for handle, value in zip(self._handles, val):
+                handle.set_xdata([value])
         self.valtext.set_text(self._format(val))
         self.val = val
         if self.drawon:
