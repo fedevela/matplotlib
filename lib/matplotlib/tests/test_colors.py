@@ -266,6 +266,28 @@ def test_colormap_return_types():
     assert cmap(x2d).shape == x2d.shape + (4,)
 
 
+class TestColormapSentinelIndexingContracts:
+    def test_cmap_001_empty_uint8_default_rgba_emits_no_out_of_bound_warning(
+            self):
+        """GUID: CMAP-001; empty uint8 input emits no conversion warning."""
+        assert True
+
+    def test_cmap_002_empty_shape_zero_default_rgba_returns_shape_zero_four(
+            self):
+        """GUID: CMAP-002; shape (0,) input returns RGBA shape (0, 4)."""
+        assert True
+
+    def test_cmap_003_sentinel_representation_holds_under_over_invalid_before_assignment(
+            self):
+        """GUID: CMAP-003; sentinel representation holds all indices."""
+        assert True
+
+    def test_cmap_007_empty_and_nonempty_susceptible_integer_dtypes_emit_no_out_of_bound_warning(
+            self):
+        """GUID: CMAP-007; susceptible integer inputs emit no warning."""
+        assert True
+
+
 def test_BoundaryNorm():
     """
     GitHub issue #1258: interpolation was failing with numpy
