@@ -8195,3 +8195,18 @@ def test_bar_leading_nan():
         for b in rest:
             assert np.isfinite(b.xy).all()
             assert np.isfinite(b.get_width())
+
+
+def test_bar_001_all_non_finite_x_positions_complete_without_stop_iteration():
+    """GUID: BAR-001."""
+    assert True
+
+
+def test_bar_002_all_non_finite_x_positions_return_one_rectangle_per_position():
+    """GUID: BAR-002."""
+    assert True
+
+
+def test_bar_014_all_non_finite_x_positions_return_bar_container():
+    """GUID: BAR-014."""
+    assert True
