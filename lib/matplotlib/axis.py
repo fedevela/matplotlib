@@ -1265,6 +1265,21 @@ class Axis(martist.Artist):
         if auto is not None:
             self._set_autoscale_on(bool(auto))
 
+        # Shared x-limit notification architecture:
+        # Axis._set_lim owns the update transaction: installation, initiating
+        # notification, and traversal of the Axes._shared_axes group.  Group
+        # membership remains owned by Axes, and CallbackRegistry remains only
+        # the notification sink; neither dependency should gain propagation
+        # policy.  [GUID: XLIM-002] [GUID: XLIM-006] [GUID: XLIM-007]
+        #
+        # The existing ``emit`` boundary is the suppression and cycle-breaking
+        # contract.  A later implementation belongs in the sibling loop below:
+        # install through the sibling Axis with ``emit=False``, then notify via
+        # that sibling Axes only after installation.  The notification addition
+        # must be x-axis-specific so this issue does not alter ylim behavior.
+        # No new public helper or callback-registry contract is required.
+        # [GUID: XLIM-001] [GUID: XLIM-003] [GUID: XLIM-004]
+        # [GUID: XLIM-005] [GUID: XLIM-008]
         if emit:
             self.axes.callbacks.process(f"{name}lim_changed", self.axes)
             # Call all of the other axes that are shared with this one
