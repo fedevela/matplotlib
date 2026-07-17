@@ -2301,6 +2301,11 @@ class FigureCanvasBase:
             if bbox_inches is None:
                 bbox_inches = rcParams['savefig.bbox']
 
+            # ARCHITECTURE (GUID: CLF-004): Figure owns layout-option
+            # normalization and exposes only its effective engine state here.
+            # FigureCanvasBase owns the integration seam between that state,
+            # the independent tight-bbox pre-draw, and backend printing; it
+            # must not depend on the legacy constrained_layout input.
             # GUID: CLF-004 -- tight-bbox save compatibility and completion.
             # PSEUDOCODE:
             #   read the figure's effective layout engine and bbox request;
