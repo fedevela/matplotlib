@@ -512,22 +512,59 @@ def test_surface3d():
 
 def test_p3dfc_001_colormapped_surface_get_facecolors_before_draw_returns_colors():
     """GUID: P3DFC-001 -- pre-draw get_facecolors returns current colors."""
-    assert True
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    x, y = np.meshgrid(np.arange(3), np.arange(3))
+    surface = ax.plot_surface(x, y, x + y, cmap="viridis")
+
+    assert not hasattr(surface, "_facecolors2d")
+    np.testing.assert_array_equal(
+        surface.get_facecolors(), surface.to_rgba(surface.get_array()))
+    assert not hasattr(surface, "_facecolors2d")
 
 
 def test_p3dfc_002_plot_surface_get_facecolor_before_draw_matches_facecolors():
     """GUID: P3DFC-002 -- pre-draw get_facecolor matches get_facecolors."""
-    assert True
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    x, y = np.meshgrid(np.arange(3), np.arange(3))
+    surface = ax.plot_surface(x, y, x + y, cmap="viridis")
+
+    np.testing.assert_array_equal(
+        surface.get_facecolor(), surface.get_facecolors())
 
 
 def test_p3dfc_003_predraw_accessors_reflect_configured_or_mapped_colors():
     """GUID: P3DFC-003 -- accessors reflect configured or colormapped colors."""
-    assert True
+    fig, axs = plt.subplots(1, 2, subplot_kw={"projection": "3d"})
+    x, y = np.meshgrid(np.arange(3), np.arange(3))
+    configured = np.array([
+        [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]],
+        [[0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 0, 1]],
+        [[.2, .4, .6, 1], [.4, .6, .2, 1], [.6, .2, .4, 1]],
+    ])
+    direct_surface = axs[0].plot_surface(
+        x, y, x + y, facecolors=configured, shade=False)
+    mapped_surface = axs[1].plot_surface(x, y, x + y, cmap="plasma")
+
+    expected_direct = configured[:-1, :-1].reshape(-1, 4)
+    np.testing.assert_array_equal(
+        direct_surface.get_facecolors(), expected_direct)
+    np.testing.assert_array_equal(
+        mapped_surface.get_facecolors(),
+        mapped_surface.to_rgba(mapped_surface.get_array()))
 
 
 def test_p3dfc_003_predraw_accessors_return_established_color_array_form():
     """GUID: P3DFC-003 -- accessors use the established color-array form."""
-    assert True
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    x, y = np.meshgrid(np.arange(3), np.arange(3))
+    surface = ax.plot_surface(x, y, x + y, cmap="viridis")
+
+    for colors in (surface.get_facecolor(), surface.get_facecolors()):
+        assert isinstance(colors, np.ndarray)
+        assert colors.ndim == 2
+        assert colors.shape == (4, 4)
+        assert np.issubdtype(colors.dtype, np.floating)
+        assert np.all((0 <= colors) & (colors <= 1))
 
 
 @mpl3d_image_comparison(['surface3d_shaded.png'])

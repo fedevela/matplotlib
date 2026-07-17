@@ -875,24 +875,14 @@ class Poly3DCollection(PolyCollection):
         self.stale = True
 
     def get_facecolor(self):
-        # Pseudocode -- GUIDs: P3DFC-001, P3DFC-002, P3DFC-003.
-        # INPUT: this collection's configured face colors, scalar-mappable
-        # state, 3D face-color state, and optional post-projection color cache.
-        # IF the post-projection cache exists:
-        #     SELECT that cache as the current depth-ordered face-color state.
-        # ELSE (no draw or projection has initialized that cache):
-        #     UPDATE scalar-mappable colors through Collection color machinery.
-        #     IF face colors are colormap-derived:
-        #         SYNCHRONIZE the 3D face-color state with the mapped RGBA data.
-        #     SELECT the current 3D configured-or-mapped face-color state.
-        # RETURN the selected state in Collection's established RGBA array
-        # representation; do not fabricate colors or substitute stale data.
-        # ALIAS: get_facecolors() dynamically delegates to this accessor, so
-        # both public spellings execute this same state selection and return
-        # equivalent pre-draw data without reading an uninitialized cache.
-        # FAILURE: propagate genuine color mapping/normalization errors; the
-        # absence of projection state is an expected branch, not an error.
-        return self._facecolors2d
+        # GUIDs: P3DFC-001, P3DFC-002, P3DFC-003.
+        if hasattr(self, '_facecolors2d'):
+            return self._facecolors2d
+
+        self.update_scalarmappable()
+        if self._face_is_mapped:
+            self._facecolor3d = self._facecolors
+        return self._facecolor3d
 
     def get_edgecolor(self):
         return self._edgecolors2d
