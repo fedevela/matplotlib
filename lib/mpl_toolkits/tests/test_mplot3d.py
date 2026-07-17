@@ -42,9 +42,24 @@ def test_m3dvis_001_drawing_invisible_3d_axes_omits_all_owned_visuals(
     ax.set_visible(False)
 
 
-def test_m3dvis_002_two_axes_hide_3d_redraw_preserves_other_axes_output():
+@check_figures_equal(extensions=["png"])
+def test_m3dvis_002_two_axes_hide_3d_redraw_preserves_other_axes_output(
+        fig_test, fig_ref):
     """GUID: M3DVIS-002 -- hiding a 3D axes preserves other axes output."""
-    assert True
+    ax_3d = fig_test.add_subplot(121, projection="3d")
+    ax_3d.plot([0, 1], [0, 1], [0, 1], color="tab:red")
+    ax_other = fig_test.add_subplot(122)
+    ax_other.plot([0, 1, 2], [1, 0, 1], color="tab:blue")
+    ax_other.set(xlabel="other x", ylabel="other y", title="other axes")
+
+    # Exercise the transition from a rendered 3D axes to a hidden one.
+    fig_test.canvas.draw()
+    ax_3d.set_visible(False)
+    fig_test.canvas.draw()
+
+    ax_ref = fig_ref.add_subplot(122)
+    ax_ref.plot([0, 1, 2], [1, 0, 1], color="tab:blue")
+    ax_ref.set(xlabel="other x", ylabel="other y", title="other axes")
 
 
 def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence(
