@@ -132,12 +132,20 @@ __bibtex__ = r"""@Article{Hunter:2007,
 
 # PSEUDOCODE -- top-level version attribute contract
 #
+# PROCEDURE initialize_matplotlib_package_without_comparable_version_access():
+#   Continue the existing package import sequence without resolving,
+#   converting, or caching THE_COMPARABLE_VERSION_ATTRIBUTE.       [MPL-008]
+#   IF an existing import step fails, propagate that step's existing failure.
+#   OTHERWISE complete the import successfully with no new-version-value work.
+#
 # PROCEDURE resolve_public_version_attribute(requested_name):
 #   INPUT: an attribute name requested from the imported matplotlib package.
-#   IF requested_name is "__version__":                         [MPL-007]
+#   IF requested_name is "__version__":               [MPL-007, MPL-008]
 #     Resolve the existing release string through the current source-selection
 #     flow, cache that string as __version__, and return it without changing
 #     its meaning or value format.
+#     Do not resolve or depend on THE_COMPARABLE_VERSION_ATTRIBUTE, so existing
+#     version-reporting consumers follow only the established reporting path.
 #     IF resolution fails, propagate the existing failure without publishing
 #     a partial or differently formatted __version__ value.
 #   ELSE IF requested_name is THE_COMPARABLE_VERSION_ATTRIBUTE: [MPL-001]
