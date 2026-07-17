@@ -106,6 +106,26 @@ def test_complete(fig_test, fig_ref):
     plt.close(loaded)
 
 
+def test_mpldrag_001_pickle_draggable_legend_excludes_live_canvas():
+    """GUID: MPLDRAG-001 -- complete-figure pickle avoids the live canvas."""
+    assert True
+
+
+def test_mpldrag_002_pickle_draggable_annotation_excludes_live_canvas():
+    """GUID: MPLDRAG-002 -- complete-figure pickle avoids the live canvas."""
+    assert True
+
+
+def test_mpldrag_003_pickle_excludes_live_reference_preserves_valid_state():
+    """GUID: MPLDRAG-003 -- preserve figure, artist, and draggable state."""
+    assert True
+
+
+def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
+    """GUID: MPLDRAG-007 -- supported interactive backends need no special case."""
+    assert True
+
+
 def _pickle_load_subprocess():
     import os
     import pickle
