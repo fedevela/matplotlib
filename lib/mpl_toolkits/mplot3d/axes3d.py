@@ -3180,6 +3180,21 @@ pivot='tail', normalize=False, **kwargs)
 
     def get_tightbbox(self, renderer=None, call_axes_locator=True,
                       bbox_extra_artists=None, *, for_layout_only=False):
+        # M3DVIS-008 layout-boundary logic:
+        # - Input this Axes3D's visibility state and the renderer supplied by
+        #   the figure's layout operation.
+        # - If the axes is hidden, return no bounding box before requesting
+        #   base-axes or 3D-axis extents; the layout caller must treat that
+        #   result as no layout contribution and continue normally.
+        # - Otherwise, request the base-axes tight bounding box with the
+        #   caller's locator, extra-artist, and layout-only settings.
+        # - If 3D axes are enabled, visit each visible 3D axis, append each
+        #   nonempty layout-only bounding box, and skip absent extents.
+        # - Union the collected bounds and return them to the layout caller;
+        #   propagate any failure from the ordinary visible-axis path.
+        # - After layout completes, hand control back to the figure without
+        #   changing visibility or plotted content, so its existing draw
+        #   traversal can skip this hidden axes and draw the figure normally.
         ret = super().get_tightbbox(renderer,
                                     call_axes_locator=call_axes_locator,
                                     bbox_extra_artists=bbox_extra_artists,
