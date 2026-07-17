@@ -2021,6 +2021,28 @@ class Axis(martist.Artist):
         other limits, you should set the limits explicitly after setting the
         ticks.
         """
+        # PSEUDOCODE [TICKS-001, TICKS-002, TICKS-003]
+        # INPUT: tick locations, optional explicit labels, the major/minor
+        # selection, and candidate Text-property keyword arguments.  Calls
+        # through Axes.set_xticks and Axes.set_yticks follow this same flow.
+        # FOR EACH candidate keyword argument, regardless of whether labels
+        # were supplied:
+        #     Validate it through the Text-property contract used for explicit
+        #     tick labels.
+        #     IF that contract rejects the property name or value:
+        #         Propagate the validation error and stop processing the call.
+        #     OTHERWISE:
+        #         Retain it as a validated label property.
+        # Set the requested major or minor tick locations and retain the ticks
+        # produced by that transition as the result.
+        # IF explicit labels were supplied:
+        #     Set those labels for the selected tick level, applying the
+        #     validated Text properties through the normal label-setting flow.
+        # ELSE:
+        #     Do not apply the validated Text properties to any existing or
+        #     formatter-generated label; their recorded properties remain
+        #     unchanged.
+        # RETURN the ticks produced by the location transition.
         result = self._set_tick_locations(ticks, minor=minor)
         if labels is not None:
             self.set_ticklabels(labels, minor=minor, **kwargs)
