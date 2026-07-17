@@ -593,14 +593,38 @@ def test_axes_class_tuple():
     gr = AxesGrid(fig, 111, nrows_ncols=(1, 1), axes_class=axes_class)
 
 
-def test_AXGRID_006_default_axes_supported_label_mode_constructs():
+@pytest.mark.parametrize("label_mode", ["L", "1", "all", "keep"])
+def test_AXGRID_006_default_axes_supported_label_mode_constructs(label_mode):
     """AXGRID-006: Default Axes construction succeeds for supported modes."""
-    assert True
+    grid = AxesGrid(plt.figure(), 111, (2, 2), label_mode=label_mode)
+
+    assert len(grid) == 4
+    assert all(type(ax) is mpl_toolkits.axes_grid1.mpl_axes.Axes for ax in grid)
 
 
-def test_AXGRID_006_default_axes_label_visibility_remains_unchanged():
+@pytest.mark.parametrize(
+    ("label_mode", "expected"),
+    [
+        ("L", [[(False, True), (False, False)],
+               [(True, True), (True, False)]]),
+        ("1", [[(False, False), (False, False)],
+               [(True, True), (False, False)]]),
+        ("all", [[(True, True), (True, True)],
+                 [(True, True), (True, True)]]),
+        ("keep", [[(True, True), (True, True)],
+                  [(True, True), (True, True)]]),
+    ],
+)
+def test_AXGRID_006_default_axes_label_visibility_remains_unchanged(
+        label_mode, expected):
     """AXGRID-006: Default Axes tick and axis label visibility is preserved."""
-    assert True
+    grid = AxesGrid(plt.figure(), 111, (2, 2), label_mode=label_mode)
+
+    for axes_row, expected_row in zip(grid.axes_row, expected):
+        for ax, (bottom_visible, left_visible) in zip(
+                axes_row, expected_row):
+            assert _bottom_left_label_visibility(ax) == (
+                bottom_visible, bottom_visible, left_visible, left_visible)
 
 
 def test_AXGRID_002_one_cell_cartopy_geoaxes_platecarree_tuple_constructs():
