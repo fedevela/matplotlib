@@ -733,6 +733,26 @@ class Colormap:
         #   established.  If classification or lookup cannot complete,
         #   propagate the error without committing working state back to X.
 
+        # Unaffected-input regression logic:
+        # - GUID: CMAP-008: Given supported floating-point X, retain the
+        #   established sequence: scale into LUT-index space, classify the
+        #   boundary and invalid cases, convert to integer indices, and resolve
+        #   those indices through the selected LUT.  Apply the established
+        #   bytes and alpha transformations, if requested.  For an array,
+        #   return those same RGBA values with shape X.shape + (4,); for a
+        #   scalar, return the same four-value tuple.  If any established step
+        #   fails, propagate its exception without producing a fallback value.
+        # - GUID: CMAP-009: Given supported integer X, first compare its dtype
+        #   range with _i_under through _i_bad.  If every sentinel is
+        #   representable, retain the dtype and established integer indices;
+        #   classify under, over, masked, and invalid entries, then resolve the
+        #   resulting indices through the selected LUT.  Apply the established
+        #   bytes and alpha transformations, if requested.  For an array,
+        #   return those same RGBA values with shape X.shape + (4,); for a
+        #   scalar, return the same four-value tuple.  If classification,
+        #   lookup, or output transformation fails, propagate its exception
+        #   without substituting an output.
+
         if mask_bad is None:
             mask_bad = np.isnan(xa)
         if not xa.dtype.isnative:
