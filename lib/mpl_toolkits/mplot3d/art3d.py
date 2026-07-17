@@ -881,6 +881,27 @@ class Poly3DCollection(PolyCollection):
 
     def get_facecolor(self):
         # GUIDs: P3DFC-001, P3DFC-002, P3DFC-003, P3DFC-004, P3DFC-005.
+        # Pseudocode -- GUID: P3DFC-006.
+        # INPUT: an equivalently configured, directly instantiated collection
+        # with valid Collection face-color state and no required prior draw or
+        # projection transition.
+        # IF a post-projection face-color cache exists:
+        #     SELECT that cache as the current face-color data.
+        # ELSE:
+        #     UPDATE scalar-mappable state through Collection color handling.
+        #     IF mapped face colors are current:
+        #         SYNCHRONIZE the 3D face-color state from mapped RGBA data.
+        #     ELSE IF the 3D face-color state has not yet been initialized:
+        #         INITIALIZE it from the valid configured Collection face-color
+        #         state, preserving Collection's established RGBA array form.
+        #     SELECT the initialized configured-or-mapped 3D face-color state.
+        # RETURN the selected valid face-color data without requiring draw or
+        # projection and without creating projection or sorting state.
+        # ALIAS: get_facecolors() delegates to this same decision sequence; both
+        # public accessors therefore expose the same pre-draw state.
+        # FAILURE: propagate errors for invalid or incomplete configuration;
+        # missing projection state and missing derived 3D state are expected
+        # pre-draw conditions for an equivalently configured direct instance.
         if hasattr(self, '_facecolors2d'):
             return self._facecolors2d
 
