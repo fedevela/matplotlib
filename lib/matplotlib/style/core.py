@@ -253,6 +253,33 @@ available = []
 
 def reload_library():
     """Reload the style library."""
+    # SCBLIND-001..005 -- legacy colorblind compatibility pseudocode:
+    #
+    # INPUT:
+    #   bundled_styles := styles parsed from Matplotlib's packaged stylelib
+    #   compatibility_key := "seaborn-colorblind"
+    #   reference_style := bundled Matplotlib 3.4.3 colorblind configuration
+    #
+    # FLOW:
+    #   1. Build the normal style library from bundled_styles and user styles.
+    #   2. Resolve reference_style exclusively from Matplotlib's bundled data;
+    #      do not import, query, or otherwise depend on seaborn.  [SCBLIND-005]
+    #   3. If the bundled reference cannot be resolved or is not a valid
+    #      Matplotlib rc-parameter mapping, fail library reload through the
+    #      existing style-loading error path; do not publish a partial entry.
+    #      [SCBLIND-002, SCBLIND-004]
+    #   4. Otherwise, expose reference_style under compatibility_key so an
+    #      exact library lookup returns the mapping without KeyError and with
+    #      the bundled 3.4.3 colorblind values unchanged.  [SCBLIND-001,
+    #      SCBLIND-002, SCBLIND-004]
+    #   5. Hand the returned mapping to the existing style-application flow;
+    #      accepted rc parameters transition into active rcParams, after which
+    #      ordinary plot creation proceeds.  Any invalid parameter follows the
+    #      existing Matplotlib style-validation failure path.  [SCBLIND-003]
+    #
+    # OUTPUT:
+    #   library[compatibility_key] is a bundled, valid, directly applicable
+    #   style mapping after every reload, independent of seaborn installation.
     global library
     library = update_user_library(_base_library)
     available[:] = sorted(library.keys())
