@@ -3048,6 +3048,9 @@ class Figure(FigureBase):
         # derive physical DPI after restoration, but serialization must not
         # depend on a backend type or a particular valid logical-DPI value.
 
+        # Discard any changes to the DPI due to device pixel ratio changes.
+        state["_dpi"] = state.get("_original_dpi", state["_dpi"])
+
         # add version information to the state
         state['__mpl_version__'] = mpl.__version__
 
