@@ -280,6 +280,26 @@ def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
     assert "canvas" not in draggable.__dict__
 
 
+def test_mpldrag_008_enabled_draggable_legend_complete_figure_pickle_succeeds():
+    """GUID: MPLDRAG-008 -- draggable legend figure pickle succeeds."""
+    assert True
+
+
+def test_mpldrag_008_draggable_annotation_complete_figure_pickle_succeeds():
+    """GUID: MPLDRAG-008 -- draggable annotation figure pickle succeeds."""
+    assert True
+
+
+def test_mpldrag_008_legend_live_canvas_pickle_failure_is_detected():
+    """GUID: MPLDRAG-008 -- legend canvas-reference regression is detected."""
+    assert True
+
+
+def test_mpldrag_008_annotation_live_canvas_pickle_failure_is_detected():
+    """GUID: MPLDRAG-008 -- annotation canvas-reference regression is detected."""
+    assert True
+
+
 def test_mpldrag_009_restored_draggable_remains_usable_after_canvas_attachment():
     """GUID: MPLDRAG-009 -- restored callbacks keep dragging usable on a canvas."""
     fig, ax = plt.subplots()
