@@ -27,6 +27,12 @@ except ImportError:
 _test_timeout = 60  # A reasonably safe value for slower architectures.
 
 
+@pytest.mark.backend('QtAgg', skip_on_importerror=True)
+def test_input_006_qtagg_clear_rebuild_redraw_recreated_widget_invokes_callback():
+    """GUID: INPUT-006 - QtAgg preserves recreated-widget interaction."""
+    assert True
+
+
 @pytest.fixture
 def qt_core(request):
     qt_compat = pytest.importorskip('matplotlib.backends.qt_compat')

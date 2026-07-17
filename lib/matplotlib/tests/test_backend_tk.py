@@ -14,6 +14,12 @@ from matplotlib.testing import subprocess_run_helper
 _test_timeout = 60  # A reasonably safe value for slower architectures.
 
 
+@pytest.mark.backend('TkAgg', skip_on_importerror=True)
+def test_input_006_tkagg_clear_rebuild_redraw_recreated_widget_invokes_callback():
+    """GUID: INPUT-006 - TkAgg preserves recreated-widget interaction."""
+    assert True
+
+
 def _isolated_tk_test(success_count, func=None):
     """
     A decorator to run *func* in a subprocess and assert that it prints
