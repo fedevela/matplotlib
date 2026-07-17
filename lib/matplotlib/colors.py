@@ -710,6 +710,21 @@ class Colormap:
         # np.isnan() to after we have converted to an array.
         mask_bad = X.mask if np.ma.is_masked(X) else None
         xa = np.array(X, copy=True)
+
+        # Sentinel-index preparation contract:
+        # - GUID: CMAP-001 / CMAP-007: For every empty or non-empty integer
+        #   input, determine whether xa's dtype can represent all colormap
+        #   sentinel indices before performing any sentinel assignment.
+        # - GUID: CMAP-003: If the dtype cannot represent _i_under, _i_over,
+        #   and _i_bad, transition xa to a capable integer representation;
+        #   otherwise retain the existing representation.  Continue only with
+        #   the capable working array, then assign over-range, under-range, and
+        #   invalid positions in the established order below.  If no capable
+        #   representation can be established, fail before assigning a
+        #   sentinel rather than attempting an out-of-bound conversion.
+        # - GUID: CMAP-002: Carry xa's complete input shape, including (0,),
+        #   through lookup; append the LUT color axis so the default RGBA
+        #   output shape is xa.shape + (4,), including (0, 4) for empty input.
         if mask_bad is None:
             mask_bad = np.isnan(xa)
         if not xa.dtype.isnative:
