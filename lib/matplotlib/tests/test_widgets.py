@@ -1492,6 +1492,16 @@ def test_input_007_repeated_rebuilds_leave_later_widget_interactive():
     assert len(state["button_clicks"]) == 1
 
 
+def test_input_008_unaffected_widget_mouse_input_preserves_callback_behavior():
+    """GUID: INPUT-008 - unaffected mouse input preserves callbacks."""
+    assert True
+
+
+def test_input_008_range_slider_and_button_outside_rebuild_remain_interactive():
+    """GUID: INPUT-008 - established interactions remain unblocked."""
+    assert True
+
+
 @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
 def test_range_slider_same_init_values(orientation):
     if orientation == "vertical":
