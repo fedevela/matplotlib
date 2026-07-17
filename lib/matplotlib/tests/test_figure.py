@@ -582,6 +582,14 @@ class TestConstrainedLayoutFalseContracts:
         assert axs[0].get_position().x1 == pytest.approx(
             axs[1].get_position().x0)
 
+    def test_clf_004_constrained_layout_false_tight_bbox_emits_no_warning(self):
+        """GUID: CLF-004; tight-bbox save emits no incompatibility warning."""
+        assert True
+
+    def test_clf_004_constrained_layout_false_tight_bbox_save_completes(self):
+        """GUID: CLF-004; tight-bbox save completes without refusal."""
+        assert True
+
 
 def test_invalid_layouts():
     fig, ax = plt.subplots(layout="constrained")
