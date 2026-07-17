@@ -2419,6 +2419,9 @@ class _AxesBase(martist.Artist):
 
     def _update_patch_limits(self, patch):
         """Update the data limits for the given patch."""
+        # Architecture contract -- GUID: BAR-001
+        # Patch-limit extraction owns the absence of usable finite vertices;
+        # add_patch remains responsible for registering the Patch artist.
         # hist can add zero height Rectangles, which is useful to keep
         # the bins, counts and patches lined up, but it throws off log
         # scaling.  We'll ignore rects with zero height or width in

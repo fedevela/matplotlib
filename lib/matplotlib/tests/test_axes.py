@@ -21,6 +21,7 @@ from matplotlib import rc_context
 from matplotlib._api import MatplotlibDeprecationWarning
 import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
+from matplotlib.container import BarContainer
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import matplotlib.font_manager as mfont_manager
@@ -8195,3 +8196,176 @@ def test_bar_leading_nan():
         for b in rest:
             assert np.isfinite(b.xy).all()
             assert np.isfinite(b.get_width())
+
+
+def test_bar_001_all_non_finite_x_positions_complete_without_stop_iteration():
+    """GUID: BAR-001."""
+    fig, ax = plt.subplots()
+    ax.bar([np.nan], [1])
+
+
+def test_bar_002_all_non_finite_x_positions_return_one_rectangle_per_position():
+    """GUID: BAR-002."""
+    fig, ax = plt.subplots()
+    x = [np.nan, np.inf, -np.inf]
+
+    bars = ax.bar(x, [1, 2, 3])
+
+    assert len(bars.patches) == len(x)
+
+
+def test_bar_003_nan_x_and_nan_height_return_one_rectangle_with_nan_geometry():
+    """GUID: BAR-003."""
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([np.nan], [np.nan])
+
+    assert len(bars.patches) == 1
+    assert np.isnan(bars.patches[0].get_x())
+    assert np.isnan(bars.patches[0].get_height())
+
+
+def test_bar_004_nan_x_zero_height_returns_one_rectangle_preserving_geometry():
+    """GUID: BAR-004."""
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([np.nan], [0])
+
+    assert len(bars.patches) == 1
+    assert np.isnan(bars.patches[0].get_x())
+    assert bars.patches[0].get_height() == 0
+
+
+def test_bar_005_mixed_finite_non_finite_x_preserves_input_cardinality():
+    """GUID: BAR-005."""
+    fig, ax = plt.subplots()
+    x = [-np.inf, 2, np.nan, np.inf, -3]
+
+    bars = ax.bar(x, [1, 2, 3, 4, 5])
+
+    assert len(bars.patches) == len(x)
+
+
+def test_bar_006_mixed_finite_non_finite_x_preserves_rectangle_order():
+    """GUID: BAR-006."""
+    fig, ax = plt.subplots()
+    heights = [1, 2, 3, 4, 5]
+
+    bars = ax.bar([-np.inf, 2, np.nan, np.inf, -3], heights)
+
+    assert [bar.get_height() for bar in bars.patches] == heights
+
+
+def test_bar_007_mixed_finite_non_finite_x_preserves_corresponding_x_geometry():
+    """GUID: BAR-007."""
+    fig, ax = plt.subplots()
+    x = np.array([-np.inf, 2, np.nan, np.inf, -3])
+    width = .5
+
+    bars = ax.bar(x, [1, 2, 3, 4, 5], width=width)
+
+    np.testing.assert_equal(
+        [bar.get_x() for bar in bars.patches], x - width / 2)
+
+
+@pytest.mark.parametrize('height', [np.nan, np.inf, -np.inf])
+def test_bar_008_finite_x_non_finite_height_returns_rectangle_without_exception(
+        height):
+    """GUID: BAR-008."""
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([1], [height])
+
+    assert len(bars.patches) == 1
+    assert np.isfinite(bars.patches[0].get_x())
+    np.testing.assert_equal(bars.patches[0].get_height(), height)
+
+
+def test_bar_009_finite_numeric_x_and_supported_widths_preserve_geometry():
+    """GUID: BAR-009."""
+    fig, ax = plt.subplots()
+    x = [1, 4]
+    height = [2, 3]
+    width = [.5, 1]
+    bottom = [-1, 2]
+
+    bars = ax.bar(x, height, width=width, bottom=bottom)
+
+    np.testing.assert_allclose(
+        [(bar.get_x(), bar.get_y(), bar.get_width(), bar.get_height())
+         for bar in bars],
+        [[.75, -1, .5, 2], [3.5, 2, 1, 3]])
+
+
+def test_bar_009_finite_numeric_x_and_supported_widths_preserve_container():
+    """GUID: BAR-009."""
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([1, 2], [3, 4], label="bars")
+
+    assert isinstance(bars, BarContainer)
+    assert list(bars) == bars.patches
+    np.testing.assert_array_equal(bars.datavalues, [3, 4])
+    assert bars.orientation == "vertical"
+    assert bars.get_label() == "bars"
+
+
+def test_bar_010_unit_aware_x_and_width_conversion_does_not_expose_stop_iteration():
+    """GUID: BAR-010."""
+    fig, ax = plt.subplots()
+    x = np.array(["NaT", "NaT"], dtype="datetime64[D]")
+    width = np.array([1, 2], dtype="timedelta64[D]")
+
+    bars = ax.bar(x, [1, 2], width=width)
+
+    assert len(bars) == len(x)
+
+
+def test_bar_011_unit_aware_non_finite_x_returns_one_rectangle_per_position():
+    """GUID: BAR-011."""
+    fig, ax = plt.subplots()
+    x = np.array(["NaT", "2022-08-01", "NaT"], dtype="datetime64[D]")
+
+    bars = ax.bar(x, [1, 2, 3], width=np.timedelta64(1, "D"))
+
+    assert len(bars.patches) == len(x)
+
+
+def test_bar_012_dependent_caller_creates_all_nan_phantom_bar_and_receives_result_without_exception():
+    """GUID: BAR-012."""
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([np.nan], [np.nan])
+
+    assert isinstance(bars, BarContainer)
+    assert len(bars.patches) == 1
+    assert bars in ax.containers
+
+
+def test_bar_012_dependent_caller_removes_received_all_nan_phantom_bar_without_exception():
+    """GUID: BAR-012."""
+    fig, ax = plt.subplots()
+    bars = ax.bar([np.nan], [np.nan])
+    patch, = bars.patches
+
+    bars.remove()
+
+    assert patch not in ax.patches
+    assert bars not in ax.containers
+
+
+def test_bar_013_established_invalid_inputs_including_generators_remain_rejected():
+    """GUID: BAR-013."""
+    fig, ax = plt.subplots()
+
+    with pytest.raises(RuntimeError, match="does not support generators"):
+        ax.bar((value for value in [1, 2]), [3, 4])
+
+
+def test_bar_014_all_non_finite_x_positions_return_bar_container():
+    """GUID: BAR-014."""
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([np.nan], [1])
+
+    assert isinstance(bars, BarContainer)
