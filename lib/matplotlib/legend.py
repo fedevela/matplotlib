@@ -50,6 +50,9 @@ from matplotlib.container import ErrorbarContainer, BarContainer, StemContainer
 from . import legend_handler
 
 
+# ARCHITECTURE [LEGEND-004]: DraggableLegend remains the sole adapter from a
+# Legend to DraggableOffsetBox.  Creation-time configuration reaches this
+# adapter through Legend.set_draggable; it does not own a second drag path.
 class DraggableLegend(DraggableOffsetBox):
     def __init__(self, legend, use_blit=False, update="loc"):
         """
@@ -342,6 +345,10 @@ class Legend(Artist):
         title_fontproperties=None,  # properties for the legend title
         alignment="center",       # control the alignment within the legend box
         *,
+        # ARCHITECTURE [LEGEND-001, LEGEND-002, LEGEND-003]: Legend.__init__
+        # owns the keyword-only creation contract.  Axes.legend and
+        # Figure.legend already forward their keyword arguments to this
+        # boundary, so the default and creation-time option belong here.
         # PSEUDOCODE [LEGEND-001]: draggable=False,
         ncol=1  # synonym for ncols (backward compatibility)
     ):
@@ -538,6 +545,12 @@ class Legend(Artist):
             title_prop_fp.set_size(title_fontsize)
 
         self.set_title(title, prop=title_prop_fp)
+        # ARCHITECTURE [LEGEND-001, LEGEND-002, LEGEND-003, LEGEND-004]: This
+        # null helper slot is the initialization seam.  Legend.__init__ owns
+        # when the creation option is applied; Legend.set_draggable owns helper
+        # lifecycle; DraggableLegend owns the established interaction adapter.
+        # The dependency direction is therefore __init__ -> set_draggable ->
+        # DraggableLegend -> DraggableOffsetBox, with no parallel interaction.
         # PSEUDOCODE [LEGEND-001, LEGEND-002, LEGEND-003, LEGEND-004]:
         # 1. Establish the disabled drag state before applying the creation
         #    option, so omission and an explicit false value share a known
