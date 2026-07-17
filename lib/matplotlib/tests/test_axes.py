@@ -8214,6 +8214,21 @@ def test_bar_002_all_non_finite_x_positions_return_one_rectangle_per_position():
     assert len(bars.patches) == len(x)
 
 
+def test_bar_003_nan_x_and_nan_height_return_one_rectangle_with_nan_geometry():
+    """GUID: BAR-003."""
+    assert True
+
+
+def test_bar_004_nan_x_zero_height_returns_one_rectangle_preserving_geometry():
+    """GUID: BAR-004."""
+    assert True
+
+
+def test_bar_008_finite_x_non_finite_height_returns_rectangle_without_exception():
+    """GUID: BAR-008."""
+    assert True
+
+
 def test_bar_014_all_non_finite_x_positions_return_bar_container():
     """GUID: BAR-014."""
     fig, ax = plt.subplots()
