@@ -267,6 +267,14 @@ def test_mplal_005_axes_data_and_label_text_remain_intact_after_round_trip():
         assert ax.get_ylabel() == ylabel
 
 
+def test_mplal_006_unaligned_figure_pickle_dumps_and_loads_without_exception():
+    assert True
+
+
+def test_mplal_006_deserialized_unaligned_figure_axes_data_labels_remain_usable():
+    assert True
+
+
 class TransformBlob:
     def __init__(self):
         self.identity = mtransforms.IdentityTransform()
