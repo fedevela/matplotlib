@@ -7327,9 +7327,34 @@ def test_invisible_axes():
     assert fig.canvas.inaxes((200, 200)) is None
 
 
-def test_m3dvis_009_non_3d_plotted_axes_set_visibility_draw_preserves_rendering():
+@pytest.mark.parametrize("visible", [False, True])
+def test_m3dvis_009_non_3d_plotted_axes_set_visibility_draw_preserves_rendering(
+        visible, monkeypatch):
     """GUID: M3DVIS-009 -- preserve non-3D axes visibility behavior."""
-    assert True
+    fig, ax = plt.subplots()
+    line, = ax.plot([0, 1], [0, 1])
+    draw_calls = []
+
+    patch_draw = ax.patch.draw
+    line_draw = line.draw
+
+    def record_patch_draw(renderer):
+        draw_calls.append(("patch", renderer))
+        patch_draw(renderer)
+
+    def record_line_draw(renderer):
+        draw_calls.append(("line", renderer))
+        line_draw(renderer)
+
+    monkeypatch.setattr(ax.patch, "draw", record_patch_draw)
+    monkeypatch.setattr(line, "draw", record_line_draw)
+
+    ax.set_visible(visible)
+    fig.canvas.draw()
+
+    renderer = fig.canvas.get_renderer()
+    expected = [("patch", renderer), ("line", renderer)] if visible else []
+    assert draw_calls == expected
 
 
 def test_xtickcolor_is_not_markercolor():
