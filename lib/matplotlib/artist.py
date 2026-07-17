@@ -1303,6 +1303,23 @@ class Artist:
                 return "[]"
             normed = self.norm(data)
             if np.isfinite(normed):
+                # GUID: BNF-001, BNF-002, BNF-003, BNF-004
+                # LOGIC OBLIGATION: Preserve cursor formatting when the norm
+                # cannot invert a finite, supplied scalar.
+                #
+                # PSEUDOCODE:
+                #   INPUT supplied_scalar = data
+                #   TRY:
+                #       derive neighboring scalar values by inverting the
+                #       normalized color interval containing supplied_scalar
+                #       derive display precision from those neighbors
+                #   CATCH ValueError from norm inversion:
+                #       select finite-scalar fallback display precision
+                #       retain supplied_scalar as the value to format
+                #   FORMAT supplied_scalar as a non-empty numeric string
+                #   RETURN the formatted string without changing mouse-over
+                #       state, so the same flow remains available to every
+                #       subsequent cursor-data formatting invocation
                 # Midpoints of neighboring color intervals.
                 neighbors = self.norm.inverse(
                     (int(self.norm(data) * n) + np.array([0, 1])) / n)
