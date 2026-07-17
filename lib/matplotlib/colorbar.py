@@ -503,6 +503,24 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
+        # CBNORM-001..005 pseudocode -- normalization-replacement update:
+        # INPUT: mappable and its existing colorbar (self).
+        # IF mappable.norm is not self.norm (identity comparison):
+        #   CBNORM-002: SET self.norm to the exact mappable.norm instance.
+        #   IF the replacement has an unset limit and mappable data exists:
+        #     Derive only unset limits from the data through the norm's valid
+        #     transform domain.
+        #     CBNORM-003: for positive LogNorm data, REQUIRE vmin > 0.
+        #   FAILURE: if no datum is in the valid transform domain, do not
+        #   invent a range; preserve the normalization's existing error path.
+        #   CBNORM-004: with positive LogNorm limits established, continue
+        #   recalculation without zero-valued logarithmic arithmetic.
+        #   CBNORM-001: reset locator, formatter, and axis scale; select the
+        #   replacement norm's scale so this colorbar becomes logarithmic.
+        # ELSE: preserve the existing locator, formatter, and scale.
+        # CBNORM-005: redraw boundaries and values; expose locators and
+        # formatters from the selected scale so ticks or labels reveal log
+        # spacing; mark this same colorbar stale after redraw completes.
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
