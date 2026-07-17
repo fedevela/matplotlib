@@ -21,6 +21,7 @@ from matplotlib import rc_context
 from matplotlib._api import MatplotlibDeprecationWarning
 import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
+from matplotlib.container import BarContainer
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import matplotlib.font_manager as mfont_manager
@@ -8199,14 +8200,24 @@ def test_bar_leading_nan():
 
 def test_bar_001_all_non_finite_x_positions_complete_without_stop_iteration():
     """GUID: BAR-001."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.bar([np.nan], [1])
 
 
 def test_bar_002_all_non_finite_x_positions_return_one_rectangle_per_position():
     """GUID: BAR-002."""
-    assert True
+    fig, ax = plt.subplots()
+    x = [np.nan, np.inf, -np.inf]
+
+    bars = ax.bar(x, [1, 2, 3])
+
+    assert len(bars.patches) == len(x)
 
 
 def test_bar_014_all_non_finite_x_positions_return_bar_container():
     """GUID: BAR-014."""
-    assert True
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([np.nan], [1])
+
+    assert isinstance(bars, BarContainer)

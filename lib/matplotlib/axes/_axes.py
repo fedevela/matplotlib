@@ -2182,11 +2182,19 @@ class Axes(_AxesBase):
                 x0 = cbook._safe_first_finite(x0)
             except (TypeError, IndexError, KeyError):
                 pass
+            except StopIteration:
+                # GUID: BAR-001 -- No finite element is available, so use the
+                # first element unconditionally for the conversion attempt.
+                x0 = cbook.safe_first_element(x0)
 
             try:
                 x = cbook._safe_first_finite(xconv)
             except (TypeError, IndexError, KeyError):
                 x = xconv
+            except StopIteration:
+                # GUID: BAR-001 -- Preserve normal width conversion and bar
+                # construction for wholly non-finite position arrays.
+                x = cbook.safe_first_element(xconv)
 
             delist = False
             if not np.iterable(dx):
