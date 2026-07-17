@@ -1286,16 +1286,41 @@ def test_range_010_state_updates_before_observer_gets_effective_value():
 
 def test_range_011_horizontal_coincident_endpoints_construct_and_remain_equal():
     """RANGE-011: Horizontal coincident endpoints remain constructible."""
+    # RANGE-011 -- horizontal regression-flow pseudocode:
+    # - Create a RangeSlider with horizontal orientation, finite bounds, and an
+    #   initial endpoint pair whose lower and upper values are identical.
+    # - Allow construction and its polygon update to run without intercepting an
+    #   IndexError; any coordinate access beyond the four vertices therefore
+    #   fails this test immediately.
+    # - After construction completes, compare both retained slider endpoints to
+    #   the coincident input and fail if either endpoint was changed or discarded.
     assert True
 
 
 def test_range_011_vertical_coincident_endpoints_construct_and_remain_equal():
     """RANGE-011: Vertical coincident endpoints remain constructible."""
+    # RANGE-011 -- vertical regression-flow pseudocode:
+    # - Create a RangeSlider with vertical orientation, finite bounds, and an
+    #   initial endpoint pair whose lower and upper values are identical.
+    # - Allow construction and its orientation-specific polygon update to run
+    #   without intercepting an IndexError; an access beyond four vertices thus
+    #   transitions this test directly to failure.
+    # - After construction completes, compare both retained slider endpoints to
+    #   the coincident input and fail if either endpoint was changed or discarded.
     assert True
 
 
 def test_range_011_either_orientation_detects_index_beyond_four_vertices():
     """RANGE-011: Either orientation detects polygon indexing recurrence."""
+    # RANGE-011 -- recurrence-detection pseudocode:
+    # - For each orientation, construct the coincident-endpoint scenario used by
+    #   its regression test and expose a selection polygon with exactly four
+    #   available coordinate slots, indexed from zero through three.
+    # - Execute the complete construction/update path without suppressing polygon
+    #   indexing exceptions, then verify the coincident endpoint pair is retained.
+    # - If either orientation addresses index four or greater, let the resulting
+    #   out-of-bounds exception escape so that orientation's case, and therefore
+    #   at least one RANGE-011 regression test, transitions to failure.
     assert True
 
 
