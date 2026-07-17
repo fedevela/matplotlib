@@ -280,6 +280,15 @@ def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
     assert "canvas" not in draggable.__dict__
 
 
+# MPLDRAG-008 architecture: complete-figure serialization regressions belong
+# in this pickle-test module, while draggable construction continues to enter
+# through the public Legend.set_draggable and Annotation.draggable seams.  The
+# legend and annotation success loci each own their corresponding figure setup
+# and converge only at pickle.dumps(fig); their paired defect-detection loci
+# reuse the same setup boundary and own injection of the forbidden helper ->
+# live-canvas dependency.  Production ownership remains in DraggableBase's
+# derived-canvas contract, so this coverage requires no backend adapter,
+# production helper, or additional public interface.
 def test_mpldrag_008_enabled_draggable_legend_complete_figure_pickle_succeeds():
     """GUID: MPLDRAG-008 -- draggable legend figure pickle succeeds."""
     # Regression-flow pseudocode:
