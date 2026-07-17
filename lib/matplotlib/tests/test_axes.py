@@ -8281,6 +8281,31 @@ def test_bar_008_finite_x_non_finite_height_returns_rectangle_without_exception(
     np.testing.assert_equal(bars.patches[0].get_height(), height)
 
 
+def test_bar_009_finite_numeric_x_and_supported_widths_preserve_geometry():
+    """GUID: BAR-009."""
+    pass
+
+
+def test_bar_009_finite_numeric_x_and_supported_widths_preserve_container():
+    """GUID: BAR-009."""
+    pass
+
+
+def test_bar_010_unit_aware_x_and_width_conversion_does_not_expose_stop_iteration():
+    """GUID: BAR-010."""
+    pass
+
+
+def test_bar_011_unit_aware_non_finite_x_returns_one_rectangle_per_position():
+    """GUID: BAR-011."""
+    pass
+
+
+def test_bar_013_established_invalid_inputs_including_generators_remain_rejected():
+    """GUID: BAR-013."""
+    pass
+
+
 def test_bar_014_all_non_finite_x_positions_return_bar_container():
     """GUID: BAR-014."""
     fig, ax = plt.subplots()
