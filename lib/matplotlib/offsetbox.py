@@ -1471,6 +1471,19 @@ or callable, default: value of *xycoords*
         self.stale = False
 
 
+# Serialization architecture (MPLDRAG-001, MPLDRAG-002, MPLDRAG-003,
+# MPLDRAG-004, MPLDRAG-007, MPLDRAG-009): DraggableBase owns both the
+# helper-local live-canvas boundary and the shared interaction lifecycle.  Its
+# canvas property is the single integration seam inherited by
+# DraggableOffsetBox (and thus DraggableLegend) and DraggableAnnotation; no
+# subclass or backend adapter owns a separate serialization or restoration
+# policy.  The serialized dependency remains helper -> reference artist ->
+# figure -> callback registry, while the direct helper -> live canvas edge is
+# transient.  Figure owns canvas removal and attachment, and CallbackRegistry
+# owns reconstruction of callbacks registered through _connect_picklable.
+# Thus normal dragging and restored dragging enter the same DraggableBase
+# event methods; MPLDRAG-009 adds no callback-reconstruction adapter or
+# backend-specific dependency beyond those existing seams.
 class DraggableBase:
     """
     Helper base class for a draggable artist (legend, offsetbox).
@@ -1505,7 +1518,6 @@ class DraggableBase:
         if not ref_artist.pickable():
             ref_artist.set_picker(True)
         self.got_artist = False
-        self.canvas = self.ref_artist.figure.canvas
         self._use_blit = use_blit and self.canvas.supports_blit
         self.cids = [
             self.canvas.callbacks._connect_picklable(
@@ -1513,6 +1525,11 @@ class DraggableBase:
             self.canvas.callbacks._connect_picklable(
                 'button_release_event', self.on_release),
         ]
+
+    # MPLDRAG-001, MPLDRAG-002, MPLDRAG-003, MPLDRAG-007: Derive the canvas
+    # from legitimate artist/figure state instead of retaining a direct live
+    # GUI reference.  This is shared by every backend and draggable subclass.
+    canvas = property(lambda self: self.ref_artist.figure.canvas)
 
     def on_motion(self, evt):
         if self._check_still_parented() and self.got_artist:

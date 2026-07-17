@@ -3156,6 +3156,15 @@ None}, default: None
         """
         a.draw(self.canvas.get_renderer())
 
+    # Serialization architecture (MPLDRAG-005, MPLDRAG-006): Figure's pickle
+    # hooks own the aggregate boundary for detaching and reconstructing the
+    # complete figure/artist graph.  They depend on Artist.__getstate__ for
+    # each artist's state-copy contract and on FigureCanvasBase for the fresh
+    # canvas attachment seam.  Draggable helpers remain ordinary retained
+    # graph nodes, so their presence adds no serializer dependency, and their
+    # absence follows this same unconditional path with no compatibility
+    # branch.  Backend-manager restoration remains downstream of this boundary.
+    #
     def __getstate__(self):
         state = super().__getstate__()
 
