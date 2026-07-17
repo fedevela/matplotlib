@@ -272,32 +272,84 @@ def test_plot_scalar(fig_test, fig_ref):
 
 def test_m3d_001_invalid_multidimensional_plot_leaves_no_incomplete_line3d():
     """M3D-001: A rejected plot leaves no incomplete Line3D attached."""
-    assert True
+    ax = plt.figure().add_subplot(projection='3d')
+    baseline, = ax.plot([0, 1], [0, 1], [0, 1])
+
+    with pytest.raises(ValueError):
+        ax.plot(np.ones((2, 2)), np.ones((2, 2)), np.ones((2, 2)))
+
+    assert list(ax.lines) == [baseline]
+    assert all(hasattr(line, '_verts3d') for line in ax.lines)
 
 
 def test_m3d_002_same_figure_draw_after_failure_has_no_missing_verts3d_error():
     """M3D-002: The same figure draws without a missing-_verts3d error."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    with pytest.raises(ValueError):
+        ax.plot(np.ones((2, 2)), np.ones((2, 2)), np.ones((2, 2)))
+
+    fig.canvas.draw()
 
 
 def test_m3d_003_after_failed_plot_valid_1d_line_and_existing_artist_render():
     """M3D-003: A complete valid line and existing artists render in process."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    baseline, = ax.plot([0, 1], [0, 1], [0, 1])
+
+    with pytest.raises(ValueError):
+        ax.plot(np.ones((2, 2)), np.ones((2, 2)), np.ones((2, 2)))
+    valid, = ax.plot([1, 2], [2, 3], [3, 4])
+
+    assert list(ax.lines) == [baseline, valid]
+    assert len(valid.get_data_3d()) == 3
+    fig.canvas.draw()
 
 
-def test_m3d_004_valid_scalar_or_1d_plot_creates_complete_renderable_line3d():
+@pytest.mark.parametrize(('xs', 'ys', 'zs'), [
+    (1, 2, 3),
+    ([0, 1], [1, 2], [2, 3]),
+])
+def test_m3d_004_valid_scalar_or_1d_plot_creates_complete_renderable_line3d(
+        xs, ys, zs):
     """M3D-004: Valid scalar or 1D input retains existing plot behavior."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    line, = ax.plot(xs, ys, zs)
+
+    assert isinstance(line, art3d.Line3D)
+    assert len(line.get_data_3d()) == 3
+    fig.canvas.draw()
 
 
 def test_m3d_005_dimensionality_error_is_not_followed_by_artist_state_error():
     """M3D-005: The input error is not replaced or followed by a state error."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    with pytest.raises(ValueError, match='dimensions'):
+        ax.plot(np.ones((2, 2)), np.ones((2, 2)), np.ones((2, 2)))
+
+    fig.canvas.draw()
 
 
 def test_m3d_006_existing_valid_artists_remain_drawable_after_failed_plot():
     """M3D-006: Existing valid artists remain drawable after rejection."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    baseline, = ax.plot([0, 1], [1, 0], [0, 1])
+    baseline_data = baseline.get_data_3d()
+
+    with pytest.raises(ValueError):
+        ax.plot(np.ones((2, 2)), np.ones((2, 2)), np.ones((2, 2)))
+
+    assert baseline in ax.lines
+    for actual, expected in zip(baseline.get_data_3d(), baseline_data):
+        np.testing.assert_array_equal(actual, expected)
+    fig.canvas.draw()
 
 
 def test_m3d_007_noninteractive_backend_runs_failure_cleanup_recovery_flow():
@@ -313,7 +365,26 @@ def test_m3d_007_noninteractive_backend_runs_failure_cleanup_recovery_flow():
     #       confirm the returned Line3D has complete 3D vertices; DRAW again.
     #   COMPLETE all steps in this process without replacing the input exception
     #       with an internal state error or restarting the backend/kernel.
-    assert True
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+
+    fig = Figure()
+    FigureCanvasAgg(fig)
+    ax = fig.add_subplot(projection='3d')
+    baseline, = ax.plot([0, 1], [0, 1], [0, 1])
+    fig.canvas.draw()
+
+    with pytest.raises(ValueError, match='dimensions'):
+        ax.plot(np.ones((2, 2)), np.ones((2, 2)), np.ones((2, 2)))
+
+    assert list(ax.lines) == [baseline]
+    assert all(hasattr(line, '_verts3d') for line in ax.lines)
+    fig.canvas.draw()
+
+    valid, = ax.plot([1, 2], [2, 3], [3, 4])
+    assert list(ax.lines) == [baseline, valid]
+    assert len(valid.get_data_3d()) == 3
+    fig.canvas.draw()
 
 
 @mpl3d_image_comparison(['mixedsubplot.png'])

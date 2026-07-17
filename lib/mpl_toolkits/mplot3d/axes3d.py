@@ -1307,8 +1307,13 @@ class Axes3D(Axes):
         #   art3d promotion must establish the attached-Line3D invariant declared
         #   by Line3D; drawing depends only on committed artists satisfying it.
         lines = super().plot(xs, ys, *args, **kwargs)
-        for line in lines:
-            art3d.line_2d_to_3d(line, zs=zs, zdir=zdir)
+        try:
+            for line in lines:
+                art3d.line_2d_to_3d(line, zs=zs, zdir=zdir)
+        except ValueError:
+            for line in lines:
+                line.remove()
+            raise
 
         xs, ys, zs = art3d.juggle_axes(xs, ys, zs, zdir)
         self.auto_scale_xyz(xs, ys, zs, had_data)
