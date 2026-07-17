@@ -391,6 +391,20 @@ class FigureCanvasAgg(FigureCanvasBase):
 
     def draw(self):
         # docstring inherited
+        # PSEUDOCODE (MPLNORM-006):
+        # INPUT: a figure on this noninteractive canvas whose positive-data
+        # mappable already has an associated colorbar.
+        # REQUIRE the caller to assign a valid positive LogNorm through the
+        # mappable's public norm property, then synchronously autoscale it.
+        # AFTER each completed state transition, require the mappable and
+        # colorbar to reference the same LogNorm and coherent positive limits.
+        # WHEN direct canvas drawing is requested, render the figure and its
+        # colorbar immediately from that shared normalization state; do not
+        # schedule, start, or wait for a GUI event loop.
+        # IF the shared logarithmic state is invalid, preserve the existing
+        # normalization error path; valid positive data must not enter it.
+        # OUTPUT: drawing completes with both endpoints still synchronized to
+        # the same valid logarithmic normalization and autoscaled limits.
         self.renderer = self.get_renderer()
         self.renderer.clear()
         # Acquire a lock on the shared font cache.
