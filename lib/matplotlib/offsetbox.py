@@ -1495,6 +1495,12 @@ class DraggableBase:
     """
 
     def __init__(self, ref_artist, use_blit=False):
+        # MPL-002 callback-ownership logic:
+        # STATE callback_canvas <- canvas resolved while ref_artist is parented
+        # FOR EACH required event:
+        #     callback_id <- register callback on callback_canvas
+        #     RETAIN callback_id for cleanup
+        # RETAIN callback_canvas for cleanup after ref_artist becomes detached
         self.ref_artist = ref_artist
         if not ref_artist.pickable():
             ref_artist.set_picker(True)
@@ -1550,6 +1556,13 @@ class DraggableBase:
                 self.ref_artist.set_animated(False)
 
     def _check_still_parented(self):
+        # MPL-001 release-time parenting logic:
+        # INPUT figure <- ref_artist.figure, without traversing to figure.canvas
+        # IF figure IS None:
+        #     CALL detached-safe MPL-002 disconnection
+        #     RETURN False so release handling treats ref_artist as unparented
+        # ELSE:
+        #     RETURN True so normal release handling may continue
         if self.ref_artist.figure is None:
             self.disconnect()
             return False
@@ -1558,6 +1571,15 @@ class DraggableBase:
 
     def disconnect(self):
         """Disconnect the callbacks."""
+        # MPL-002 detached-reference cleanup logic:
+        # INPUT callback_canvas retained during initialization
+        # FOR EACH registered callback_id:
+        #     DISCONNECT callback_id from callback_canvas
+        # IF a motion callback_id exists:
+        #     DISCONNECT it from callback_canvas
+        # ELSE:
+        #     CONTINUE without error
+        # RETURN with callbacks disconnected and no figure.canvas traversal
         for cid in self.cids:
             self.canvas.mpl_disconnect(cid)
         try:
