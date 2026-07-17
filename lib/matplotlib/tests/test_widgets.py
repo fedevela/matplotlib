@@ -1494,12 +1494,50 @@ def test_input_007_repeated_rebuilds_leave_later_widget_interactive():
 
 def test_input_008_unaffected_widget_mouse_input_preserves_callback_behavior():
     """GUID: INPUT-008 - unaffected mouse input preserves callbacks."""
-    assert True
+    fig = plt.figure()
+    button = widgets.Button(fig.add_axes([.4, .4, .2, .2]), "Button")
+    callbacks = [mock.Mock(), mock.Mock()]
+    for callback in callbacks:
+        button.on_clicked(callback)
+
+    press_event = _process_widget_mouse_event(
+        "button_press_event", button, (.5, .5))
+    release_event = _process_widget_mouse_event(
+        "button_release_event", button, (.5, .5))
+
+    assert press_event.inaxes is button.ax
+    for callback in callbacks:
+        callback.assert_called_once_with(release_event)
+    assert fig.canvas.mouse_grabber is None
 
 
 def test_input_008_range_slider_and_button_outside_rebuild_remain_interactive():
     """GUID: INPUT-008 - established interactions remain unblocked."""
-    assert True
+    fig = plt.figure()
+    slider = widgets.RangeSlider(
+        fig.add_axes([.1, .55, .8, .2]), "", 0, 1, valinit=(.2, .8))
+    button = widgets.Button(fig.add_axes([.4, .15, .2, .2]), "Button")
+    slider_values = []
+    button_events = []
+    slider.on_changed(lambda values: slider_values.append(tuple(values)))
+    button.on_clicked(button_events.append)
+    fig.canvas.draw()
+
+    first_event = _press_range_slider(slider, .35)
+    _release_range_slider(slider, .35)
+    second_event = _press_range_slider(slider, .65)
+    _release_range_slider(slider, .65)
+    _click_button(button)
+
+    assert_allclose(
+        slider_values,
+        [(first_event.xdata, .8), (first_event.xdata, second_event.xdata)])
+    assert_allclose(slider.val, slider_values[-1])
+    assert len(button_events) == 1
+    assert button_events[0].inaxes is button.ax
+    assert not slider.drag_active
+    assert slider._active_handle is None
+    assert fig.canvas.mouse_grabber is None
 
 
 @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
