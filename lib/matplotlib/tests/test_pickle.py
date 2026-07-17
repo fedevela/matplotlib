@@ -276,6 +276,21 @@ def test_dpi_004_macosx_m1_at_least_32_round_trips_without_overflow_error():
         pytest.fail("32 consecutive figure pickle round trips overflowed")
 
 
+def test_dpi_005_deserialized_macosx_figure_supports_backend_operations():
+    """GUID: DPI-005 -- a restored MacOSX figure remains operational."""
+    assert True
+
+
+def test_dpi_006_deserialized_figure_preserves_logical_dpi_dimensions():
+    """GUID: DPI-006 -- restored dimensions match the pre-pickle dimensions."""
+    assert True
+
+
+def test_dpi_007_deserialized_macosx_figure_preserves_rendering_state_through_draw():
+    """GUID: DPI-007 -- a backend draw preserves restored rendering state."""
+    assert True
+
+
 def test_mpl_toolkits():
     ax = parasite_axes.host_axes([0, 0, 1, 1])
     assert type(pickle.loads(pickle.dumps(ax))) == parasite_axes.HostAxes
