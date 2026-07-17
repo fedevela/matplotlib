@@ -10,6 +10,12 @@ from .axes_divider import Size, SubplotDivider, Divider
 from .mpl_axes import Axes
 
 
+# ARCHITECTURE [AXGRID-001, AXGRID-004, AXGRID-005, AXGRID-008]:
+# Grid.set_label_mode owns grid-topology and label-mode policy; _tick_only is
+# the single axes-interface adaptation boundary.  Dependencies point from the
+# grid policy into this helper, which may use either the axis-artist mapping or
+# base-Axes visibility interfaces, but must not depend on an optional custom
+# axes package.
 def _tick_only(ax, bottom_on, left_on):
     # PSEUDOCODE [AXGRID-001, AXGRID-004, AXGRID-008]:
     # INPUT: one compatible axes and the existing bottom/left suppression
@@ -175,6 +181,9 @@ class Grid:
         for ax in self.axes_all:
             fig.add_axes(ax)
 
+        # ARCHITECTURE [AXGRID-003]: Grid.__init__ owns the lifecycle seam
+        # from completed axes registration into the common label-mode policy;
+        # custom axes compatibility remains owned by _tick_only downstream.
         # PSEUDOCODE [AXGRID-003]:
         # AFTER every axes is constructed, located, and attached to the figure,
         # HAND OFF the configured label_mode to the common mode procedure.
@@ -279,6 +288,9 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
         """
+        # ARCHITECTURE [AXGRID-004, AXGRID-005]: This method owns only mode and
+        # row/column selection.  Per-axes interface details stay behind
+        # _tick_only so every cell follows one policy-to-adapter dependency.
         # PSEUDOCODE [AXGRID-004, AXGRID-005]:
         # FOR each cell selected below, derive suppression from its row, column,
         # and mode: "all" exposes both sides; "L" exposes bottom-row x labels

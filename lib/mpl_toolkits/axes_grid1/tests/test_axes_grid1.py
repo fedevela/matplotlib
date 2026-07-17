@@ -592,6 +592,11 @@ def test_axes_class_tuple():
     gr = AxesGrid(fig, 111, nrows_ncols=(1, 1), axes_class=axes_class)
 
 
+# ARCHITECTURE [AXGRID-001, AXGRID-003, AXGRID-004, AXGRID-005, AXGRID-008]:
+# This module owns the dependency-free custom-Axes test seam.  Its eventual
+# test double and visibility observer are shared scaffolding for the traced
+# loci below; no optional axes package belongs in the production dependency
+# path or in this compatibility contract.
 def test_AXGRID_001_non_subscriptable_callable_axis_initializes():
     """AXGRID-001: Callable non-subscriptable axis initialization succeeds."""
     assert True
