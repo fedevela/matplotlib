@@ -1284,6 +1284,12 @@ def test_range_010_state_updates_before_observer_gets_effective_value():
     assert_allclose(state_during_callback, received)
 
 
+# RANGE-011 architecture: this RangeSlider regression cluster owns the public
+# construction boundary for coincident endpoints.  The horizontal and vertical
+# tests below are the orientation-specific integration seams; the shared
+# recurrence test owns the four-explicit-vertex contract and leaves indexing
+# exceptions uncaught.  These tests depend on RangeSlider's existing public API
+# and Polygon representation, so no production test hook or adapter is needed.
 def test_range_011_horizontal_coincident_endpoints_construct_and_remain_equal():
     """RANGE-011: Horizontal coincident endpoints remain constructible."""
     # RANGE-011 -- horizontal regression-flow pseudocode:
