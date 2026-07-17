@@ -626,6 +626,23 @@ grestore
         if ismath:
             return self.draw_mathtext(gc, x, y, s, prop, angle)
 
+        # MPLPS-003, MPLPS-004, MPLPS-005, MPLPS-006, MPLPS-007, MPLPS-010
+        # pseudocode -- shared PS/EPS empty-line handling:
+        # INPUT the next layout line, its already-computed (x, y) position,
+        # font properties, and rotation, in the original multiline order.
+        # BUILD zero or more concrete font/glyph runs for that line.
+        # IF the line builds no run (including a leading, middle, or trailing
+        # empty line), treat it as a successful no-output line; do not append
+        # or unpack an absent run and return control for the next layout line.
+        # ELSE emit every concrete run with the existing position, rotation,
+        # font selection, clipping, and glyph order unchanged.
+        # CONTINUE upstream line iteration so every later non-empty line is
+        # emitted at its precomputed position and in its original order.
+        # APPLY the same flow for PS and EPS, which share this renderer path.
+        # PRESERVE the non-empty path for ordinary single-line and multiline
+        # text; do not change layout spacing or any non-PostScript backend.
+        # FAILURE PATH: an absent run produces no PostScript commands and is
+        # never dereferenced; errors from real runs retain their existing path.
         if mpl.rcParams['ps.useafm']:
             font = self._get_font_afm(prop)
             scale = 0.001 * prop.get_size_in_points()
