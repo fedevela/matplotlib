@@ -129,6 +129,20 @@ class Grid:
         _api.check_in_list(["column", "row"], direction=direction)
         self._direction = direction
 
+        # PSEUDOCODE [AXGRID-002, AXGRID-007]:
+        # INPUT: axes_class in its existing class form or (class, kwargs) form.
+        # IF no axes_class is supplied, select the default axes class.
+        # ELSE IF axes_class is a list or tuple:
+        #     unpack exactly the supplied class and constructor arguments;
+        #     bind those arguments to the class without invoking it yet.
+        # FOR each requested cell, derive its sharex and sharey references;
+        # invoke the selected or bound class with figure, rectangle, sharing
+        # references, and every supplied constructor argument.
+        # IF unpacking, argument binding, or axes construction fails, propagate
+        # that originating failure; do not reinterpret the axes' callable
+        # ``axis`` method as a subscriptable mapping during construction.
+        # OUTPUT: each cell contains an instance of the supplied axes class,
+        # including a one-cell projected axes configured by its projection.
         if axes_class is None:
             axes_class = self._defaultAxesClass
         elif isinstance(axes_class, (list, tuple)):
