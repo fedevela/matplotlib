@@ -1494,6 +1494,11 @@ class DraggableBase:
     coordinate and set a relevant attribute.
     """
 
+    # MPL-001, MPL-002 architecture boundary:
+    # DraggableBase owns both the parent-state gate and callback cleanup.
+    # Artist parenting supplies state, but must not own callback resources.
+    # The registration seam must retain its canvas as the cleanup dependency.
+
     def __init__(self, ref_artist, use_blit=False):
         # MPL-002 callback-ownership logic:
         # STATE callback_canvas <- canvas resolved while ref_artist is parented
@@ -1514,6 +1519,7 @@ class DraggableBase:
         ]
 
     # A property, not an attribute, to maintain picklability.
+    # MPL-001: This is the live-parent canvas boundary, not a cleanup port.
     canvas = property(lambda self: self.ref_artist.figure.canvas)
 
     def on_motion(self, evt):
@@ -1571,6 +1577,7 @@ class DraggableBase:
 
     def disconnect(self):
         """Disconnect the callbacks."""
+        # MPL-002: Cleanup belongs to the registration-time canvas boundary.
         # MPL-002 detached-reference cleanup logic:
         # INPUT callback_canvas retained during initialization
         # FOR EACH registered callback_id:
