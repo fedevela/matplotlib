@@ -71,6 +71,10 @@ class Gcf:
         # see: https://github.com/matplotlib/matplotlib/pull/3045
         gc.collect(1)
 
+    # ARCHITECTURE [BACKEND-006]: Figure-identity lookup belongs to Gcf, the
+    # owner of the figure-number-to-manager registry.  pyplot.close depends on
+    # this lifecycle boundary instead of inspecting or mutating Gcf.figs
+    # itself; matched figures continue through destroy().
     @classmethod
     def destroy_fig(cls, fig):
         """Destroy figure *fig*."""
