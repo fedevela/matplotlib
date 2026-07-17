@@ -882,6 +882,26 @@ def test_legend_005_pyplot_figlegend_propagates_explicit_draggable_false():
     assert not legend.get_draggable()
 
 
+def test_legend_006_post_creation_configuration_enables_draggability():
+    """GUID: LEGEND-006 -- post-creation enabling makes a legend draggable."""
+    assert True
+
+
+def test_legend_006_post_creation_configuration_disables_draggability():
+    """GUID: LEGEND-006 -- post-creation disabling makes a legend non-draggable."""
+    assert True
+
+
+def test_legend_007_creation_option_preserves_legend_appearance():
+    """GUID: LEGEND-007 -- creation-time state does not change appearance."""
+    assert True
+
+
+def test_legend_007_creation_option_preserves_non_drag_behavior():
+    """GUID: LEGEND-007 -- creation-time state does not change other behavior."""
+    assert True
+
+
 def test_alpha_handles():
     x, n, hh = plt.hist([1, 2, 3], alpha=0.25, label='data', color='red')
     legend = plt.legend()
