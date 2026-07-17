@@ -113,12 +113,50 @@ def test_m3dvis_004_visible_3d_axes_with_plotted_content_draws_normally(
 
 def test_m3dvis_005_hide_visible_3d_axes_keeps_attached_data_unaltered():
     """GUID: M3DVIS-005 -- hiding preserves attached plotted data unchanged."""
-    pass
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    line, = ax.plot([0, 1], [2, 3], [4, 5])
+
+    assert ax.get_visible()
+    fig.canvas.draw()
+    children = tuple(ax.get_children())
+    data = tuple(values.copy() for values in line.get_data_3d())
+
+    ax.set_visible(False)
+    fig.canvas.draw()
+
+    assert not ax.get_visible()
+    assert tuple(ax.get_children()) == children
+    assert line in ax.lines
+    assert line.get_visible()
+    for actual, expected in zip(line.get_data_3d(), data):
+        np.testing.assert_array_equal(actual, expected)
 
 
-def test_m3dvis_006_restore_hidden_3d_axes_redraws_content_no_recreation():
+def test_m3dvis_006_restore_hidden_3d_axes_redraws_content_no_recreation(
+        monkeypatch):
     """GUID: M3DVIS-006 -- a restored axes redraws its existing content."""
-    pass
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    line, = ax.plot([0, 1], [0, 1], [0, 1])
+    draw_calls = []
+    line_draw = line.draw
+
+    def record_line_draw(renderer):
+        draw_calls.append(renderer)
+        line_draw(renderer)
+
+    monkeypatch.setattr(line, "draw", record_line_draw)
+
+    ax.set_visible(False)
+    fig.canvas.draw()
+    assert draw_calls == []
+
+    ax.set_visible(True)
+    fig.canvas.draw()
+
+    assert draw_calls == [fig.canvas.get_renderer()]
+    assert list(ax.lines) == [line]
 
 
 def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
