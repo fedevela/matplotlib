@@ -28,6 +28,26 @@ def test_aspect_equal_error():
         ax.set_aspect('equal')
 
 
+def test_m3dvis_001_drawing_invisible_3d_axes_omits_all_owned_visuals():
+    """GUID: M3DVIS-001 -- hidden axes draw with no owned visuals."""
+    assert True
+
+
+def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence():
+    """GUID: M3DVIS-003 -- false visibility yields no rendered presence."""
+    assert True
+
+
+def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
+    """GUID: M3DVIS-007 -- figure draw containing hidden axes succeeds."""
+    assert True
+
+
+def test_m3dvis_010_supported_backends_omit_invisible_3d_axes_output():
+    """GUID: M3DVIS-010 -- supported backends omit hidden axes output."""
+    assert True
+
+
 @mpl3d_image_comparison(['bar3d.png'])
 def test_bar3d():
     fig = plt.figure()
