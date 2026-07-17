@@ -2451,6 +2451,9 @@ class Axes(_AxesBase):
         #     append rectangle to patches exactly once
         # END FOR
         # RESULT: length(patches) == expected_rectangle_count
+        # Architecture contract -- GUID: BAR-002
+        # This loop owns the input-to-Rectangle cardinality; add_patch owns
+        # artist registration and delegates limit extraction to _AxesBase.
         patches = []
         args = zip(left, bottom, width, height, color, edgecolor, linewidth,
                    hatch, patch_labels)
@@ -2503,6 +2506,9 @@ class Axes(_AxesBase):
         #                           public label)
         # return container after normal container and tick-label bookkeeping,
         # including when every supplied x position is non-finite
+        # Architecture contract -- GUID: BAR-014
+        # BarContainer assembly remains in Axes.bar so exceptional coordinate
+        # classes cannot introduce an alternate return boundary.
         bar_container = BarContainer(patches, errorbar, datavalues=datavalues,
                                      orientation=orientation,
                                      label=bar_container_label)
