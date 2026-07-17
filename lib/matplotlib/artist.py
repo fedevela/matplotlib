@@ -213,6 +213,13 @@ class Artist:
         self._sticky_edges = _XYPair([], [])
         self._in_layout = True
 
+    # Serialization architecture (MPLDRAG-005): Artist.__getstate__ owns the
+    # per-artist state-copy boundary used by Figure's recursive pickle graph.
+    # Stored properties and links to other graph members remain ordinary
+    # Artist state; only state already designated transient by this hook may
+    # be cleared.  Draggable helpers must not introduce a parallel artist
+    # serializer, state projection, or restoration adapter.
+    #
     # Artist-state preservation pseudocode
     #
     # Logic obligation:
