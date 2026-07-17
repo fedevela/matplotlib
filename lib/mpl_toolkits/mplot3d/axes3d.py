@@ -3180,6 +3180,15 @@ pivot='tail', normalize=False, **kwargs)
 
     def get_tightbbox(self, renderer=None, call_axes_locator=True,
                       bbox_extra_artists=None, *, for_layout_only=False):
+        # Architecture boundary (M3DVIS-008): Axes3D owns the adaptation from
+        # the base Axes tight-bbox contract to its additional 3D-axis bounds.
+        # In particular, the base contract's ``None`` result for an invisible
+        # axes must cross this override unchanged: figure layout remains the
+        # consumer of that absence sentinel, while the existing draw pipeline
+        # remains the sole owner of rendering and visibility state.  Keep the
+        # dependency directed from layout callers through the established
+        # polymorphic get_tightbbox seam; no 3D-specific branch belongs in the
+        # generic tight- or constrained-layout modules.
         # M3DVIS-008 layout-boundary logic:
         # - Input this Axes3D's visibility state and the renderer supplied by
         #   the figure's layout operation.
