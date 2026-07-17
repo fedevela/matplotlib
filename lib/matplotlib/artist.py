@@ -1322,6 +1322,14 @@ class Artist:
             # from Artist first and from ScalarMappable second, so
             # Artist.format_cursor_data would always have precedence over
             # ScalarMappable.format_cursor_data.
+            #
+            # ARCHITECTURE (GUID: BNF-005, BNF-006, BNF-007): Artist owns this
+            # cursor-formatting entry point, while ScalarMappable supplies the
+            # norm and cmap as read-only dependencies.  Normalize.inverse is
+            # the capability boundary: invertible norms retain the established
+            # precision path, and a norm's ValueError is contained at this
+            # integration seam.  Formatting must not acquire ownership of, or
+            # write through to, the artist data, norm, cmap, or render state.
             n = self.cmap.N
             if np.ma.getmask(data):
                 return "[]"
