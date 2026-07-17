@@ -1087,7 +1087,8 @@ def rc_context(rc=None, fname=None):
              plt.plot(x, y)  # uses 'print.rc'
 
     """
-    orig = rcParams.copy()
+    orig = dict(rcParams.copy())
+    del orig['backend']
     try:
         if fname:
             rc_file(fname)
@@ -1175,16 +1176,6 @@ def get_backend():
     --------
     matplotlib.use
     """
-    # If pyplot already loaded a backend, resolving the auto sentinel through
-    # rcParams would call pyplot.switch_backend() and close all figures.  This
-    # can happen when the backend was first resolved inside an rc_context and
-    # the context subsequently restored the sentinel.  In that case the
-    # backend is already known, so report it without switching backends.
-    if (rcParams._get_backend_or_none() is None
-            and (plt := sys.modules.get("matplotlib.pyplot")) is not None
-            and plt._backend_mod is not None):
-        current_backend = sys.modules["matplotlib.backends"].backend
-        rcParams["backend"] = current_backend
     return rcParams['backend']
 
 
