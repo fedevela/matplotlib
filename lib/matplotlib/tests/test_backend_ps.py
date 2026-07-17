@@ -278,21 +278,45 @@ def test_no_duplicate_definition():
 
 def test_mplps_001_direct_figure_annotation_leading_blank_eps_retains_label():
     """MPLPS-001: EPS saves without TypeError and retains ``Lower label``."""
+    # MPLPS-001 pseudocode:
+    # GIVEN a directly constructed Figure with axes
+    # AND an annotation whose text is "\nLower label"
+    # WHEN the Figure saves to an in-memory EPS destination
+    # THEN saving completes without TypeError
+    # AND decoded EPS output contains "Lower label".
     assert True
 
 
 def test_mplps_002_direct_figure_title_leading_blank_eps_retains_title():
     """MPLPS-002: EPS saves without error and retains ``Lower title``."""
+    # MPLPS-002 pseudocode:
+    # GIVEN a directly constructed Figure with axes
+    # AND the axes title is "\nLower title"
+    # WHEN the Figure saves to an in-memory EPS destination
+    # THEN saving completes without error
+    # AND decoded EPS output contains "Lower title".
     assert True
 
 
 def test_mplps_008_annotation_title_semantics_change_only_for_empty_line_fix():
     """MPLPS-008: Baseline artist semantics remain otherwise unchanged."""
+    # MPLPS-008 pseudocode:
+    # FOR EACH artist kind in annotation and axes title:
+    #   CAPTURE observable EPS behavior for ordinary non-empty text.
+    #   EXERCISE the corresponding leading-empty-line text.
+    #   VERIFY artist semantics and non-empty-line rendering follow the same
+    #   existing path, with only the empty-line failure removed.
     assert True
 
 
 def test_mplps_009_direct_figure_leading_blank_eps_regression_retains_text():
     """MPLPS-009: Regression saves EPS and checks text after the empty line."""
+    # MPLPS-009 pseudocode:
+    # BUILD the regression fixture from Figure directly, without pyplot.
+    # ADD leading-empty-line annotation and title text to its axes.
+    # SAVE through the EPS backend into memory.
+    # IF saving raises, fail with the backend exception.
+    # OTHERWISE verify each non-empty trailing line occurs in EPS output.
     assert True
 
 

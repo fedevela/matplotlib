@@ -654,6 +654,19 @@ grestore
             self._character_tracker.track(font, s)
             stream = []
             prev_font = curr_stream = None
+            # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 pseudocode:
+            # INPUT one text-layout line and its selected TrueType font.
+            # FOR EACH glyph emitted by layout:
+            #   IF its font differs from the active glyph run:
+            #     IF an active run exists, hand that completed run to stream.
+            #     START a new run containing the glyph's PostScript font name.
+            #   APPEND the glyph position and name to the active run.
+            # AFTER layout completes:
+            #   IF an active run exists, hand that final run to stream.
+            #   ELSE preserve the empty line as a no-output operation.
+            # FOR EACH real run in stream, emit its existing PS commands unchanged.
+            # FAILURE PATH: never append or unpack an absent run; allow later
+            # non-empty annotation/title lines to continue to EPS output.
             for item in _text_helpers.layout(s, font):
                 ps_name = (item.ft_object.postscript_name
                            .encode("ascii", "replace").decode("ascii"))
