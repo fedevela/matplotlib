@@ -130,6 +130,26 @@ __bibtex__ = r"""@Article{Hunter:2007,
 }"""
 
 
+# PSEUDOCODE -- top-level version attribute contract
+#
+# PROCEDURE resolve_public_version_attribute(requested_name):
+#   INPUT: an attribute name requested from the imported matplotlib package.
+#   IF requested_name is "__version__":                         [MPL-007]
+#     Resolve the existing release string through the current source-selection
+#     flow, cache that string as __version__, and return it without changing
+#     its meaning or value format.
+#     IF resolution fails, propagate the existing failure without publishing
+#     a partial or differently formatted __version__ value.
+#   ELSE IF requested_name is THE_COMPARABLE_VERSION_ATTRIBUTE: [MPL-001]
+#     Obtain the release string through the same __version__ resolution flow.
+#     Convert that string into one directly orderable version value.
+#     IF conversion fails, propagate the failure and do not cache a value.
+#     IF the converted value identifies a release different from the release
+#     string, reject it and do not publish an inconsistent value.          [MPL-003]
+#     Cache and return the converted value from exactly this one new public
+#     top-level attribute; expose no second comparable representation.     [MPL-002]
+#   ELSE:
+#     Raise AttributeError through the existing unknown-attribute path.
 def __getattr__(name):
     if name == "__version__":
         import setuptools_scm
