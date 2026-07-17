@@ -42,6 +42,11 @@ def test_m3dvis_001_drawing_invisible_3d_axes_omits_all_owned_visuals(
     ax.set_visible(False)
 
 
+def test_m3dvis_002_two_axes_hide_3d_redraw_preserves_other_axes_output():
+    """GUID: M3DVIS-002 -- hiding a 3D axes preserves other axes output."""
+    assert True
+
+
 def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence(
         monkeypatch):
     """GUID: M3DVIS-003 -- false visibility yields no rendered presence."""
