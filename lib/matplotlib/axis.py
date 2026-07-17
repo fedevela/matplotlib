@@ -1987,6 +1987,13 @@ class Axis(martist.Artist):
             self.set_major_locator(mticker.FixedLocator(ticks))
             return self.get_major_ticks(len(ticks))
 
+    # ARCHITECTURE [TICKS-001, TICKS-002, TICKS-003]
+    # This is the shared validation boundary for Axis.set_ticks and the
+    # Axes.set_x/yticks delegates.  Candidate label properties depend on the
+    # mtext.Text property contract, never on a live tick label.  Location
+    # mutation remains downstream of that contract, while set_ticklabels is
+    # the sole property-application seam and is entered only for explicit
+    # labels.
     def set_ticks(self, ticks, labels=None, *, minor=False, **kwargs):
         """
         Set this Axis' tick locations and optionally labels.
