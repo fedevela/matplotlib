@@ -2021,6 +2021,10 @@ class Axis(martist.Artist):
         other limits, you should set the limits explicitly after setting the
         ticks.
         """
+        if labels is None and kwargs:
+            raise ValueError(
+                "Keyword arguments other than 'minor' modify the text labels "
+                "and can only be used if 'labels' are passed as well.")
         result = self._set_tick_locations(ticks, minor=minor)
         if labels is not None:
             self.set_ticklabels(labels, minor=minor, **kwargs)

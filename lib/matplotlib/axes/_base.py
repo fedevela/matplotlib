@@ -3738,6 +3738,9 @@ class _AxesBase(martist.Artist):
     get_xscale = _axis_method_wrapper("xaxis", "get_scale")
     set_xscale = _axis_method_wrapper("xaxis", "_set_axes_scale")
     get_xticks = _axis_method_wrapper("xaxis", "get_ticklocs")
+    # ARCHITECTURE [TICKS-001, TICKS-002, TICKS-003, TICKS-004, TICKS-005,
+    # TICKS-006, TICKS-007]: Keep this edge delegation-only; Axis.set_ticks
+    # owns validation, mutation ordering, and the public return contract.
     set_xticks = _axis_method_wrapper("xaxis", "set_ticks")
     get_xmajorticklabels = _axis_method_wrapper("xaxis", "get_majorticklabels")
     get_xminorticklabels = _axis_method_wrapper("xaxis", "get_minorticklabels")
@@ -3970,6 +3973,9 @@ class _AxesBase(martist.Artist):
     get_yscale = _axis_method_wrapper("yaxis", "get_scale")
     set_yscale = _axis_method_wrapper("yaxis", "_set_axes_scale")
     get_yticks = _axis_method_wrapper("yaxis", "get_ticklocs")
+    # ARCHITECTURE [TICKS-001, TICKS-002, TICKS-003, TICKS-004, TICKS-005,
+    # TICKS-006, TICKS-007]: Keep this edge delegation-only; Axis.set_ticks
+    # owns validation, mutation ordering, and the public return contract.
     set_yticks = _axis_method_wrapper("yaxis", "set_ticks")
     get_ymajorticklabels = _axis_method_wrapper("yaxis", "get_majorticklabels")
     get_yminorticklabels = _axis_method_wrapper("yaxis", "get_minorticklabels")
