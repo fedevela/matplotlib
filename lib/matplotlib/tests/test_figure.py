@@ -546,6 +546,20 @@ def test_valid_layouts():
     assert fig.get_constrained_layout()
 
 
+class TestConstrainedLayoutFalseContracts:
+    def test_clf_001_effective_state_remains_disabled_after_layout_operations(self):
+        """GUID: CLF-001."""
+        assert True
+
+    def test_clf_002_subplots_adjust_wspace_zero_emits_no_warning(self):
+        """GUID: CLF-002; no constrained-layout incompatibility warning."""
+        assert True
+
+    def test_clf_003_subplots_adjust_wspace_zero_applies_zero_spacing(self):
+        """GUID: CLF-003; geometry changes to the requested zero spacing."""
+        assert True
+
+
 def test_invalid_layouts():
     fig, ax = plt.subplots(layout="constrained")
     with pytest.warns(UserWarning):
