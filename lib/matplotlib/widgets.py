@@ -214,6 +214,12 @@ class Button(AxesWidget):
         self.color = color
         self.hovercolor = hovercolor
 
+    # INPUT-008 -- unaffected Button interaction boundary: Button remains the
+    # owner of its press/release lifecycle.  Its only input-state dependency is
+    # FigureCanvasBase's existing mouse-grab contract, and callback delivery
+    # remains behind its existing CallbackRegistry ``clicked`` signal.  The
+    # RangeSlider rebuild path must not add an adapter, gate, or reverse
+    # dependency at this boundary.
     def _click(self, event):
         # INPUT-008 -- unaffected Button press logic:
         #   INPUT: mouse input for an interaction that does not enter the
@@ -921,6 +927,12 @@ class RangeSlider(SliderBase):
             else:
                 self._active_handle.set_xdata([val])
 
+    # INPUT-008 -- regression-containment boundary: RangeSlider._update retains
+    # ownership of ordinary drag input and its ``changed`` callback handoff.
+    # Rebuild-specific cleanup belongs only at that handoff's return seam; the
+    # shared canvas event contract and Button's independent interaction owner
+    # remain upstream/downstream-neutral and require no new integration layer.
+    #
     # INPUT-001, INPUT-002, INPUT-003, INPUT-004, INPUT-006, INPUT-007 --
     # ownership and integration boundary: RangeSlider._update owns the complete
     # drag lifecycle because it owns ``drag_active`` and ``_active_handle``.  It
