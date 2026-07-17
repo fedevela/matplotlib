@@ -384,22 +384,48 @@ class TestColormapSentinelIndexingContracts:
     def test_cmap_008_supported_floating_point_input_retains_output_values(
             self):
         """GUID: CMAP-008; floating-point output values remain unchanged."""
-        assert True
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_under("yellow")
+        cmap.set_over("cyan")
+        cmap.set_bad("magenta")
+        values = np.array([[-0.1, 0, 1 / 3], [2 / 3, 1, np.nan]])
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array([
+                "yellow", "red", "green", "blue", "blue", "magenta",
+            ]).reshape(2, 3, 4))
 
     def test_cmap_008_supported_floating_point_input_retains_output_shape(
             self):
         """GUID: CMAP-008; floating-point output shape remains unchanged."""
-        assert True
+        values = np.zeros((2, 1, 3), dtype=np.float32)
+
+        assert mcolors.ListedColormap(["red"])(values).shape == (2, 1, 3, 4)
 
     def test_cmap_009_sentinel_capable_integer_input_retains_output_values(
             self):
         """GUID: CMAP-009; sentinel-capable integer values remain unchanged."""
-        assert True
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_under("yellow")
+        cmap.set_over("cyan")
+        cmap.set_bad("magenta")
+        values = np.ma.array(
+            [[-1, 0, 1], [2, 3, 0]], dtype=np.int16,
+            mask=[[False, False, False], [False, False, True]])
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array([
+                "yellow", "red", "green", "blue", "cyan", "magenta",
+            ]).reshape(2, 3, 4))
 
     def test_cmap_009_sentinel_capable_integer_input_retains_output_shape(
             self):
         """GUID: CMAP-009; sentinel-capable integer shape remains unchanged."""
-        assert True
+        values = np.zeros((2, 1, 3), dtype=np.int16)
+
+        assert mcolors.ListedColormap(["red"])(values).shape == (2, 1, 3, 4)
 
 
 def test_BoundaryNorm():
