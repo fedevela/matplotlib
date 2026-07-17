@@ -880,7 +880,7 @@ class Poly3DCollection(PolyCollection):
         self.stale = True
 
     def get_facecolor(self):
-        # GUIDs: P3DFC-001, P3DFC-002, P3DFC-003.
+        # GUIDs: P3DFC-001, P3DFC-002, P3DFC-003, P3DFC-004, P3DFC-005.
         if hasattr(self, '_facecolors2d'):
             return self._facecolors2d
 
