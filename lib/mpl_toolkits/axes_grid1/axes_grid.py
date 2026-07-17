@@ -149,6 +149,17 @@ class Grid:
         # boundary for the axes-construction dependency.  Downstream grid
         # topology receives one callable; ownership of tuple-provided
         # constructor arguments remains here rather than in the cell loop.
+        # PSEUDOCODE [AXGRID-006 — default Axes construction]:
+        # INPUT: axes_class is omitted and label_mode is supported.
+        # SELECT the existing _defaultAxesClass without wrapping or replacing
+        # its constructor contract.
+        # CONSTRUCT every requested cell through the ordinary grid sequence;
+        # preserve sharing references, register all cells with the figure,
+        # then hand off the completed grid to label-mode processing.
+        # IF ordinary default-Axes construction fails, propagate that failure;
+        # do not introduce a default-class-specific recovery or alternate path.
+        # OUTPUT: a successfully initialized grid of the existing default Axes
+        # instances whose visibility state is determined by set_label_mode.
         if axes_class is None:
             axes_class = self._defaultAxesClass
         elif isinstance(axes_class, (list, tuple)):
@@ -291,6 +302,21 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
         """
+        # PSEUDOCODE [AXGRID-006 — default Axes label visibility]:
+        # INPUT: a fully registered grid of default Axes and a supported mode.
+        # IF mode is "all", make bottom tick labels, x-axis labels, left tick
+        # labels, and y-axis labels visible on every cell.
+        # ELSE IF mode is "L", expose left labels only in the left column and
+        # bottom labels only in the bottom row; expose both at lower left and
+        # hide both on interior cells.
+        # ELSE IF mode is "1", first hide bottom and left labels everywhere,
+        # then expose both kinds only on the lower-left cell.
+        # ELSE IF mode is "keep", leave every existing visibility state intact.
+        # ELSE preserve the established unsupported-mode warning path.
+        # FOR every visibility transition, route through _tick_only so tick
+        # labels and their corresponding axis label change together.
+        # OUTPUT: the same observable visibility matrix historically produced
+        # by the selected supported mode for the default Axes class.
         if mode == "all":
             for ax in self.axes_all:
                 _tick_only(ax, False, False)
