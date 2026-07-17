@@ -2439,6 +2439,18 @@ class Axes(_AxesBase):
             left = x
             bottom = y
 
+        # Pseudocode -- GUID: BAR-001, BAR-002
+        # expected_rectangle_count := length(x) after broadcasting
+        # patches := empty sequence
+        # FOR EACH broadcast bar tuple, including tuples whose x is non-finite:
+        #     rectangle := construct one Rectangle from the tuple
+        #     register rectangle with the Axes
+        #     IF registration finds no finite position for data-limit updates:
+        #         treat the rectangle as contributing no position limit
+        #         continue registration without exposing StopIteration
+        #     append rectangle to patches exactly once
+        # END FOR
+        # RESULT: length(patches) == expected_rectangle_count
         patches = []
         args = zip(left, bottom, width, height, color, edgecolor, linewidth,
                    hatch, patch_labels)
@@ -2486,6 +2498,11 @@ class Axes(_AxesBase):
         else:  # horizontal
             datavalues = width
 
+        # Pseudocode -- GUID: BAR-014
+        # container := BarContainer(patches, errorbar, datavalues, orientation,
+        #                           public label)
+        # return container after normal container and tick-label bookkeeping,
+        # including when every supplied x position is non-finite
         bar_container = BarContainer(patches, errorbar, datavalues=datavalues,
                                      orientation=orientation,
                                      label=bar_container_label)
