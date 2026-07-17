@@ -213,6 +213,29 @@ class Artist:
         self._sticky_edges = _XYPair([], [])
         self._in_layout = True
 
+    # Artist-state preservation pseudocode
+    #
+    # Logic obligation:
+    # - MPLDRAG-005 /
+    #   test_mpldrag_005_pickle_round_trip_retains_preexisting_artist_position:
+    #   every legitimate stored artist property, including a position fixed
+    #   before serialization, must survive the enclosing figure round trip.
+    #
+    # def serialize_artist_state_for_figure_round_trip(artist):
+    #     INPUT: an artist reachable from the figure object graph
+    #     COPY the artist's complete stored state without mutating the artist
+    #     CLEAR only the transient stale-callback entry that Axes reconstructs
+    #     RETAIN position, style, parent links, and any draggable helper link
+    #             exactly as represented in the copied state
+    #     IF another retained property cannot be serialized:
+    #         PROPAGATE the existing pickle failure without discarding or
+    #                   rewriting legitimate artist state
+    #     OUTPUT: the copied artist state for normal recursive serialization
+    #
+    # def restore_artist_state_from_figure_round_trip(serialized_state):
+    #     DELEGATE reconstruction to the existing pickle object-graph flow
+    #     ALLOW the owning Axes to restore the intentionally cleared callback
+    #     OUTPUT: an artist whose retained stored properties are unchanged
     def __getstate__(self):
         d = self.__dict__.copy()
         # remove the unpicklable remove method, this will get re-added on load
