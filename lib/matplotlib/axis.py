@@ -2077,7 +2077,10 @@ class Axis(martist.Artist):
 
         By default, it just gets bboxes for *self*.
         """
-        # Get the Grouper keeping track of x or y label groups for this figure.
+        # MPLAL-004 integration contract: Axis remains a read-only consumer of
+        # the Figure-owned, Grouper-restored membership graph.  Keeping this
+        # dependency through get_siblings() makes restored alignment state
+        # effective without pickle-specific wiring in Axis.
         name = self._get_axis_name()
         if name not in self.figure._align_label_groups:
             return [], []

@@ -788,6 +788,17 @@ class Grouper:
     def __init__(self, init=()):
         self._mapping = {weakref.ref(x): [weakref.ref(x)] for x in init}
 
+    def __getstate__(self):
+        return list(self)
+
+    def __setstate__(self, state):
+        mapping = {}
+        for group in state:
+            refs = [weakref.ref(x) for x in group]
+            for ref in refs:
+                mapping[ref] = refs
+        self._mapping = mapping
+
     def __contains__(self, item):
         return weakref.ref(item) in self._mapping
 
