@@ -277,6 +277,22 @@ def test_scblind_007_direct_lookup_valid_across_supported_os_backends(backend):
     plt.close(fig)
 
 
+# SCBLIND-008..009 verification architecture contract:
+#
+# * This module owns the public compatibility regression boundary.  The
+#   SCBLIND-008 locus depends directly on ``plt.style.library`` and its existing
+#   ``RcParams`` mapping contract; no helper, fixture, or private style-core
+#   access belongs between the test and the exact ``"seaborn-colorblind"`` key.
+#   [SCBLIND-008]
+# * Non-regression remains owned by pytest's ordinary independent collection of
+#   the existing style-library tests in this module.  The SCBLIND-009 locus
+#   records that suite-level obligation but must not call other tests, impose
+#   ordering, or add production coupling to observe their outcomes.
+#   [SCBLIND-009]
+# * Both obligations terminate at existing boundaries: the exported style
+#   mapping for direct lookup and the existing test module for suite health.
+#   No new public API, runtime adapter, or production dependency is required.
+#   [SCBLIND-008, SCBLIND-009]
 def test_scblind_008_exact_seaborn_colorblind_lookup_returns_mapping():
     """GUID: SCBLIND-008 -- exact public-key lookup returns a valid mapping."""
     # PSEUDOCODE (SCBLIND-008):
