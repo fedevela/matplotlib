@@ -1317,29 +1317,130 @@ def test_range_slider(orientation):
     assert_allclose(handle_positions(slider), (0.1, 0.34))
 
 
+def _range_slider_rebuild_test_setup():
+    fig = plt.figure()
+    state = {
+        "button_clicks": [],
+        "rebuild_on_change": True,
+        "rebuilds": 0,
+        "slider_values": [],
+        "widgets": [],
+    }
+
+    def rebuild():
+        fig.clear()
+        slider_ax = fig.add_axes([.1, .55, .8, .2])
+        button_ax = fig.add_axes([.4, .15, .2, .2])
+        slider = widgets.RangeSlider(
+            slider_ax, "", 0, 1, valinit=(.2, .8))
+        button = widgets.Button(button_ax, "Button")
+        slider.on_changed(changed)
+        button.on_clicked(state["button_clicks"].append)
+        state["slider"] = slider
+        state["button"] = button
+        state["widgets"].append((slider, button))
+        state["rebuilds"] += 1
+        fig.canvas.draw()
+
+    def changed(values):
+        state["slider_values"].append(tuple(values))
+        if state["rebuild_on_change"]:
+            rebuild()
+
+    rebuild()
+    return fig, state
+
+
+def _process_widget_mouse_event(name, widget, xy):
+    x, y = widget.ax.transData.transform(xy)
+    event = MouseEvent(name, widget.canvas, x, y, button=1)
+    event._process()
+    return event
+
+
+def _press_range_slider(slider, value):
+    return _process_widget_mouse_event(
+        "button_press_event", slider, (value, .5))
+
+
+def _release_range_slider(slider, value):
+    return _process_widget_mouse_event(
+        "button_release_event", slider, (value, .5))
+
+
+def _click_button(button):
+    _process_widget_mouse_event("button_press_event", button, (.5, .5))
+    _process_widget_mouse_event("button_release_event", button, (.5, .5))
+
+
 def test_input_001_callback_clear_rebuild_redraw_releases_canvas_state():
     """GUID: INPUT-001 - callback completion releases interaction state."""
-    pass
+    fig, state = _range_slider_rebuild_test_setup()
+    original_slider = state["slider"]
+
+    _press_range_slider(original_slider, .35)
+
+    assert state["rebuilds"] == 2
+    assert fig.canvas.mouse_grabber is None
+    assert not original_slider.drag_active
+    assert original_slider._active_handle is None
 
 
 def test_input_002_rebuilt_button_next_click_invokes_callback():
     """GUID: INPUT-002 - the next click works without redraw or recovery."""
-    pass
+    _, state = _range_slider_rebuild_test_setup()
+    _press_range_slider(state["slider"], .35)
+    rebuilt_button = state["button"]
+
+    _click_button(rebuilt_button)
+
+    assert len(state["button_clicks"]) == 1
+    assert state["rebuilds"] == 2
 
 
 def test_input_003_rebuilt_range_slider_next_change_invokes_callback():
     """GUID: INPUT-003 - the next change works without redraw or recreation."""
-    pass
+    _, state = _range_slider_rebuild_test_setup()
+    _press_range_slider(state["slider"], .35)
+    rebuilt_slider = state["slider"]
+    state["rebuild_on_change"] = False
+
+    _press_range_slider(rebuilt_slider, .4)
+    _release_range_slider(rebuilt_slider, .4)
+
+    assert len(state["slider_values"]) == 2
+    assert_allclose(state["slider_values"][-1], rebuilt_slider.val)
+    assert state["rebuilds"] == 2
 
 
 def test_input_004_range_slider_callback_receives_interaction_values():
     """GUID: INPUT-004 - each callback receives its interaction's values."""
-    pass
+    _, state = _range_slider_rebuild_test_setup()
+    original_slider = state["slider"]
+    first_event = _press_range_slider(original_slider, .35)
+    rebuilt_slider = state["slider"]
+    state["rebuild_on_change"] = False
+    second_event = _press_range_slider(rebuilt_slider, .65)
+    _release_range_slider(rebuilt_slider, .65)
+
+    assert_allclose(
+        state["slider_values"],
+        [(first_event.xdata, .8), (.2, second_event.xdata)])
 
 
 def test_input_007_repeated_rebuilds_leave_later_widget_interactive():
     """GUID: INPUT-007 - stale state does not block a later interaction."""
-    pass
+    fig, state = _range_slider_rebuild_test_setup()
+
+    for value in [.3, .35, .4, .45]:
+        _press_range_slider(state["slider"], value)
+        assert fig.canvas.mouse_grabber is None
+
+    _click_button(state["button"])
+
+    assert len(state["slider_values"]) == 4
+    assert state["rebuilds"] == 5
+    assert len(state["button_clicks"]) == 1
 
 
 @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
