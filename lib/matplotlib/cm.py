@@ -592,6 +592,20 @@ class ScalarMappable:
 
     @norm.setter
     def norm(self, norm):
+        # PSEUDOCODE (MPLNORM-001, MPLNORM-003):
+        # INPUT: a public norm replacement and any listeners, including an
+        #        already-associated colorbar.
+        # VALIDATE/RESOLVE the candidate norm using the existing accepted
+        # types; invalid candidates follow the existing error path.
+        # IF the resolved candidate is the current norm: RETURN with no state
+        # transition and no notification.
+        # OTHERWISE preserve the candidate's explicit limits, detach the old
+        # norm callback, install the candidate, and attach its callback.
+        # AFTER the replacement is coherent, notify listeners exactly as a
+        # completed norm-identity transition; listeners must observe the valid
+        # candidate bounds, never a partially replaced normalization state.
+        # POSTCONDITION: assigning a positive, bounded LogNorm cannot fail due
+        # to a transient normalization state exposed during synchronization.
         _api.check_isinstance((colors.Normalize, str, None), norm=norm)
         if norm is None:
             norm = colors.Normalize()

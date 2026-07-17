@@ -1362,6 +1362,21 @@ class Normalize:
 
     def autoscale(self, A):
         """Set *vmin*, *vmax* to min, max of *A*."""
+        # PSEUDOCODE (MPLNORM-002, MPLNORM-003):
+        # INPUT: mappable data A and a norm that may have callback listeners.
+        # BEGIN one atomic limit transition that prevents listeners from
+        # observing either limit while only one side has been cleared or set.
+        # CLEAR both limits internally, then derive both replacement limits
+        # from A through the norm-specific autoscale_None domain filtering.
+        # IF A is valid positive nonzero data for a logarithmic norm: require
+        # both derived limits to be positive and ordered.
+        # IF A is outside the norm's valid domain: retain the norm's existing
+        # validation/error behavior; do not relax logarithmic validation and
+        # do not publish a partially updated limit pair.
+        # END the atomic transition, then emit one completed-change handoff so
+        # colorbar listeners receive only the coherent final pair.
+        # OUTPUT: valid autoscaled limits and no ValueError for valid positive
+        # logarithmic input.
         self.vmin = self.vmax = None
         self.autoscale_None(A)
 

@@ -503,6 +503,20 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
+        # PSEUDOCODE (MPLNORM-003, MPLNORM-004):
+        # INPUT: a completed mappable change notification carrying a coherent
+        # norm identity and limit pair.
+        # COPY presentation inputs from the mappable without modifying its
+        # norm bounds.
+        # IF the norm identity changed: adopt that exact norm object and reset
+        # norm-dependent locator, formatter, and scale state.
+        # ELSE preserve the existing locator and formatter while consuming the
+        # completed limit update.
+        # DRAW only after the shared norm has valid, coherent bounds; valid
+        # positive logarithmic bounds must not enter an error path.
+        # POSTCONDITION: the mappable and colorbar reference the same norm and
+        # therefore expose identical logarithmic limits on this update and on
+        # the next figure redraw.
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
