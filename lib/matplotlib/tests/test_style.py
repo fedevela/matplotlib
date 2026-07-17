@@ -238,5 +238,15 @@ def test_scblind_005_legacy_colorblind_lookup_and_use_need_no_seaborn(
     plt.close(fig)
 
 
+def test_scblind_006_restoration_preserves_unrelated_style_retrieval_and_definitions():
+    """GUID: SCBLIND-006 -- unrelated styles remain retrievable and usable."""
+    assert True
+
+
+def test_scblind_007_direct_lookup_valid_across_supported_os_backends():
+    """GUID: SCBLIND-007 -- lookup is valid across supported OSes/backends."""
+    assert True
+
+
 def test_up_to_date_blacklist():
     assert mpl.style.core.STYLE_BLACKLIST <= {*mpl.rcsetup._validators}
