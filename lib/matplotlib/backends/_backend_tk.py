@@ -311,6 +311,29 @@ class FigureCanvasTk(FigureCanvasBase):
                       guiEvent=event)._process()
 
     def button_press_event(self, event, dblclick=False):
+        # INPUT-006 -- TkAgg clear-rebuild-redraw interaction logic:
+        #   PRECONDITION: TkAgg is available, a RangeSlider change event is
+        #     being dispatched, and its registered callback may synchronously
+        #     clear the Figure, recreate its widgets, and request a redraw.
+        #   TRANSITION: dispatch the change callback to completion; if its
+        #     originating widget was removed, its widget-level lifecycle must
+        #     retire the old interaction and canvas grab before control returns
+        #     to Tk's event loop.
+        #   REDRAW HANDOFF: allow the requested Tk idle draw to complete, then
+        #     treat the recreated widgets and their callbacks as the current
+        #     interactive state.
+        #   NEXT INPUT: when simulated Tk mouse input targets a recreated
+        #     widget, focus the canvas, normalize the native button, translate
+        #     coordinates against the current Figure, and synchronously process
+        #     a new Matplotlib button-press event.
+        #   SUCCESS: route that event to the recreated widget and invoke its
+        #     registered callback without consulting any removed widget state
+        #     or requiring another input event or manual recovery.
+        #   FAILURE PATH: if callback dispatch or redraw fails, preserve the
+        #     backend's ordinary error propagation while leaving no stale grab
+        #     that could block later Tk input; do not hang awaiting recovery.
+        #   SCOPE BRANCH: unavailable TkAgg environments and other backends do
+        #     not enter this obligation.
         # set focus to the canvas so that it can receive keyboard events
         self._tkcanvas.focus_set()
 
