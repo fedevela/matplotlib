@@ -2480,13 +2480,15 @@ class Axes(_AxesBase):
         # FAILURE: conversion, broadcasting, or alignment errors propagate before
         # rectangle construction; non-finiteness alone neither raises, suppresses,
         # nor reorders a rectangle, and does not substitute another x geometry.
-        # Architecture contract -- GUID: BAR-002, BAR-003, BAR-004, BAR-008
-        # Conversion, broadcasting, and alignment own the geometry supplied
-        # here; this loop owns its one-to-one mapping to Rectangle instances,
-        # including tuples containing non-finite coordinates or heights.
-        # Rectangle owns preservation of the supplied geometry, while
-        # add_patch owns registration and delegates limit extraction to
-        # _AxesBase without becoming a bar-cardinality boundary.
+        # Architecture contract -- GUID: BAR-002, BAR-003, BAR-004, BAR-005,
+        # BAR-006, BAR-007, BAR-008
+        # Conversion and broadcasting own the aligned, input-ordered geometry
+        # supplied here.  The zip/loop seam owns consuming each aligned tuple
+        # once and appending its Rectangle at the same ordinal [BAR-005, BAR-006].
+        # Rectangle owns preservation of each tuple's corresponding geometry,
+        # including finite and non-finite x positions [BAR-007].  add_patch owns
+        # registration and delegates limit extraction to _AxesBase without
+        # becoming a cardinality, ordering, or geometry-selection boundary.
         patches = []
         args = zip(left, bottom, width, height, color, edgecolor, linewidth,
                    hatch, patch_labels)
