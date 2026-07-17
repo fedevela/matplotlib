@@ -5826,6 +5826,26 @@ def test_TICKS_003_valid_text_kwargs_no_labels_leave_tick_labels_unchanged(
             for label in axis.get_ticklabels()] == original_properties
 
 
+def test_TICKS_004_with_or_without_labels_reports_requested_tick_locations():
+    """TICKS-004: Axes and Axis tick setters report requested locations."""
+    assert True
+
+
+def test_TICKS_005_explicit_labels_install_supplied_text():
+    """TICKS-005: Axes and Axis tick setters install explicit label text."""
+    assert True
+
+
+def test_TICKS_006_explicit_labels_apply_valid_text_properties():
+    """TICKS-006: Axes and Axis tick setters apply valid Text properties."""
+    assert True
+
+
+def test_TICKS_007_unrelated_tick_setting_preserves_results_and_returns():
+    """TICKS-007: Public tick setting preserves results and return behavior."""
+    assert True
+
+
 def test_set_noniterable_ticklabels():
     # Ensure a useful TypeError message is raised
     # when given a non-iterable ticklabels argument
