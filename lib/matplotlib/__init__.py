@@ -176,6 +176,11 @@ __bibtex__ = r"""@Article{Hunter:2007,
 # returned by the existing ``__version__`` branch and on the already imported
 # packaging version parser; ``__version__`` must not depend on, or be reshaped
 # by, the comparable representation.                              [MPL-003, MPL-007]
+# Comparable-value contract: the packaging version object owns numeric release
+# ordering and the identity and ordering of prerelease, development, final, and
+# post-release states.  This boundary must retain that object intact rather than
+# project it to text, a partial tuple, or a Matplotlib-owned ordering adapter.
+#                                                               [MPL-004, MPL-005, MPL-006]
 # Integration contract: conversion and caching terminate at this module
 # boundary.  ``_version`` continues to own generated release data, while
 # ``tests/test_version_contract.py`` owns public-contract verification.
