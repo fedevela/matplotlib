@@ -1494,10 +1494,14 @@ class DraggableBase:
     coordinate and set a relevant attribute.
     """
 
-    # MPL-001, MPL-002 architecture boundary:
+    # MPL-001, MPL-002, MPL-003, MPL-004 architecture boundary:
     # DraggableBase owns both the parent-state gate and callback cleanup.
     # Artist parenting supplies state, but must not own callback resources.
     # The registration seam retains the callback registry used for cleanup.
+    # Each instance owns one selection's release state and callback lifetime;
+    # detached and subsequently-created selections therefore remain isolated.
+    # Attached-artist release behavior stays behind the parent-state gate.
+    # MPL-005 verification remains owned by test_offsetbox.py at this boundary.
 
     def __init__(self, ref_artist, use_blit=False):
         self.ref_artist = ref_artist
@@ -1505,8 +1509,10 @@ class DraggableBase:
             ref_artist.set_picker(True)
         self.got_artist = False
         self._use_blit = use_blit and self.canvas.supports_blit
-        # MPL-002: Retain the registration-time callback registry so cleanup
-        # remains independent of the artist's mutable parent relationship.
+        # MPL-002, MPL-003, MPL-004: The retained registration-time registry is
+        # the cleanup port for this instance.  It points from DraggableBase to
+        # the callback registry and remains independent of the artist's mutable
+        # parent relationship and the attached-only canvas boundary below.
         callbacks = ref_artist.figure._canvas_callbacks
         self._disconnectors = [
             functools.partial(
