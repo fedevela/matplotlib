@@ -409,32 +409,100 @@ def test_bnf_004_boundarynorm_fallback_represents_supplied_scalar():
 
 def test_bnf_005_invertible_norm_cursor_format_preserves_inverse_output():
     """GUID: BNF-005 -- Preserve inverse-based cursor representation."""
-    pass
+    class InverseTrackingNorm(colors.Normalize):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.inverse_calls = 0
+
+        def inverse(self, value):
+            self.inverse_calls += 1
+            return super().inverse(value)
+
+    fig, ax = plt.subplots()
+    norm = InverseTrackingNorm(vmin=0, vmax=2)
+    im = ax.imshow([[1.25]], cmap="viridis", norm=norm)
+
+    assert im.format_cursor_data(1.25) == "[1.250]"
+    assert norm.inverse_calls == 1
 
 
 def test_bnf_006_repeat_cursor_format_preserves_artist_data():
     """GUID: BNF-006 -- Preserve imshow artist data after formatting."""
-    pass
+    fig, ax = plt.subplots()
+    data = np.array([[0.25, 1.25], [1.75, 0.75]])
+    im = ax.imshow(data, cmap="viridis",
+                   norm=colors.BoundaryNorm([0, 1, 2], 256))
+    artist_data = im.get_array()
+    original_data = artist_data.copy()
+
+    for value in [0.25, 1.25, 1.75]:
+        im.format_cursor_data(value)
+
+    assert im.get_array() is artist_data
+    assert_array_equal(im.get_array(), original_data)
 
 
 def test_bnf_006_repeat_cursor_format_preserves_norm_boundaries_and_mapping():
     """GUID: BNF-006 -- Preserve normalization boundaries and value mapping."""
-    pass
+    fig, ax = plt.subplots()
+    norm = colors.BoundaryNorm([0, 0.5, 1, 2], 256, extend="max")
+    im = ax.imshow([[0.25, 1.25]], cmap="viridis", norm=norm)
+    boundaries = norm.boundaries.copy()
+    limits = norm.vmin, norm.vmax
+    probe = np.array([-0.5, 0.25, 0.75, 1.25, 2.5])
+    mapping = norm(probe).copy()
+
+    for value in [0.25, 0.75, 1.25]:
+        im.format_cursor_data(value)
+
+    assert im.norm is norm
+    assert_array_equal(norm.boundaries, boundaries)
+    assert (norm.vmin, norm.vmax) == limits
+    assert_array_equal(norm(probe), mapping)
 
 
 def test_bnf_006_repeat_cursor_format_preserves_colormap():
     """GUID: BNF-006 -- Preserve the imshow colormap after formatting."""
-    pass
+    fig, ax = plt.subplots()
+    cmap = mpl.colormaps["viridis"]
+    im = ax.imshow([[0.25, 1.25]], cmap=cmap,
+                   norm=colors.BoundaryNorm([0, 1, 2], cmap.N))
+    samples = np.linspace(0, 1, 5)
+    mapped_colors = cmap(samples).copy()
+
+    for value in [0.25, 1.25, 1.75]:
+        im.format_cursor_data(value)
+
+    assert im.get_cmap() is cmap
+    assert_array_equal(im.get_cmap()(samples), mapped_colors)
 
 
 def test_bnf_006_repeat_cursor_format_preserves_rendered_image():
     """GUID: BNF-006 -- Preserve the rendered image after formatting."""
-    pass
+    fig, ax = plt.subplots()
+    im = ax.imshow([[0.25, 1.25], [1.75, 0.75]], cmap="viridis",
+                   norm=colors.BoundaryNorm([0, 1, 2], 256))
+    fig.canvas.draw()
+    original_render = np.asarray(fig.canvas.buffer_rgba()).copy()
+
+    for value in [0.25, 1.25, 1.75]:
+        im.format_cursor_data(value)
+    fig.canvas.draw()
+
+    assert_array_equal(np.asarray(fig.canvas.buffer_rgba()), original_render)
 
 
 def test_bnf_007_boundarynorm_after_cursor_formatting_remains_noninvertible():
     """GUID: BNF-007 -- BoundaryNorm.inverse still raises ValueError."""
-    pass
+    fig, ax = plt.subplots()
+    norm = colors.BoundaryNorm([0, 1, 2], 256)
+    im = ax.imshow([[1.25]], cmap="viridis", norm=norm)
+
+    for value in [0.25, 1.25, 1.75]:
+        assert im.format_cursor_data(value)
+
+    with pytest.raises(ValueError, match="BoundaryNorm is not invertible"):
+        norm.inverse(0.5)
 
 
 @image_comparison(['image_clip'], style='mpl20')
