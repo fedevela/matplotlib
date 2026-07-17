@@ -587,27 +587,66 @@ def test_colorbar_log_minortick_labels():
 
 def test_cbnorm_001_update_normal_replaced_lognorm_sets_existing_colorbar_log_scale():
     """GUID: CBNORM-001."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.ax.get_yscale() == "log"
 
 
 def test_cbnorm_002_update_normal_uses_exact_current_mappable_norm_instance():
     """GUID: CBNORM-002."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm()
+
+    mappable.norm = norm
+    colorbar.update_normal(mappable)
+
+    assert colorbar.norm is norm
+    assert colorbar.norm is mappable.norm
 
 
 def test_cbnorm_003_positive_lognorm_recalculation_uses_positive_lower_bound():
     """GUID: CBNORM-003."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.norm.vmin > 0
+    assert colorbar._boundaries.min() > 0
 
 
 def test_cbnorm_004_positive_lognorm_update_normal_completes_without_exception():
     """GUID: CBNORM-004."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.stale
 
 
 def test_cbnorm_005_updated_colorbar_observably_represents_logarithmic_scale():
     """GUID: CBNORM-005."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    ratios = colorbar._boundaries[1:] / colorbar._boundaries[:-1]
+    np.testing.assert_allclose(ratios, ratios[0])
 
 
 def test_colorbar_renorm():

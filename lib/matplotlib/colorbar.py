@@ -503,38 +503,15 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
-        # CBNORM-001..005 architecture contract:
-        # `update_normal` is the integration seam for norm identity and update
-        # orchestration (CBNORM-001, CBNORM-002, CBNORM-004).  Data remains
-        # owned by the supplied ScalarMappable; its autoscaling contract is
-        # the dependency into the norm's valid transform domain before
-        # `_process_values` consumes limits (CBNORM-003).  Scale selection
-        # remains owned by `_reset_locator_formatter_scale`, and observable
-        # boundary/tick rebuilding remains owned by `_draw_all` (CBNORM-005).
-        # CBNORM-001..005 pseudocode -- normalization-replacement update:
-        # INPUT: mappable and its existing colorbar (self).
-        # IF mappable.norm is not self.norm (identity comparison):
-        #   CBNORM-002: SET self.norm to the exact mappable.norm instance.
-        #   IF the replacement has an unset limit and mappable data exists:
-        #     Derive only unset limits from the data through the norm's valid
-        #     transform domain.
-        #     CBNORM-003: for positive LogNorm data, REQUIRE vmin > 0.
-        #   FAILURE: if no datum is in the valid transform domain, do not
-        #   invent a range; preserve the normalization's existing error path.
-        #   CBNORM-004: with positive LogNorm limits established, continue
-        #   recalculation without zero-valued logarithmic arithmetic.
-        #   CBNORM-001: reset locator, formatter, and axis scale; select the
-        #   replacement norm's scale so this colorbar becomes logarithmic.
-        # ELSE: preserve the existing locator, formatter, and scale.
-        # CBNORM-005: redraw boundaries and values; expose locators and
-        # formatters from the selected scale so ticks or labels reveal log
-        # spacing; mark this same colorbar stale after redraw completes.
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
         self.cmap = mappable.cmap
-        if mappable.norm != self.norm:
+        if mappable.norm is not self.norm:
             self.norm = mappable.norm
+            if self.mappable.get_array() is not None:
+                with self.norm.callbacks.blocked():
+                    self.mappable.autoscale_None()
             self._reset_locator_formatter_scale()
 
         self._draw_all()
