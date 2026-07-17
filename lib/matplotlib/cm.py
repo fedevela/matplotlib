@@ -592,6 +592,10 @@ class ScalarMappable:
 
     @norm.setter
     def norm(self, norm):
+        # ARCHITECTURE (MPLNORM-001, MPLNORM-003): ScalarMappable owns norm
+        # identity and callback rewiring at this public replacement boundary.
+        # Limit mutation remains owned by Normalize; listeners receive the
+        # installed norm only through ScalarMappable.changed.
         # PSEUDOCODE (MPLNORM-001, MPLNORM-003):
         # INPUT: a public norm replacement and any listeners, including an
         #        already-associated colorbar.
@@ -656,6 +660,8 @@ class ScalarMappable:
         """
         if self._A is None:
             raise TypeError('You must first set_array for mappable')
+        # ARCHITECTURE (MPLNORM-002): ScalarMappable owns the data-to-norm
+        # delegation seam, while Normalize owns the limit transaction.
         # If the norm's limits are updated self.changed() will be called
         # through the callbacks attached to the norm
         self.norm.autoscale(self._A)

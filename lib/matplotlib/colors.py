@@ -1362,6 +1362,10 @@ class Normalize:
 
     def autoscale(self, A):
         """Set *vmin*, *vmax* to min, max of *A*."""
+        # ARCHITECTURE (MPLNORM-002, MPLNORM-003): Normalize is the ownership
+        # boundary for a paired-limit transaction.  autoscale_None is the
+        # subclass domain-selection hook, and callbacks is the sole outward
+        # notification port for the completed pair.
         # PSEUDOCODE (MPLNORM-002, MPLNORM-003):
         # INPUT: mappable data A and a norm that may have callback listeners.
         # BEGIN one atomic limit transition that prevents listeners from
