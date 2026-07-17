@@ -4,6 +4,7 @@ import platform
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from matplotlib.axes import Axes as MatplotlibAxes
 from matplotlib import cbook
 from matplotlib.backend_bases import MouseEvent
 from matplotlib.colors import LogNorm
@@ -592,34 +593,76 @@ def test_axes_class_tuple():
     gr = AxesGrid(fig, 111, nrows_ncols=(1, 1), axes_class=axes_class)
 
 
-# ARCHITECTURE [AXGRID-001, AXGRID-003, AXGRID-004, AXGRID-005, AXGRID-008]:
-# This module owns the dependency-free custom-Axes test seam.  Its eventual
-# test double and visibility observer are shared scaffolding for the traced
-# loci below; no optional axes package belongs in the production dependency
-# path or in this compatibility contract.
+class _NonSubscriptableAxisAxes(MatplotlibAxes):
+    """Axes whose inherited ``axis`` attribute is an ordinary method."""
+
+
+def _bottom_left_label_visibility(ax):
+    return (
+        all(tick.label1.get_visible() for tick in ax.xaxis.get_major_ticks()),
+        ax.xaxis.label.get_visible(),
+        all(tick.label1.get_visible() for tick in ax.yaxis.get_major_ticks()),
+        ax.yaxis.label.get_visible(),
+    )
+
+
 def test_AXGRID_001_non_subscriptable_callable_axis_initializes():
     """AXGRID-001: Callable non-subscriptable axis initialization succeeds."""
-    assert True
+    fig = plt.figure()
+    grid = AxesGrid(fig, 111, (1, 1),
+                    axes_class=_NonSubscriptableAxisAxes)
+
+    assert callable(grid[0].axis)
+    assert not hasattr(grid[0].axis, "__getitem__")
 
 
 def test_AXGRID_003_label_mode_applied_without_axis_artist_mapping():
     """AXGRID-003: Initialization applies the configured label mode."""
-    assert True
+    fig = plt.figure()
+    grid = AxesGrid(fig, 111, (1, 2), label_mode="1",
+                    axes_class=_NonSubscriptableAxisAxes)
+
+    assert _bottom_left_label_visibility(grid[0]) == (True,) * 4
+    assert _bottom_left_label_visibility(grid[1]) == (False,) * 4
 
 
-def test_AXGRID_004_custom_axes_visibility_matches_default_for_label_mode():
+@pytest.mark.parametrize("label_mode", ["L", "1", "all", "keep"])
+def test_AXGRID_004_custom_axes_visibility_matches_default_for_label_mode(
+        label_mode):
     """AXGRID-004: Custom and default axes label visibility patterns match."""
-    assert True
+    default = AxesGrid(plt.figure(), 111, (2, 2), label_mode=label_mode)
+    custom = AxesGrid(plt.figure(), 111, (2, 2), label_mode=label_mode,
+                      axes_class=_NonSubscriptableAxisAxes)
+
+    assert ([_bottom_left_label_visibility(ax) for ax in custom]
+            == [_bottom_left_label_visibility(ax) for ax in default])
 
 
-def test_AXGRID_005_multicell_visibility_follows_mode_row_and_column():
+@pytest.mark.parametrize("label_mode", ["L", "1", "all", "keep"])
+def test_AXGRID_005_multicell_visibility_follows_mode_row_and_column(label_mode):
     """AXGRID-005: Each cell follows its mode, row, and column visibility."""
-    assert True
+    grid = AxesGrid(plt.figure(), 111, (2, 3), label_mode=label_mode,
+                    axes_class=_NonSubscriptableAxisAxes)
+
+    for row, axes_row in enumerate(grid.axes_row):
+        for col, ax in enumerate(axes_row):
+            if label_mode == "L":
+                bottom_visible = row == 1
+                left_visible = col == 0
+            elif label_mode == "1":
+                bottom_visible = left_visible = row == 1 and col == 0
+            else:
+                bottom_visible = left_visible = True
+            assert _bottom_left_label_visibility(ax) == (
+                bottom_visible, bottom_visible, left_visible, left_visible)
 
 
 def test_AXGRID_008_callable_axis_coverage_does_not_require_cartopy():
     """AXGRID-008: Construction and visibility coverage is dependency-free."""
-    assert True
+    assert _NonSubscriptableAxisAxes.__mro__[1] is MatplotlibAxes
+    grid = AxesGrid(plt.figure(), 111, (1, 1), label_mode="all",
+                    axes_class=_NonSubscriptableAxisAxes)
+    assert _bottom_left_label_visibility(grid[0]) == (True,) * 4
 
 
 def test_grid_axes_lists():

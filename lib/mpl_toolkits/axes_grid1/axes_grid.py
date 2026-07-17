@@ -10,32 +10,19 @@ from .axes_divider import Size, SubplotDivider, Divider
 from .mpl_axes import Axes
 
 
-# ARCHITECTURE [AXGRID-001, AXGRID-004, AXGRID-005, AXGRID-008]:
-# Grid.set_label_mode owns grid-topology and label-mode policy; _tick_only is
-# the single axes-interface adaptation boundary.  Dependencies point from the
-# grid policy into this helper, which may use either the axis-artist mapping or
-# base-Axes visibility interfaces, but must not depend on an optional custom
-# axes package.
 def _tick_only(ax, bottom_on, left_on):
-    # PSEUDOCODE [AXGRID-001, AXGRID-004, AXGRID-008]:
-    # INPUT: one compatible axes and the existing bottom/left suppression
-    # flags selected by Grid.set_label_mode.
-    # DERIVE bottom_visible = NOT bottom_on and left_visible = NOT left_on.
-    # IF ax.axis provides the axis-artist mapping interface:
-    #     toggle the bottom and left axis artists with the derived visibility.
-    # ELSE IF ax.axis is callable and non-subscriptable:
-    #     use only the base-Axes tick and label visibility interfaces;
-    #     set bottom tick labels and the x-axis label to bottom_visible;
-    #     set left tick labels and the y-axis label to left_visible.
-    # ELSE:
-    #     surface the unsupported axes-interface failure without translating it
-    #     into a method-subscripting TypeError.
-    # OUTPUT: the same observable bottom/left tick-label and axis-label state
-    # for either supported interface; require no optional mapping dependency.
+    # AXGRID-001, AXGRID-004, AXGRID-008: The axes-grid Axes exposes ``axis``
+    # as a mapping, but a regular Matplotlib Axes exposes it as a method.
     bottom_off = not bottom_on
     left_off = not left_on
-    ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
-    ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
+    if callable(ax.axis) and not hasattr(ax.axis, "__getitem__"):
+        ax.tick_params(axis="x", labelbottom=bottom_off)
+        ax.xaxis.label.set_visible(bottom_off)
+        ax.tick_params(axis="y", labelleft=left_off)
+        ax.yaxis.label.set_visible(left_off)
+    else:
+        ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
+        ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
 
 
 class CbarAxesBase:
@@ -181,14 +168,7 @@ class Grid:
         for ax in self.axes_all:
             fig.add_axes(ax)
 
-        # ARCHITECTURE [AXGRID-003]: Grid.__init__ owns the lifecycle seam
-        # from completed axes registration into the common label-mode policy;
-        # custom axes compatibility remains owned by _tick_only downstream.
-        # PSEUDOCODE [AXGRID-003]:
-        # AFTER every axes is constructed, located, and attached to the figure,
-        # HAND OFF the configured label_mode to the common mode procedure.
-        # ALLOW compatibility failures from the visibility helper to propagate;
-        # otherwise initialization returns only after the mode is fully applied.
+        # AXGRID-003: Apply the mode after all axes have been registered.
         self.set_label_mode(label_mode)
 
     def _init_locators(self):
@@ -288,17 +268,6 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
         """
-        # ARCHITECTURE [AXGRID-004, AXGRID-005]: This method owns only mode and
-        # row/column selection.  Per-axes interface details stay behind
-        # _tick_only so every cell follows one policy-to-adapter dependency.
-        # PSEUDOCODE [AXGRID-004, AXGRID-005]:
-        # FOR each cell selected below, derive suppression from its row, column,
-        # and mode: "all" exposes both sides; "L" exposes bottom-row x labels
-        # and left-column y labels; "1" exposes both only at the lower-left;
-        # "keep" preserves state. Pass every derived pair to _tick_only so the
-        # interface-independent helper produces the same observable pattern.
-        # IF mode is unsupported, retain the existing deprecation-warning
-        # transition and do not invent a visibility policy.
         if mode == "all":
             for ax in self.axes_all:
                 _tick_only(ax, False, False)
