@@ -11,6 +11,9 @@ from .mpl_axes import Axes
 
 
 def _tick_only(ax, bottom_on, left_on):
+    # ARCHITECTURE [AXGRID-006]: This private adapter owns visibility mutation.
+    # The default mpl_axes.Axes dependency remains on the established mapping
+    # branch below; Grid and its label-mode policy must not specialize it.
     # AXGRID-001, AXGRID-004, AXGRID-008: The axes-grid Axes exposes ``axis``
     # as a mapping, but a regular Matplotlib Axes exposes it as a method.
     bottom_off = not bottom_on
@@ -54,6 +57,8 @@ class Grid:
     them.  AxesGrid can be used in such case.
     """
 
+    # ARCHITECTURE [AXGRID-006]: Grid owns the default axes dependency.  The
+    # omitted-axes_class boundary resolves directly to this existing class.
     _defaultAxesClass = Axes
 
     def __init__(self, fig,
@@ -160,6 +165,9 @@ class Grid:
         # do not introduce a default-class-specific recovery or alternate path.
         # OUTPUT: a successfully initialized grid of the existing default Axes
         # instances whose visibility state is determined by set_label_mode.
+        # ARCHITECTURE [AXGRID-006]: Default selection joins the same normalized
+        # construction dependency as explicit classes; no parallel default
+        # construction path or wrapper belongs beyond this boundary.
         if axes_class is None:
             axes_class = self._defaultAxesClass
         elif isinstance(axes_class, (list, tuple)):
@@ -202,6 +210,9 @@ class Grid:
         for ax in self.axes_all:
             fig.add_axes(ax)
 
+        # ARCHITECTURE [AXGRID-006]: This is the construction-to-visibility
+        # integration seam.  Registration completes before the shared label
+        # policy receives the grid; the default class has no alternate handoff.
         # AXGRID-003: Apply the mode after all axes have been registered.
         self.set_label_mode(label_mode)
 
@@ -302,6 +313,9 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
         """
+        # ARCHITECTURE [AXGRID-006]: Grid owns mode/topology decisions here and
+        # delegates every concrete visibility change to _tick_only.  This
+        # shared boundary must not branch on or replace the default Axes class.
         # PSEUDOCODE [AXGRID-006 — default Axes label visibility]:
         # INPUT: a fully registered grid of default Axes and a supported mode.
         # IF mode is "all", make bottom tick labels, x-axis labels, left tick
