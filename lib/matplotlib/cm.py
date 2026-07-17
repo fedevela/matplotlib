@@ -610,6 +610,17 @@ class ScalarMappable:
         # candidate bounds, never a partially replaced normalization state.
         # POSTCONDITION: assigning a positive, bounded LogNorm cannot fail due
         # to a transient normalization state exposed during synchronization.
+        # PSEUDOCODE (MPLNORM-005):
+        # CAPTURE the existing mappable identity before an interactive norm
+        # replacement; perform the transition on this same mappable instance.
+        # WHEN the candidate is a valid positive LogNorm, install that exact
+        # norm and rewire its callback without constructing another mappable.
+        # NOTIFY the already-connected listeners only after installation is
+        # complete, handing off this same mappable with its new LogNorm.
+        # IF validation or resolution fails, propagate the existing norm error
+        # path without replacing either interactive artist.
+        # POSTCONDITION: the mappable identity is unchanged and its active norm
+        # is the installed LogNorm before any requested figure redraw begins.
         _api.check_isinstance((colors.Normalize, str, None), norm=norm)
         if norm is None:
             norm = colors.Normalize()

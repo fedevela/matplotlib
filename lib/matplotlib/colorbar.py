@@ -524,6 +524,19 @@ class Colorbar:
         # POSTCONDITION: the mappable and colorbar reference the same norm and
         # therefore expose identical logarithmic limits on this update and on
         # the next figure redraw.
+        # PSEUDOCODE (MPLNORM-005):
+        # CAPTURE the identities of this already-created colorbar and the
+        # callback-supplied, already-created mappable.
+        # REQUIRE that the callback refers to the associated mappable; update
+        # this colorbar in place rather than creating either replacement artist.
+        # ADOPT the mappable's valid positive LogNorm, refresh this colorbar's
+        # norm-dependent presentation state, and mark this same colorbar stale.
+        # ON the next figure redraw, render the retained mappable and retained
+        # colorbar from their shared LogNorm; do not repeat norm replacement.
+        # IF the shared LogNorm is invalid, follow the existing normalization
+        # error path; otherwise redraw completes without a normalization error.
+        # POSTCONDITION: both artist identities match their captured identities
+        # and both retained artists reflect the same logarithmic normalization.
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
