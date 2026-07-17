@@ -681,13 +681,18 @@ class Poly3DCollection(PolyCollection):
         triangulation and thus generates consistent surfaces.
     """
 
-    # Architecture contract -- GUIDs: P3DFC-001, P3DFC-002, P3DFC-003.
+    # Architecture contract -- GUIDs: P3DFC-001, P3DFC-002, P3DFC-003,
+    # P3DFC-004, P3DFC-005.
     # Collection's scalar-mappable state remains the upstream color source;
     # this class owns its synchronization into the canonical _facecolor3d
     # state before projection.  Projection alone owns the optional, sorted
     # _facecolors2d cache.  get_facecolor is the boundary between those states
     # and the public API; Collection's get_facecolors alias enters through the
     # same boundary so neither accessor depends directly on projection setup.
+    # Pre-draw access must remain on this read boundary and must not acquire
+    # ownership of projection, sorting, or rendering state.  do_3d_projection
+    # remains the sole transition to the sorted 2D cache consumed by drawing
+    # and by subsequent face-color access.
 
     def __init__(self, verts, *args, zsort='average', **kwargs):
         """
