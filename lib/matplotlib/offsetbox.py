@@ -1494,21 +1494,43 @@ class DraggableBase:
     coordinate and set a relevant attribute.
     """
 
+    # MPL-001, MPL-002, MPL-003, MPL-004 architecture boundary:
+    # DraggableBase owns both the parent-state gate and callback cleanup.
+    # Artist parenting supplies state, but must not own callback resources.
+    # The registration seam retains the callback registry used for cleanup.
+    # Each instance owns one selection's release state and callback lifetime;
+    # detached and subsequently-created selections therefore remain isolated.
+    # Attached-artist release behavior stays behind the parent-state gate.
+    # MPL-005 verification remains owned by test_offsetbox.py at this boundary.
+
     def __init__(self, ref_artist, use_blit=False):
         self.ref_artist = ref_artist
         if not ref_artist.pickable():
             ref_artist.set_picker(True)
         self.got_artist = False
         self._use_blit = use_blit and self.canvas.supports_blit
-        self.cids = [
-            self.canvas.callbacks._connect_picklable(
-                'pick_event', self.on_pick),
-            self.canvas.callbacks._connect_picklable(
-                'button_release_event', self.on_release),
+        # MPL-002, MPL-003, MPL-004: The retained registration-time registry is
+        # the cleanup port for this instance.  It points from DraggableBase to
+        # the callback registry and remains independent of the artist's mutable
+        # parent relationship and the attached-only canvas boundary below.
+        callbacks = ref_artist.figure._canvas_callbacks
+        self._disconnectors = [
+            functools.partial(
+                callbacks.disconnect,
+                callbacks._connect_picklable(name, func))
+            for name, func in [
+                ("pick_event", self.on_pick),
+                ("button_release_event", self.on_release),
+                ("motion_notify_event", self.on_motion),
+            ]
         ]
 
     # A property, not an attribute, to maintain picklability.
+    # MPL-001: This is the live-parent canvas boundary, not a cleanup port.
     canvas = property(lambda self: self.ref_artist.figure.canvas)
+
+    cids = property(lambda self: [
+        disconnect.args[0] for disconnect in self._disconnectors[:2]])
 
     def on_motion(self, evt):
         if self._check_still_parented() and self.got_artist:
@@ -1536,20 +1558,42 @@ class DraggableBase:
                 self.ref_artist.draw(
                     self.ref_artist.figure._get_renderer())
                 self.canvas.blit()
-            self._c1 = self.canvas.callbacks._connect_picklable(
-                "motion_notify_event", self.on_motion)
             self.save_offset()
 
     def on_release(self, event):
+        # MPL-003, MPL-004 release-state flow:
+        # INPUT parent_state <- _check_still_parented()
+        # INPUT drag_state <- got_artist
+        # IF parent_state IS detached:
+        #     LET _check_still_parented perform callback cleanup
+        #     STOP without reading the detached artist's canvas
+        #     LEAVE later, independently-created selections operational
+        # ELSE IF drag_state IS inactive:
+        #     PRESERVE attached artist state and STOP
+        # ELSE:
+        #     FINALIZE the attached artist's offset
+        #     TRANSITION drag_state from active to inactive
+        #     IF blitting is active, TRANSITION artist animation to disabled
         if self._check_still_parented() and self.got_artist:
             self.finalize_offset()
             self.got_artist = False
-            self.canvas.mpl_disconnect(self._c1)
 
             if self._use_blit:
                 self.ref_artist.set_animated(False)
 
     def _check_still_parented(self):
+        # MPL-001, MPL-003, MPL-004 release-time parenting logic:
+        # INPUT figure <- ref_artist.figure, without traversing to figure.canvas
+        # IF figure IS None:
+        #     CALL detached-safe MPL-002 disconnection
+        #     RETURN False so release handling treats ref_artist as unparented
+        # ELSE:
+        #     RETAIN callbacks for the still-attached interactive artist
+        #     RETURN True so normal release handling may continue
+        # MPL-003 OUTPUT: a stale selection's release cannot fail while
+        # subsequent QtAgg selections proceed through their own callbacks.
+        # MPL-004 OUTPUT: an attached offset-box keeps its release behavior and
+        # callback lifetime until cleanup is explicitly requested.
         if self.ref_artist.figure is None:
             self.disconnect()
             return False
@@ -1558,14 +1602,18 @@ class DraggableBase:
 
     def disconnect(self):
         """Disconnect the callbacks."""
-        for cid in self.cids:
-            self.canvas.mpl_disconnect(cid)
-        try:
-            c1 = self._c1
-        except AttributeError:
-            pass
-        else:
-            self.canvas.mpl_disconnect(c1)
+        # MPL-002, MPL-003, MPL-004 callback-cleanup flow:
+        # INPUT disconnectors retained from callback registration
+        # FOR EACH registered callback disconnector:
+        #     DISCONNECT it from its original registry
+        #     DO NOT resolve cleanup through ref_artist.figure.canvas
+        # OUTPUT no registered drag callback remains, whether ref_artist is
+        # attached or detached; repeated selection owners remain independent.
+        # FAILURE PATH: absence of a current figure cannot prevent cleanup.
+        # MPL-005 VERIFICATION: test_remove_draggable exercises removal followed
+        # by release cleanup; relevant offset-box tests cover the attached path.
+        for disconnector in self._disconnectors:
+            disconnector()
 
     def save_offset(self):
         pass
