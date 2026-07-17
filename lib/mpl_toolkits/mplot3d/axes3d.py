@@ -387,6 +387,14 @@ class Axes3D(Axes):
 
     @martist.allow_rasterization
     def draw(self, renderer):
+        # Architecture boundary (M3DVIS-001, M3DVIS-003, M3DVIS-007,
+        # M3DVIS-010): Axes3D owns the visibility gate because its projection,
+        # pane, and axis drawing precede the delegation to _AxesBase.draw,
+        # whose visibility guard therefore cannot protect this 3D prelude.
+        # Keep the gate at this override's entry, dependent only on the
+        # inherited Artist visibility contract; the renderer and all
+        # axes-owned visual components remain downstream of that single,
+        # backend-neutral integration seam.
         # Draw-time visibility contract:
         #
         # M3DVIS-001 / M3DVIS-003:
