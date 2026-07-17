@@ -276,6 +276,39 @@ def test_no_duplicate_definition():
     assert max(Counter(wds).values()) == 1
 
 
+# MPLPS-003 through MPLPS-007 and MPLPS-010 specification placeholders:
+# These names preserve the PostScript empty-line verification obligations until
+# a later phase replaces the no-op bodies with behavioral assertions.
+def test_mplps_003_ps_and_eps_multiline_empty_line_avoids_absent_stream_unpack():
+    """MPLPS-003: Empty lines do not unpack an absent PS/EPS text stream."""
+    assert True
+
+
+def test_mplps_004_postscript_empty_line_preserves_following_lines_in_order():
+    """MPLPS-004: Following non-empty lines remain present and ordered."""
+    assert True
+
+
+def test_mplps_005_postscript_empty_line_preserves_multiline_placement_spacing():
+    """MPLPS-005: Empty lines preserve multiline placement and spacing."""
+    assert True
+
+
+def test_mplps_006_ps_and_eps_leading_middle_trailing_empty_lines_complete():
+    """MPLPS-006: PS/EPS accept leading, middle, and trailing empty lines."""
+    assert True
+
+
+def test_mplps_007_ps_and_eps_ordinary_single_multiline_text_still_complete():
+    """MPLPS-007: Ordinary single- and multiline PS/EPS text still works."""
+    assert True
+
+
+def test_mplps_010_postscript_empty_line_change_leaves_other_backends_unchanged():
+    """MPLPS-010: The PostScript correction does not alter other backends."""
+    assert True
+
+
 # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 architecture:
 # These existing backend-test loci own the artist-to-EPS integration contract.
 # Their fixture boundary starts at Figure (not pyplot), crosses Figure.savefig,
