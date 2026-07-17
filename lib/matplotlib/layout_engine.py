@@ -55,6 +55,11 @@ class LayoutEngine:
     3. override `LayoutEngine.execute` with your implementation
 
     """
+    # ARCHITECTURE (GUID: CLF-005): LayoutEngine owns only the declarative
+    # compatibility contract.  FigureBase.subplots_adjust consumes this flag
+    # and owns the warning/refusal and pre-mutation guard; engines must not
+    # reach into that manual-adjustment boundary.  Absence of an active engine
+    # remains represented by FigureBase as None, not by this contract.
     # override these is sub-class
     _adjust_compatible = None
     _colorbar_gridspec = None
