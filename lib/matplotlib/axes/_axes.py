@@ -304,6 +304,18 @@ class Axes(_AxesBase):
                 **kwargs)
         if len(extra_args):
             raise TypeError('legend only accepts two non-keyword arguments')
+        # PSEUDOCODE [LEGEND-005]:
+        # Verification loci:
+        # - test_legend_005_axes_legend_propagates_explicit_draggable_true
+        # - test_legend_005_axes_legend_propagates_explicit_draggable_false
+        # 1. RECEIVE legend options through `kwargs`.
+        # 2. IF `draggable` was explicitly supplied, preserve its Boolean value
+        #    while parsing handles and labels.
+        # 3. HAND OFF the resulting options unchanged to `Legend`.
+        # 4. IF construction fails, propagate that failure and do not publish a
+        #    partially configured legend on the Axes.
+        # 5. RETURN the created legend, whose drag state reflects the supplied
+        #    true or false value immediately after construction.
         self.legend_ = mlegend.Legend(self, handles, labels, **kwargs)
         self.legend_._remove_method = self._remove_legend
         return self.legend_

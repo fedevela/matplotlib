@@ -1116,6 +1116,22 @@ default: %(va)s
             pass
         transform = kwargs.pop('bbox_transform', self.transSubfigure)
         # explicitly set the bbox transform if the user hasn't.
+        # PSEUDOCODE [LEGEND-005]:
+        # Verification loci:
+        # - test_legend_005_figure_legend_propagates_explicit_draggable_true
+        # - test_legend_005_figure_legend_propagates_explicit_draggable_false
+        # - test_legend_005_subfigure_legend_propagates_explicit_draggable_true
+        # - test_legend_005_subfigure_legend_propagates_explicit_draggable_false
+        # 1. RECEIVE legend options through `kwargs` for either a Figure or the
+        #    SubFigure instance that inherits this procedure.
+        # 2. REMOVE only the figure-owned `bbox_transform` option.
+        # 3. IF `draggable` was explicitly supplied, retain its Boolean value
+        #    in the remaining options.
+        # 4. HAND OFF those options unchanged to `Legend`.
+        # 5. IF construction fails, propagate that failure without appending a
+        #    partially configured legend to the owning figure-like object.
+        # 6. OTHERWISE append and return the legend; its drag state immediately
+        #    reflects the supplied true or false value.
         l = mlegend.Legend(self, handles, labels, *extra_args,
                            bbox_transform=transform, **kwargs)
         self.legends.append(l)
