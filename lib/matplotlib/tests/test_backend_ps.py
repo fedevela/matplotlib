@@ -281,6 +281,27 @@ def test_no_duplicate_definition():
 # Their fixture boundary starts at Figure (not pyplot), crosses Figure.savefig,
 # and observes the generated EPS stream; renderer run assembly remains private
 # to backend_ps and therefore needs no test-facing adapter or public contract.
+def _save_artist_text_as_eps(kind, text):
+    fig = Figure()
+    ax = fig.subplots()
+    ax.set_axis_off()
+    if kind == "annotation":
+        artist = ax.annotate(text, (.5, .5))
+    else:
+        artist = ax.set_title(text)
+    output = io.StringIO()
+    fig.savefig(output, format="eps")
+    return artist, output.getvalue()
+
+
+def _assert_eps_contains_text(output, text):
+    glyph_names = re.findall(r"/[\w.]+ glyphshow", output)
+    expected = [f"/{'space' if char == ' ' else char} glyphshow"
+                for char in text]
+    assert any(glyph_names[start:start + len(expected)] == expected
+               for start in range(len(glyph_names) - len(expected) + 1))
+
+
 def test_mplps_001_direct_figure_annotation_leading_blank_eps_retains_label():
     """MPLPS-001: EPS saves without TypeError and retains ``Lower label``."""
     # MPLPS-001 pseudocode:
@@ -289,7 +310,9 @@ def test_mplps_001_direct_figure_annotation_leading_blank_eps_retains_label():
     # WHEN the Figure saves to an in-memory EPS destination
     # THEN saving completes without TypeError
     # AND decoded EPS output contains "Lower label".
-    assert True
+    _, output = _save_artist_text_as_eps("annotation", "\nLower label")
+
+    _assert_eps_contains_text(output, "Lower label")
 
 
 def test_mplps_002_direct_figure_title_leading_blank_eps_retains_title():
@@ -300,10 +323,14 @@ def test_mplps_002_direct_figure_title_leading_blank_eps_retains_title():
     # WHEN the Figure saves to an in-memory EPS destination
     # THEN saving completes without error
     # AND decoded EPS output contains "Lower title".
-    assert True
+    _, output = _save_artist_text_as_eps("title", "\nLower title")
+
+    _assert_eps_contains_text(output, "Lower title")
 
 
-def test_mplps_008_annotation_title_semantics_change_only_for_empty_line_fix():
+@pytest.mark.parametrize("kind", ["annotation", "title"])
+def test_mplps_008_annotation_title_semantics_change_only_for_empty_line_fix(
+        kind):
     """MPLPS-008: Baseline artist semantics remain otherwise unchanged."""
     # MPLPS-008 pseudocode:
     # FOR EACH artist kind in annotation and axes title:
@@ -311,7 +338,14 @@ def test_mplps_008_annotation_title_semantics_change_only_for_empty_line_fix():
     #   EXERCISE the corresponding leading-empty-line text.
     #   VERIFY artist semantics and non-empty-line rendering follow the same
     #   existing path, with only the empty-line failure removed.
-    assert True
+    text = f"Lower {kind}"
+    ordinary_artist, ordinary_output = _save_artist_text_as_eps(kind, text)
+    leading_artist, leading_output = _save_artist_text_as_eps(kind, f"\n{text}")
+
+    assert ordinary_artist.get_text() == text
+    assert leading_artist.get_text() == f"\n{text}"
+    _assert_eps_contains_text(ordinary_output, text)
+    _assert_eps_contains_text(leading_output, text)
 
 
 def test_mplps_009_direct_figure_leading_blank_eps_regression_retains_text():
@@ -322,7 +356,17 @@ def test_mplps_009_direct_figure_leading_blank_eps_regression_retains_text():
     # SAVE through the EPS backend into memory.
     # IF saving raises, fail with the backend exception.
     # OTHERWISE verify each non-empty trailing line occurs in EPS output.
-    assert True
+    fig = Figure()
+    ax = fig.subplots()
+    ax.set_axis_off()
+    ax.annotate("\nLower label", (.5, .5))
+    ax.set_title("\nLower title")
+    output = io.StringIO()
+
+    fig.savefig(output, format="eps")
+
+    _assert_eps_contains_text(output.getvalue(), "Lower label")
+    _assert_eps_contains_text(output.getvalue(), "Lower title")
 
 
 @image_comparison(["multi_font_type3.eps"], tol=0.51)
