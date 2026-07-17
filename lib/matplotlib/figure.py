@@ -183,7 +183,7 @@ class FigureBase(Artist):
         self._supxlabel = None
         self._supylabel = None
 
-        # MPLAL-003 through MPLAL-005 integration seam: FigureBase owns the
+        # MPLAL-003 through MPLAL-006 integration seam: FigureBase owns the
         # x/y Grouper instances and the Axes/Artist object graph.  Figure
         # pickling carries these groupers transitively, while Grouper owns the
         # weak-reference serialization boundary; the restored group members
@@ -191,6 +191,13 @@ class FigureBase(Artist):
         # state rather than to copied or replacement Axes.  See
         # self.align_xlabels, self.align_ylabels, and
         # axis._get_tick_boxes_siblings.
+        #
+        # MPLAL-006 ownership contract: an unaligned Figure is represented by
+        # these ordinary, empty Groupers, not by missing or alignment-specific
+        # state.  The pickle dependency remains Figure -> Artist state and
+        # Grouper's pickle contract; Figure serialization must not add an
+        # adapter or alternate restoration path for the unaligned case.
+        # Verification is owned by the MPLAL-006 seams in test_pickle.py.
         self._align_label_groups = {"x": cbook.Grouper(), "y": cbook.Grouper()}
 
         self.figure = self
