@@ -1838,10 +1838,6 @@ class Axis(martist.Artist):
     def _format_with_dict(tickd, x, pos):
         return tickd.get(x, "")
 
-    # ARCHITECTURE [TICKS-005, TICKS-006]
-    # This is the explicit-label installation seam: it owns both label text
-    # and validated Text-property application.  Axis.set_ticks alone decides
-    # whether this seam is entered.
     def set_ticklabels(self, ticklabels, *, minor=False, **kwargs):
         r"""
         [*Discouraged*] Set the text values of the tick labels.
@@ -1965,10 +1961,6 @@ class Axis(martist.Artist):
             kwargs.update(fontdict)
         return self.set_ticklabels(labels, minor=minor, **kwargs)
 
-    # ARCHITECTURE [TICKS-004, TICKS-007]
-    # This is the location-mutation seam for both tick tiers.  It owns view
-    # expansion and locator replacement and returns the tick objects that
-    # Axis.set_ticks exposes through both public API levels.
     def _set_tick_locations(self, ticks, *, minor=False):
         # see docstring of set_ticks
 
@@ -1995,14 +1987,6 @@ class Axis(martist.Artist):
             self.set_major_locator(mticker.FixedLocator(ticks))
             return self.get_major_ticks(len(ticks))
 
-    # ARCHITECTURE [TICKS-001, TICKS-002, TICKS-003, TICKS-004, TICKS-005,
-    # TICKS-006, TICKS-007]
-    # This is the shared orchestration and return boundary for Axis.set_ticks
-    # and the Axes.set_x/yticks delegates.  Candidate label properties depend
-    # on the mtext.Text property contract, never on a live tick label.  It
-    # delegates location ownership to _set_tick_locations and explicit-label
-    # ownership to set_ticklabels, preserving their order and returning only
-    # the location seam's tick objects.
     def set_ticks(self, ticks, labels=None, *, minor=False, **kwargs):
         """
         Set this Axis' tick locations and optionally labels.
@@ -2037,27 +2021,12 @@ class Axis(martist.Artist):
         other limits, you should set the limits explicitly after setting the
         ticks.
         """
-        # PSEUDOCODE [TICKS-004, TICKS-005, TICKS-006, TICKS-007]
-        # INPUT: requested locations, optional explicit labels, the selected
-        # tick tier, and candidate Text properties.
-        # 1. Validate candidate Text properties before changing tick state;
-        #    on failure, propagate the validation error with no later steps.
-        # 2. [TICKS-004] Establish every requested location on the selected
-        #    tier, regardless of whether explicit labels were supplied, and
-        #    retain the resulting tick objects for the public return value.
-        # 3. IF explicit labels are absent, skip label and property updates.
-        # 4. ELSE [TICKS-005] install the supplied text at those locations,
-        #    and [TICKS-006] apply every validated Text property to the
-        #    installed labels; propagate any label-installation failure.
-        # 5. [TICKS-007] Return the location step's tick objects unchanged;
-        #    preserve tier selection, view expansion, locator replacement,
-        #    generated-label behavior, and Axes delegate return behavior.
-        # TICKS-001, TICKS-002: Validate kwargs even if labels are not set.
-        if kwargs:
-            mtext.Text()._internal_update(kwargs)
+        if labels is None and kwargs:
+            raise ValueError(
+                "Keyword arguments other than 'minor' modify the text labels "
+                "and can only be used if 'labels' are passed as well.")
         result = self._set_tick_locations(ticks, minor=minor)
         if labels is not None:
-            # TICKS-003: Only apply kwargs when labels are explicitly set.
             self.set_ticklabels(labels, minor=minor, **kwargs)
         return result
 
