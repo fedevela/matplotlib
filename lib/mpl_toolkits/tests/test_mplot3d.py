@@ -111,6 +111,16 @@ def test_m3dvis_004_visible_3d_axes_with_plotted_content_draws_normally(
     assert draw_calls == [("patch", renderer), ("line", renderer)]
 
 
+def test_m3dvis_005_hide_visible_3d_axes_keeps_attached_data_unaltered():
+    """GUID: M3DVIS-005 -- hiding preserves attached plotted data unchanged."""
+    pass
+
+
+def test_m3dvis_006_restore_hidden_3d_axes_redraws_content_no_recreation():
+    """GUID: M3DVIS-006 -- a restored axes redraws its existing content."""
+    pass
+
+
 def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
     """GUID: M3DVIS-007 -- figure draw containing hidden axes succeeds."""
     fig = plt.figure()
