@@ -1122,27 +1122,72 @@ def test_range_slider(orientation):
 
 def test_range_001_horizontal_equal_in_bounds_valinit_retains_zero_width_range():
     """RANGE-001: Equal horizontal valinit retains a zero-width range."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="horizontal")
+
+    assert_allclose(slider.val, (.4, .4))
 
 
 def test_range_002_vertical_equal_in_bounds_valinit_retains_zero_width_range():
     """RANGE-002: Equal vertical valinit retains a zero-width range."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="vertical")
+
+    assert_allclose(slider.val, (.4, .4))
 
 
-def test_range_003_valid_range_uses_only_four_selection_polygon_vertices():
+@pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
+def test_range_003_valid_range_uses_only_four_selection_polygon_vertices(
+        orientation):
     """RANGE-003: Applying a valid range stays within four polygon vertices."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.5, .5), orientation=orientation)
+
+    assert len(slider.poly.xy) == 4
+    slider.set_val((.3, .3))
+    assert len(slider.poly.xy) == 4
 
 
-def test_range_004_set_val_equal_in_bounds_retains_zero_width_range():
+@pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
+def test_range_004_set_val_equal_in_bounds_retains_zero_width_range(orientation):
     """RANGE-004: set_val with equal in-bounds endpoints retains that range."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.2, .8), orientation=orientation)
+
+    slider.set_val((.6, .6))
+
+    assert_allclose(slider.val, (.6, .6))
 
 
-def test_range_005_init_or_set_val_synchronizes_polygon_text_and_value():
+@pytest.mark.parametrize(
+    "orientation, initial_xy, updated_xy",
+    [("horizontal",
+      [(0.4, .25), (0.4, .75), (0.4, .75), (0.4, .25)],
+      [(0.6, .25), (0.6, .75), (0.6, .75), (0.6, .25)]),
+     ("vertical",
+      [(.25, 0.4), (.25, 0.4), (.75, 0.4), (.75, 0.4)],
+      [(.25, 0.6), (.25, 0.6), (.75, 0.6), (.75, 0.6)])])
+def test_range_005_init_or_set_val_synchronizes_polygon_text_and_value(
+        orientation, initial_xy, updated_xy):
     """RANGE-005: Init and set_val synchronize polygon, text, and value."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation=orientation,
+        valfmt="%.1f")
+
+    assert_allclose(slider.poly.xy, initial_xy)
+    assert_allclose(slider.val, (.4, .4))
+    assert slider.valtext.get_text() == "(0.4, 0.4)"
+
+    slider.set_val((.6, .6))
+
+    assert_allclose(slider.poly.xy, updated_xy)
+    assert slider.valtext.get_text() == "(0.6, 0.6)"
+    assert_allclose(slider.val, (.6, .6))
 
 
 def check_polygon_selector(event_sequence, expected_result, selections_count,
