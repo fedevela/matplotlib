@@ -503,6 +503,32 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
+        # Pseudocode obligations for a supplied mappable whose norm changed:
+        #
+        # CBNORM-006 (preserve the mappable association):
+        #   INPUT supplied_mappable
+        #   SELECT supplied_mappable as the colorbar's current mappable
+        #   READ all normalization-update inputs from supplied_mappable
+        #   NEVER substitute a derived or previously associated mappable
+        #   OUTPUT colorbar.mappable is supplied_mappable
+        #
+        # CBNORM-007 (preserve plotted data):
+        #   CAPTURE plotted_data as read-only normalization input
+        #   IF the replacement norm requires limits AND plotted_data exists
+        #       DERIVE only missing limits on the replacement norm
+        #       DO NOT assign, replace, or transform plotted_data
+        #   END IF
+        #   OUTPUT supplied_mappable plotted data is unchanged
+        #
+        # CBNORM-008 (preserve the colormap):
+        #   READ supplied_mappable's colormap for colorbar rendering
+        #   DO NOT invoke a colormap setter or assign a colormap on the mappable
+        #   OUTPUT supplied_mappable colormap is unchanged
+        #
+        #   CONTINUE with colorbar scale reset (when required) and redraw
+        #   ON downstream failure, propagate the failure without compensating
+        #       through plotted-data or mappable-colormap mutation; retain the
+        #       supplied mappable as the selected association
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
