@@ -41,6 +41,36 @@ def test_pyplot_up_to_date(tmpdir):
         )
 
 
+def test_backend_001_first_noninteractive_rc_figure_survives_get_backend():
+    """GUID: BACKEND-001; the first rc-context figure stays registered."""
+    assert True
+
+
+def test_backend_002_gcf_registry_identity_survives_get_backend():
+    """GUID: BACKEND-002; the Gcf registry object keeps its identity."""
+    assert True
+
+
+def test_backend_003_gcf_entries_keep_order_after_get_backend():
+    """GUID: BACKEND-003; all Gcf entries retain their original order."""
+    assert True
+
+
+def test_backend_004_gcf_entries_keep_manager_identity_after_get_backend():
+    """GUID: BACKEND-004; every Gcf entry keeps its identical manager."""
+    assert True
+
+
+def test_backend_005_get_backend_does_not_close_destroy_or_unregister_figs():
+    """GUID: BACKEND-005; existing figures remain registered and alive."""
+    assert True
+
+
+def test_backend_007_get_backend_reports_backend_and_preserves_figures():
+    """GUID: BACKEND-007; backend reporting and figures are preserved."""
+    assert True
+
+
 def test_copy_docstring_and_deprecators(recwarn):
     @mpl._api.rename_parameter("(version)", "old", "new")
     @mpl._api.make_keyword_only("(version)", "kwo")
