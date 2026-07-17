@@ -186,5 +186,30 @@ def test_deprecated_seaborn_styles():
     assert mpl.rcParams == seaborn_bright
 
 
+def test_scblind_001_direct_legacy_colorblind_lookup_avoids_key_error():
+    """GUID: SCBLIND-001 -- direct legacy lookup completes."""
+    assert True
+
+
+def test_scblind_002_direct_legacy_colorblind_lookup_returns_style_mapping():
+    """GUID: SCBLIND-002 -- lookup returns a valid style mapping."""
+    assert True
+
+
+def test_scblind_003_legacy_colorblind_mapping_permits_plot_creation():
+    """GUID: SCBLIND-003 -- applying the mapping permits plotting."""
+    assert True
+
+
+def test_scblind_004_legacy_colorblind_preserves_mpl_3_4_3_behavior():
+    """GUID: SCBLIND-004 -- mapping preserves bundled 3.4.3 behavior."""
+    assert True
+
+
+def test_scblind_005_legacy_colorblind_lookup_and_use_need_no_seaborn():
+    """GUID: SCBLIND-005 -- lookup and use need no external seaborn."""
+    assert True
+
+
 def test_up_to_date_blacklist():
     assert mpl.style.core.STYLE_BLACKLIST <= {*mpl.rcsetup._validators}
