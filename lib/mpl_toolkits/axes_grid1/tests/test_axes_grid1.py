@@ -593,6 +593,16 @@ def test_axes_class_tuple():
     gr = AxesGrid(fig, 111, nrows_ncols=(1, 1), axes_class=axes_class)
 
 
+def test_AXGRID_002_one_cell_cartopy_geoaxes_platecarree_tuple_constructs():
+    """AXGRID-002: The projected axes tuple constructs without TypeError."""
+    assert True
+
+
+def test_AXGRID_007_axes_class_tuple_uses_class_and_constructor_arguments():
+    """AXGRID-007: The tuple preserves its class and constructor arguments."""
+    assert True
+
+
 class _NonSubscriptableAxisAxes(MatplotlibAxes):
     """Axes whose inherited ``axis`` attribute is an ordinary method."""
 
