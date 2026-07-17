@@ -23,6 +23,20 @@ class Container(tuple):
         self.set_label(label)
 
     def remove(self):
+        # Pseudocode -- GUID: BAR-012
+        # INPUT: the all-NaN phantom BarContainer previously returned to a
+        # dependent caller
+        # FOR EACH flattened child in the received container:
+        #     IF child is absent:
+        #         continue to the next child
+        #     remove child through its established Artist removal flow
+        # END FOR
+        # IF the container has an owning-Axes removal callback:
+        #     invoke it with this container to unregister the container
+        # RESULT: child removal and container unregistration complete without
+        # an exception caused solely by the children's NaN geometry       [BAR-012]
+        # FAILURE: established child-removal or callback failures propagate;
+        # removal does not inspect geometry finiteness or add a NaN branch
         for c in cbook.flatten(
                 self, scalarp=lambda x: isinstance(x, Artist)):
             if c is not None:

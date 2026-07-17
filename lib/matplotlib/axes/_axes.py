@@ -2499,7 +2499,7 @@ class Axes(_AxesBase):
             bottom = y
 
         # Pseudocode -- GUID: BAR-001, BAR-002, BAR-003, BAR-004, BAR-005,
-        # BAR-006, BAR-007, BAR-008, BAR-009, BAR-011
+        # BAR-006, BAR-007, BAR-008, BAR-009, BAR-011, BAR-012
         # expected_rectangle_count := length(x) after broadcasting
         # ordered_bar_tuples := aligned, broadcast tuples in input-x order
         # patches := empty sequence
@@ -2515,6 +2515,9 @@ class Axes(_AxesBase):
         #         preserve the aligned finite left and non-finite height
         #     ELSE IF ordinary x and width are finite numeric values:   [BAR-009]
         #         preserve established center- or edge-aligned geometry
+        #     IF this tuple belongs to an all-NaN phantom-bar request: [BAR-012]
+        #         continue through the same Rectangle construction and Axes
+        #         registration flow; NaN values alone are not a failure branch
         #     rectangle := construct one Rectangle from this ordinal's tuple
         #     preserve this tuple's aligned finite or non-finite left geometry
         #                                                               [BAR-007]
@@ -2589,14 +2592,24 @@ class Axes(_AxesBase):
         else:  # horizontal
             datavalues = width
 
-        # Pseudocode -- GUID: BAR-009, BAR-014
+        # Pseudocode -- GUID: BAR-009, BAR-012, BAR-014
+        # INPUT: patches produced by the normal bar flow, including the patch
+        # sequence produced for an all-NaN phantom-bar request             [BAR-012]
         # container := BarContainer(patches, errorbar, datavalues, orientation,
         #                           public label)
+        # register container with the caller's Axes
+        # IF tick labels were supplied:
+        #     complete established tick-label bookkeeping
         # preserve normal patch access, data values, orientation, label,
         # errorbar association, Axes registration, and tick-label bookkeeping
         # for ordinary finite numeric bars                              [BAR-009]
-        # return container after normal container and tick-label bookkeeping,
-        # including when every supplied x position is non-finite
+        # return the same registered container to the dependent caller
+        # RESULT: the caller receives the all-NaN phantom-bar result without
+        # an exception caused solely by its NaN values                   [BAR-012]
+        # RESULT: a container is returned when every x is non-finite     [BAR-014]
+        # FAILURE: established conversion, validation, construction, or
+        # bookkeeping failures propagate; all-NaN input alone does not create
+        # an additional failure path                                    [BAR-012]
         # Architecture contract -- GUID: BAR-009, BAR-014
         # BarContainer assembly remains in Axes.bar so exceptional coordinate
         # classes cannot introduce an alternate return boundary.  The same
