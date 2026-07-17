@@ -548,10 +548,13 @@ class Legend(Artist):
             title_prop_fp.set_size(title_fontsize)
 
         self.set_title(title, prop=title_prop_fp)
-        # ARCHITECTURE [LEGEND-001, LEGEND-002, LEGEND-003, LEGEND-004]: This
-        # null helper slot is the initialization seam.  Legend.__init__ owns
-        # when the creation option is applied; Legend.set_draggable owns helper
-        # lifecycle; DraggableLegend owns the established interaction adapter.
+        # ARCHITECTURE [LEGEND-001, LEGEND-002, LEGEND-003, LEGEND-004,
+        # LEGEND-007]: This null helper slot is the initialization seam.
+        # Legend.__init__ owns when the creation option is applied, but the
+        # option crosses only into the drag-helper lifecycle: visual layout and
+        # ordinary Legend behavior retain no dependency on drag configuration.
+        # Legend.set_draggable owns helper lifecycle; DraggableLegend owns the
+        # established interaction adapter.
         # The dependency direction is therefore __init__ -> set_draggable ->
         # DraggableLegend -> DraggableOffsetBox, with no parallel interaction.
         # PSEUDOCODE [LEGEND-001, LEGEND-002, LEGEND-003, LEGEND-004]:
@@ -1143,6 +1146,11 @@ class Legend(Artist):
             If *state* is ``True`` this returns the `.DraggableLegend` helper
             instance. Otherwise this returns *None*.
         """
+        # ARCHITECTURE [LEGEND-006]: This method remains the sole mutation
+        # boundary for the `_draggable` helper slot, shared by creation-time
+        # and post-creation configuration.  DraggableLegend owns connection
+        # setup, its inherited disconnect contract owns teardown, and
+        # get_draggable is a read-only projection of the slot.
         # PSEUDOCODE [LEGEND-006]:
         # Verification loci:
         # - test_legend_006_post_creation_configuration_enables_draggability
