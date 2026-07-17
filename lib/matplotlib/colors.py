@@ -1701,6 +1701,11 @@ def _make_norm_from_scale(
             *bound_init_signature.parameters.values()])
 
         def __call__(self, value, clip=None):
+            # ARCHITECTURE (MPLNORM-007): Scale-derived Normalize owns the
+            # transformed-limit validation contract.  The scale transform is
+            # an inward computation dependency; mappables and colorbars must
+            # consume the result or propagated error without revalidating or
+            # repairing limits at their synchronization boundaries.
             # PSEUDOCODE (MPLNORM-007):
             # INPUT: values to normalize and the norm's current limits.
             # IF either limit is absent: derive only the absent limit from

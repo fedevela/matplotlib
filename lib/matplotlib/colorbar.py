@@ -323,11 +323,14 @@ class Colorbar:
             alpha = mappable.get_alpha()
 
         mappable.colorbar = self
-        # ARCHITECTURE (MPLNORM-003, MPLNORM-004, MPLNORM-005, MPLNORM-006):
+        # ARCHITECTURE (MPLNORM-003, MPLNORM-004, MPLNORM-005, MPLNORM-006,
+        # MPLNORM-008):
         # the mappable's ``changed`` signal is the synchronous integration seam
         # from completed normalization state into this already-associated
         # Colorbar.  The bound callback retains both endpoint identities across
-        # redraws without requiring backend event processing.
+        # redraws without requiring backend event processing.  Ordinary updates
+        # use this same dependency direction: Normalize -> ScalarMappable ->
+        # Colorbar.
         mappable.colorbar_cid = mappable.callbacks.connect(
             'changed', self.update_normal)
 
@@ -508,11 +511,15 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
-        # ARCHITECTURE (MPLNORM-003, MPLNORM-004, MPLNORM-005, MPLNORM-006):
+        # ARCHITECTURE (MPLNORM-003, MPLNORM-004, MPLNORM-005, MPLNORM-006,
+        # MPLNORM-008):
         # Colorbar is a consumer of normalization state, not an owner of its
         # limits.  This in-place adapter seam synchronously adopts the callback
         # mappable's exact norm identity before redraw-dependent presentation
-        # state is refreshed; neither endpoint is replaced here.
+        # state is refreshed; neither endpoint is replaced here.  The same seam
+        # owns both replacement and ordinary-update synchronization, keeping
+        # those workflows structurally aligned rather than adding a parallel
+        # update path.
         # PSEUDOCODE (MPLNORM-003, MPLNORM-004):
         # INPUT: a completed mappable change notification carrying a coherent
         # norm identity and limit pair.
