@@ -617,22 +617,72 @@ def test_colorbar_renorm():
 
 def test_MPLNORM_001_public_norm_assignment_with_colorbar_does_not_raise():
     """MPLNORM-001: Assigning a valid positive LogNorm must not raise."""
-    pass
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm(vmin=2, vmax=16)
+
+    mappable.norm = norm
+
+    assert mappable.norm is norm
+    assert colorbar.norm is norm
+    assert (norm.vmin, norm.vmax) == (2, 16)
 
 
 def test_MPLNORM_002_autoscale_replacement_yields_positive_log_limits():
     """MPLNORM-002: Autoscaling positive data yields valid log limits."""
-    pass
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    fig.colorbar(mappable)
+    mappable.norm = LogNorm(vmin=2, vmax=16)
+
+    mappable.autoscale()
+
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (1, 8)
+    assert 0 < mappable.norm.vmin <= mappable.norm.vmax
 
 
 def test_MPLNORM_003_colorbar_sync_preserves_explicit_valid_positive_lognorm_bounds():
     """MPLNORM-003: Colorbar sync cannot corrupt valid replacement bounds."""
-    pass
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    observed = []
+    mappable.callbacks.connect(
+        'changed', lambda changed: observed.append(
+            (changed.norm, changed.norm.vmin, changed.norm.vmax)))
+    norm = LogNorm(vmin=2, vmax=16)
+    norm_observed = []
+    norm.callbacks.connect(
+        'changed', lambda: norm_observed.append((norm.vmin, norm.vmax)))
+
+    mappable.norm = norm
+
+    assert colorbar.norm is norm
+    assert (norm.vmin, norm.vmax) == (2, 16)
+    assert observed == [(norm, 2, 16)]
+    assert norm_observed == []
+
+    observed.clear()
+    mappable.autoscale()
+    assert norm_observed == [(1, 8)]
+    assert observed == [(norm, 1, 8)]
 
 
 def test_MPLNORM_004_redraw_syncs_mappable_and_colorbar_log_limits():
     """MPLNORM-004: Redraw preserves their shared LogNorm and limits."""
-    pass
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm(vmin=2, vmax=16)
+    mappable.norm = norm
+    mappable.autoscale()
+
+    fig.canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (1, 8)
+    assert (colorbar.vmin, colorbar.vmax) == (1, 8)
 
 
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])

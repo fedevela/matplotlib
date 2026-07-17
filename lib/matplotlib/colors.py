@@ -1381,8 +1381,10 @@ class Normalize:
         # colorbar listeners receive only the coherent final pair.
         # OUTPUT: valid autoscaled limits and no ValueError for valid positive
         # logarithmic input.
-        self.vmin = self.vmax = None
-        self.autoscale_None(A)
+        with self.callbacks.blocked():
+            self.vmin = self.vmax = None
+            self.autoscale_None(A)
+        self._changed()
 
     def autoscale_None(self, A):
         """If vmin or vmax are not set, use the min/max of *A* to set them."""
