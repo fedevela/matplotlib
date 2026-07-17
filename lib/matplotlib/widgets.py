@@ -230,6 +230,15 @@ class Button(AxesWidget):
         if event.canvas.mouse_grabber != self.ax:
             event.canvas.grab_mouse(self.ax)
 
+    # INPUT-005 -- ownership and integration boundary: Button._release owns
+    # the ordering between relinquishing the current Axes' mouse grab and
+    # dispatching the clicked signal.  It depends on FigureCanvasBase's
+    # existing release_mouse contract for event-routing state and on
+    # CallbackRegistry.process for synchronous callback delivery.  Figure
+    # clearing, replacement-widget construction, and redraw remain owned by
+    # the registered callback; replacement Buttons reconnect through
+    # AxesWidget.connect_event and require no reconstruction-aware canvas
+    # adapter, callback-registry change, or new public API.
     def _release(self, event):
         # INPUT-005 -- button-initiated clear-rebuild-redraw logic:
         #   INPUT: a release event matching the Axes that acquired the mouse
