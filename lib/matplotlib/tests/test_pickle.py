@@ -268,11 +268,40 @@ def test_mplal_005_axes_data_and_label_text_remain_intact_after_round_trip():
 
 
 def test_mplal_006_unaligned_figure_pickle_dumps_and_loads_without_exception():
-    assert True
+    fig, ax = plt.subplots()
+    ax.set(xlabel="x label", ylabel="y label")
+
+    payload = pickle.dumps(fig)
+    restored = pickle.loads(payload)
+
+    assert isinstance(restored, mfigure.Figure)
+    assert len(restored.axes) == 1
 
 
 def test_mplal_006_deserialized_unaligned_figure_axes_data_labels_remain_usable():
-    assert True
+    fig, axs = plt.subplots(2, 1)
+    expected = []
+    for i, ax in enumerate(axs):
+        x = np.arange(4)
+        y = x ** 2 + i
+        ax.plot(x, y)
+        ax.set(xlabel=f"x label {i}", ylabel=f"y label {i}")
+        expected.append((x, y, ax.get_xlabel(), ax.get_ylabel()))
+
+    assert all(list(group) == []
+               for group in fig._align_label_groups.values())
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert len(restored.axes) == len(expected)
+    assert all(list(group) == []
+               for group in restored._align_label_groups.values())
+    for ax, (x, y, xlabel, ylabel) in zip(restored.axes, expected):
+        assert len(ax.lines) == 1
+        np.testing.assert_array_equal(ax.lines[0].get_xdata(), x)
+        np.testing.assert_array_equal(ax.lines[0].get_ydata(), y)
+        assert ax.get_xlabel() == xlabel
+        assert ax.get_ylabel() == ylabel
+    restored.canvas.draw()
 
 
 class TransformBlob:
