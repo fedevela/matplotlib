@@ -82,9 +82,33 @@ def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence(
     assert visibility_reads
 
 
-def test_m3dvis_004_visible_3d_axes_with_plotted_content_draws_normally():
+def test_m3dvis_004_visible_3d_axes_with_plotted_content_draws_normally(
+        monkeypatch):
     """GUID: M3DVIS-004 -- visible plotted 3D axes render normally."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    line, = ax.plot([0, 1], [0, 1], [0, 1])
+    draw_calls = []
+
+    patch_draw = ax.patch.draw
+    line_draw = line.draw
+
+    def record_patch_draw(renderer):
+        draw_calls.append(("patch", renderer))
+        patch_draw(renderer)
+
+    def record_line_draw(renderer):
+        draw_calls.append(("line", renderer))
+        line_draw(renderer)
+
+    monkeypatch.setattr(ax.patch, "draw", record_patch_draw)
+    monkeypatch.setattr(line, "draw", record_line_draw)
+
+    assert ax.get_visible()
+    fig.canvas.draw()
+
+    renderer = fig.canvas.get_renderer()
+    assert draw_calls == [("patch", renderer), ("line", renderer)]
 
 
 def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
