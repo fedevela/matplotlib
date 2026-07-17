@@ -246,6 +246,22 @@ def update_nested_dict(main_dict, new_dict):
 
 # Load style library
 # ==================
+# SCBLIND-001..005 architecture contract:
+#
+# * Value ownership remains with the bundled
+#   ``stylelib/seaborn-v0_8-colorblind.mplstyle`` artifact; the legacy name is
+#   only a second library key for that internal style mapping.  [SCBLIND-002,
+#   SCBLIND-004, SCBLIND-005]
+# * ``reload_library`` is the sole publication seam for
+#   ``library["seaborn-colorblind"]``.  Compatibility therefore depends inward
+#   on ``_base_library["seaborn-v0_8-colorblind"]``, never outward on seaborn or
+#   on a user style directory.  [SCBLIND-001, SCBLIND-004, SCBLIND-005]
+# * The published value retains the existing style-mapping boundary consumed by
+#   ``use`` and ``_apply_style``; plotting owns no compatibility-specific path.
+#   [SCBLIND-002, SCBLIND-003]
+# * Verification ownership remains in the SCBLIND placeholders in
+#   ``matplotlib/tests/test_style.py``.  No new public symbol or adapter is
+#   required for this integration seam.  [SCBLIND-001..005]
 _base_library = read_style_directory(BASE_LIBRARY_PATH)
 library = None
 available = []
