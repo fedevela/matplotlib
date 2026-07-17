@@ -711,35 +711,18 @@ class Colormap:
         mask_bad = X.mask if np.ma.is_masked(X) else None
         xa = np.array(X, copy=True)
 
-        # Architecture boundary (GUID: CMAP-001, CMAP-002, CMAP-003,
-        # CMAP-007): Colormap.__call__ owns the lookup-index representation.
-        # Input normalization must hand a sentinel-capable, shape-preserving
-        # array across this boundary to the sentinel assignment and LUT lookup
-        # stages below.  The LUT and Colormap subclasses consume those indices;
-        # they do not select or repair the working index dtype.
-        #
-        # ``xa`` is the integration seam between input normalization and LUT
-        # lookup.  Any representation adjustment belongs before the sentinel
-        # assignments; RGBA shape expansion remains owned by the LUT lookup.
-
-        # Sentinel-index preparation contract:
-        # - GUID: CMAP-001 / CMAP-007: For every empty or non-empty integer
-        #   input, determine whether xa's dtype can represent all colormap
-        #   sentinel indices before performing any sentinel assignment.
-        # - GUID: CMAP-003: If the dtype cannot represent _i_under, _i_over,
-        #   and _i_bad, transition xa to a capable integer representation;
-        #   otherwise retain the existing representation.  Continue only with
-        #   the capable working array, then assign over-range, under-range, and
-        #   invalid positions in the established order below.  If no capable
-        #   representation can be established, fail before assigning a
-        #   sentinel rather than attempting an out-of-bound conversion.
-        # - GUID: CMAP-002: Carry xa's complete input shape, including (0,),
-        #   through lookup; append the LUT color axis so the default RGBA
-        #   output shape is xa.shape + (4,), including (0, 4) for empty input.
         if mask_bad is None:
             mask_bad = np.isnan(xa)
         if not xa.dtype.isnative:
             xa = xa.byteswap().newbyteorder()  # Native byteorder is faster.
+        # Ensure that the special indices will be representable; in particular,
+        # NumPy 1.24 deprecates assigning 256 to a uint8 array, even if the
+        # assignment is to an empty mask (GH#24970).
+        if xa.dtype.kind in "iu":
+            data_min, data_max = np.iinfo(xa.dtype).min, np.iinfo(xa.dtype).max
+            if self._i_under < data_min or self._i_bad > data_max:
+                sentinel_dtype = np.min_scalar_type(self._i_bad)
+                xa = xa.astype(np.promote_types(xa.dtype, sentinel_dtype))
         if xa.dtype.kind == "f":
             with np.errstate(invalid="ignore"):
                 xa *= self.N

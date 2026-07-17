@@ -1,6 +1,7 @@
 import copy
 import itertools
 import unittest.mock
+import warnings
 
 from io import BytesIO
 import numpy as np
@@ -270,22 +271,54 @@ class TestColormapSentinelIndexingContracts:
     def test_cmap_001_empty_uint8_default_rgba_emits_no_out_of_bound_warning(
             self):
         """GUID: CMAP-001; empty uint8 input emits no conversion warning."""
-        assert True
+        cmap = mpl.colormaps["plasma"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            cmap(np.empty(0, dtype=np.uint8))
 
     def test_cmap_002_empty_shape_zero_default_rgba_returns_shape_zero_four(
             self):
         """GUID: CMAP-002; shape (0,) input returns RGBA shape (0, 4)."""
-        assert True
+        rgba = mpl.colormaps["plasma"](np.empty(0, dtype=np.uint8))
+        assert rgba.shape == (0, 4)
 
-    def test_cmap_003_sentinel_representation_holds_under_over_invalid_before_assignment(
-            self):
+    def test_cmap_003_sentinels_fit_index_dtype(self):
         """GUID: CMAP-003; sentinel representation holds all indices."""
-        assert True
+        cmap = mcolors.ListedColormap(["black", "white"])
+        cmap._init()
+        lut = cmap._lut
+        indices = []
 
-    def test_cmap_007_empty_and_nonempty_susceptible_integer_dtypes_emit_no_out_of_bound_warning(
-            self):
+        class LutProxy:
+            def take(self, xa, **kwargs):
+                indices.append(xa.copy())
+                return lut.take(xa, **kwargs)
+
+        cmap._lut = LutProxy()
+        values = np.ma.array([-1, 2, 0], dtype=np.int8,
+                             mask=[False, False, True])
+        cmap(values)
+
+        xa, = indices
+        info = np.iinfo(xa.dtype)
+        assert info.min <= cmap._i_under <= info.max
+        assert info.min <= cmap._i_over <= info.max
+        assert info.min <= cmap._i_bad <= info.max
+        assert_array_equal(xa, [cmap._i_under, cmap._i_over, cmap._i_bad])
+
+    @pytest.mark.parametrize("dtype, values", [
+        (np.int8, []),
+        (np.int8, [-1, 0, 127]),
+        (np.uint8, []),
+        (np.uint8, [0, 255]),
+    ])
+    def test_cmap_007_susceptible_integer_dtypes_no_warning(
+            self, dtype, values):
         """GUID: CMAP-007; susceptible integer inputs emit no warning."""
-        assert True
+        cmap = mpl.colormaps["plasma"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            cmap(np.array(values, dtype=dtype))
 
 
 def test_BoundaryNorm():
