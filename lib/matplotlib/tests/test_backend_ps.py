@@ -276,6 +276,170 @@ def test_no_duplicate_definition():
     assert max(Counter(wds).values()) == 1
 
 
+def _save_figure_text(text, format):
+    fig = Figure(figsize=(2, 2))
+    fig.text(.5, .5, text)
+    output = io.StringIO()
+    fig.savefig(output, format=format)
+    return output.getvalue()
+
+
+@pytest.mark.parametrize("format", ["ps", "eps"])
+@pytest.mark.parametrize("useafm", [False, True])
+def test_mplps_003_ps_and_eps_multiline_empty_line_avoids_absent_stream_unpack(
+        format, useafm):
+    """MPLPS-003: Empty lines do not unpack an absent PS/EPS text stream."""
+    with mpl.rc_context({"ps.useafm": useafm}):
+        output = _save_figure_text("First\n\nLast", format)
+
+    _assert_eps_contains_text(output, "First")
+    _assert_eps_contains_text(output, "Last")
+
+
+def test_mplps_004_postscript_empty_line_preserves_following_lines_in_order():
+    """MPLPS-004: Following non-empty lines remain present and ordered."""
+    output = _save_figure_text("Alpha\n\nBeta\nGamma", "ps")
+
+    # Empty lines emit no glyphs, so concatenating the expected visible lines
+    # also verifies their order in the generated glyph stream.
+    _assert_eps_contains_text(output, "AlphaBetaGamma")
+
+
+def test_mplps_005_postscript_empty_line_preserves_multiline_placement_spacing(
+        monkeypatch):
+    """MPLPS-005: Empty lines preserve multiline placement and spacing."""
+    from matplotlib.backends.backend_ps import RendererPS
+
+    calls = []
+    draw_text = RendererPS.draw_text
+
+    def record_draw_text(self, gc, x, y, s, prop, angle, ismath=False,
+                         mtext=None):
+        calls.append((s, x, y))
+        return draw_text(self, gc, x, y, s, prop, angle, ismath, mtext)
+
+    monkeypatch.setattr(RendererPS, "draw_text", record_draw_text)
+    _save_figure_text("Top\n\nBottom", "ps")
+
+    assert [text for text, x, y in calls] == ["Top", "", "Bottom"]
+    assert calls[0][2] - calls[1][2] == pytest.approx(
+        calls[1][2] - calls[2][2])
+
+
+@pytest.mark.parametrize("format", ["ps", "eps"])
+@pytest.mark.parametrize("text", ["\nVisible", "Before\n\nAfter", "Visible\n"])
+def test_mplps_006_ps_and_eps_leading_middle_trailing_empty_lines_complete(
+        format, text):
+    """MPLPS-006: PS/EPS accept leading, middle, and trailing empty lines."""
+    assert _save_figure_text(text, format)
+
+
+@pytest.mark.parametrize("format", ["ps", "eps"])
+@pytest.mark.parametrize("text", ["Single line", "First line\nSecond line"])
+def test_mplps_007_ps_and_eps_ordinary_single_multiline_text_still_complete(
+        format, text):
+    """MPLPS-007: Ordinary single- and multiline PS/EPS text still works."""
+    assert _save_figure_text(text, format)
+
+
+def test_mplps_010_postscript_empty_line_change_leaves_other_backends_unchanged():
+    """MPLPS-010: The PostScript correction does not alter other backends."""
+    assert _save_figure_text("Before\n\nAfter", "svg")
+
+
+# MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 architecture:
+# These existing backend-test loci own the artist-to-EPS integration contract.
+# Their fixture boundary starts at Figure (not pyplot), crosses Figure.savefig,
+# and observes the generated EPS stream; renderer run assembly remains private
+# to backend_ps and therefore needs no test-facing adapter or public contract.
+def _save_artist_text_as_eps(kind, text):
+    fig = Figure()
+    ax = fig.subplots()
+    ax.set_axis_off()
+    if kind == "annotation":
+        artist = ax.annotate(text, (.5, .5))
+    else:
+        artist = ax.set_title(text)
+    output = io.StringIO()
+    fig.savefig(output, format="eps")
+    return artist, output.getvalue()
+
+
+def _assert_eps_contains_text(output, text):
+    glyph_names = re.findall(r"/[\w.]+ glyphshow", output)
+    expected = [f"/{'space' if char == ' ' else char} glyphshow"
+                for char in text]
+    assert any(glyph_names[start:start + len(expected)] == expected
+               for start in range(len(glyph_names) - len(expected) + 1))
+
+
+def test_mplps_001_direct_figure_annotation_leading_blank_eps_retains_label():
+    """MPLPS-001: EPS saves without TypeError and retains ``Lower label``."""
+    # MPLPS-001 pseudocode:
+    # GIVEN a directly constructed Figure with axes
+    # AND an annotation whose text is "\nLower label"
+    # WHEN the Figure saves to an in-memory EPS destination
+    # THEN saving completes without TypeError
+    # AND decoded EPS output contains "Lower label".
+    _, output = _save_artist_text_as_eps("annotation", "\nLower label")
+
+    _assert_eps_contains_text(output, "Lower label")
+
+
+def test_mplps_002_direct_figure_title_leading_blank_eps_retains_title():
+    """MPLPS-002: EPS saves without error and retains ``Lower title``."""
+    # MPLPS-002 pseudocode:
+    # GIVEN a directly constructed Figure with axes
+    # AND the axes title is "\nLower title"
+    # WHEN the Figure saves to an in-memory EPS destination
+    # THEN saving completes without error
+    # AND decoded EPS output contains "Lower title".
+    _, output = _save_artist_text_as_eps("title", "\nLower title")
+
+    _assert_eps_contains_text(output, "Lower title")
+
+
+@pytest.mark.parametrize("kind", ["annotation", "title"])
+def test_mplps_008_annotation_title_semantics_change_only_for_empty_line_fix(
+        kind):
+    """MPLPS-008: Baseline artist semantics remain otherwise unchanged."""
+    # MPLPS-008 pseudocode:
+    # FOR EACH artist kind in annotation and axes title:
+    #   CAPTURE observable EPS behavior for ordinary non-empty text.
+    #   EXERCISE the corresponding leading-empty-line text.
+    #   VERIFY artist semantics and non-empty-line rendering follow the same
+    #   existing path, with only the empty-line failure removed.
+    text = f"Lower {kind}"
+    ordinary_artist, ordinary_output = _save_artist_text_as_eps(kind, text)
+    leading_artist, leading_output = _save_artist_text_as_eps(kind, f"\n{text}")
+
+    assert ordinary_artist.get_text() == text
+    assert leading_artist.get_text() == f"\n{text}"
+    _assert_eps_contains_text(ordinary_output, text)
+    _assert_eps_contains_text(leading_output, text)
+
+
+def test_mplps_009_direct_figure_leading_blank_eps_regression_retains_text():
+    """MPLPS-009: Regression saves EPS and checks text after the empty line."""
+    # MPLPS-009 pseudocode:
+    # BUILD the regression fixture from Figure directly, without pyplot.
+    # ADD leading-empty-line annotation and title text to its axes.
+    # SAVE through the EPS backend into memory.
+    # IF saving raises, fail with the backend exception.
+    # OTHERWISE verify each non-empty trailing line occurs in EPS output.
+    fig = Figure()
+    ax = fig.subplots()
+    ax.set_axis_off()
+    ax.annotate("\nLower label", (.5, .5))
+    ax.set_title("\nLower title")
+    output = io.StringIO()
+
+    fig.savefig(output, format="eps")
+
+    _assert_eps_contains_text(output.getvalue(), "Lower label")
+    _assert_eps_contains_text(output.getvalue(), "Lower title")
+
+
 @image_comparison(["multi_font_type3.eps"], tol=0.51)
 def test_multi_font_type3():
     fp = fm.FontProperties(family=["WenQuanYi Zen Hei"])

@@ -626,6 +626,35 @@ grestore
         if ismath:
             return self.draw_mathtext(gc, x, y, s, prop, angle)
 
+        # MPLPS-003, MPLPS-004, MPLPS-005, MPLPS-006, MPLPS-007, MPLPS-010
+        # architecture -- RendererPS owns the PostScript line-to-run boundary.
+        # Text layout remains upstream: it splits multiline input, preserves
+        # line order, and supplies each line's computed position and spacing.
+        # This method consumes one such line through a private ``stream`` of
+        # concrete font/glyph runs; zero runs is a valid empty-line contract.
+        # Both the AFM and TrueType branches must satisfy that contract before
+        # the common emission loop.  PS and EPS share this renderer boundary,
+        # while other backends neither depend on nor expose it.  Keep the seam
+        # private: no adapter, public API, or reverse dependency into Text is
+        # required.  Existing backend_ps tests own verification at savefig and
+        # generated-output boundaries.
+        # MPLPS-003, MPLPS-004, MPLPS-005, MPLPS-006, MPLPS-007, MPLPS-010
+        # pseudocode -- shared PS/EPS empty-line handling:
+        # INPUT the next layout line, its already-computed (x, y) position,
+        # font properties, and rotation, in the original multiline order.
+        # BUILD zero or more concrete font/glyph runs for that line.
+        # IF the line builds no run (including a leading, middle, or trailing
+        # empty line), treat it as a successful no-output line; do not append
+        # or unpack an absent run and return control for the next layout line.
+        # ELSE emit every concrete run with the existing position, rotation,
+        # font selection, clipping, and glyph order unchanged.
+        # CONTINUE upstream line iteration so every later non-empty line is
+        # emitted at its precomputed position and in its original order.
+        # APPLY the same flow for PS and EPS, which share this renderer path.
+        # PRESERVE the non-empty path for ordinary single-line and multiline
+        # text; do not change layout spacing or any non-PostScript backend.
+        # FAILURE PATH: an absent run produces no PostScript commands and is
+        # never dereferenced; errors from real runs retain their existing path.
         if mpl.rcParams['ps.useafm']:
             font = self._get_font_afm(prop)
             scale = 0.001 * prop.get_size_in_points()
@@ -647,13 +676,35 @@ grestore
                 thisx += width * scale
             ps_name = (font.postscript_name
                        .encode("ascii", "replace").decode("ascii"))
-            stream.append((ps_name, xs_names))
+            # MPLPS-003/MPLPS-006: As in the TrueType branch below, an empty
+            # layout line has no font run to emit.
+            if xs_names:
+                stream.append((ps_name, xs_names))
 
         else:
             font = self._get_font_ttf(prop)
             self._character_tracker.track(font, s)
+            # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 architecture:
+            # RendererPS owns the layout-to-PostScript boundary.  ``stream``
+            # is its private handoff from text layout to command emission and
+            # contains only concrete font/glyph runs; an empty layout line has
+            # no run to hand off.  Text artists remain upstream callers, so
+            # annotation/title semantics and backend dependencies stay intact.
             stream = []
             prev_font = curr_stream = None
+            # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 pseudocode:
+            # INPUT one text-layout line and its selected TrueType font.
+            # FOR EACH glyph emitted by layout:
+            #   IF its font differs from the active glyph run:
+            #     IF an active run exists, hand that completed run to stream.
+            #     START a new run containing the glyph's PostScript font name.
+            #   APPEND the glyph position and name to the active run.
+            # AFTER layout completes:
+            #   IF an active run exists, hand that final run to stream.
+            #   ELSE preserve the empty line as a no-output operation.
+            # FOR EACH real run in stream, emit its existing PS commands unchanged.
+            # FAILURE PATH: never append or unpack an absent run; allow later
+            # non-empty annotation/title lines to continue to EPS output.
             for item in _text_helpers.layout(s, font):
                 ps_name = (item.ft_object.postscript_name
                            .encode("ascii", "replace").decode("ascii"))
@@ -665,8 +716,9 @@ grestore
                 curr_stream[1].append(
                     (item.x, item.ft_object.get_glyph_name(item.glyph_idx))
                 )
-            # append the last entry
-            stream.append(curr_stream)
+            # Append the last entry, if the text contained any glyphs.
+            if curr_stream:
+                stream.append(curr_stream)
 
         self.set_color(*gc.get_rgb())
 
