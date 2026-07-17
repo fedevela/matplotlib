@@ -595,12 +595,35 @@ def test_axes_class_tuple():
 
 def test_AXGRID_002_one_cell_cartopy_geoaxes_platecarree_tuple_constructs():
     """AXGRID-002: The projected axes tuple constructs without TypeError."""
-    assert True
+    ccrs = pytest.importorskip("cartopy.crs")
+    geoaxes = pytest.importorskip("cartopy.mpl.geoaxes")
+    projection = ccrs.PlateCarree()
+
+    grid = AxesGrid(
+        plt.figure(), 111, (1, 1),
+        axes_class=(geoaxes.GeoAxes, {"projection": projection}))
+
+    assert isinstance(grid[0], geoaxes.GeoAxes)
+    assert grid[0].projection is projection
+
+
+class _ConstructorArgsAxes(MatplotlibAxes):
+    def __init__(self, *args, constructor_arg, **kwargs):
+        self.constructor_arg = constructor_arg
+        super().__init__(*args, **kwargs)
 
 
 def test_AXGRID_007_axes_class_tuple_uses_class_and_constructor_arguments():
     """AXGRID-007: The tuple preserves its class and constructor arguments."""
-    assert True
+    constructor_arg = object()
+
+    grid = AxesGrid(
+        plt.figure(), 111, (1, 1), label_mode="keep",
+        axes_class=(_ConstructorArgsAxes,
+                    {"constructor_arg": constructor_arg}))
+
+    assert type(grid[0]) is _ConstructorArgsAxes
+    assert grid[0].constructor_arg is constructor_arg
 
 
 class _NonSubscriptableAxisAxes(MatplotlibAxes):
