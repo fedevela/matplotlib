@@ -28,6 +28,174 @@ def test_aspect_equal_error():
         ax.set_aspect('equal')
 
 
+@check_figures_equal(extensions=["png"])
+def test_m3dvis_001_drawing_invisible_3d_axes_omits_all_owned_visuals(
+        fig_test, fig_ref):
+    """GUID: M3DVIS-001 -- hidden axes draw with no owned visuals."""
+    ax = fig_test.add_subplot(projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1], label="data")
+    ax.scatter([0.5], [0.5], [0.5])
+    ax.text(0.5, 0.5, 0.5, "decoration")
+    ax.set(xlabel="x label", ylabel="y label", zlabel="z label",
+           title="title")
+    ax.legend()
+    ax.set_visible(False)
+
+
+@check_figures_equal(extensions=["png"])
+def test_m3dvis_002_two_axes_hide_3d_redraw_preserves_other_axes_output(
+        fig_test, fig_ref):
+    """GUID: M3DVIS-002 -- hiding a 3D axes preserves other axes output."""
+    ax_3d = fig_test.add_subplot(121, projection="3d")
+    ax_3d.plot([0, 1], [0, 1], [0, 1], color="tab:red")
+    ax_other = fig_test.add_subplot(122)
+    ax_other.plot([0, 1, 2], [1, 0, 1], color="tab:blue")
+    ax_other.set(xlabel="other x", ylabel="other y", title="other axes")
+
+    # Exercise the transition from a rendered 3D axes to a hidden one.
+    fig_test.canvas.draw()
+    ax_3d.set_visible(False)
+    fig_test.canvas.draw()
+
+    ax_ref = fig_ref.add_subplot(122)
+    ax_ref.plot([0, 1, 2], [1, 0, 1], color="tab:blue")
+    ax_ref.set(xlabel="other x", ylabel="other y", title="other axes")
+
+
+def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence(
+        monkeypatch):
+    """GUID: M3DVIS-003 -- false visibility yields no rendered presence."""
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    visibility_reads = []
+
+    def get_visible():
+        visibility_reads.append(True)
+        return False
+
+    monkeypatch.setattr(ax, "get_visible", get_visible)
+    monkeypatch.setattr(
+        ax, "_unstale_viewLim",
+        lambda: pytest.fail("hidden Axes3D advanced past its visibility gate"))
+
+    fig.canvas.draw()
+    assert visibility_reads
+
+
+def test_m3dvis_004_visible_3d_axes_with_plotted_content_draws_normally(
+        monkeypatch):
+    """GUID: M3DVIS-004 -- visible plotted 3D axes render normally."""
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    line, = ax.plot([0, 1], [0, 1], [0, 1])
+    draw_calls = []
+
+    patch_draw = ax.patch.draw
+    line_draw = line.draw
+
+    def record_patch_draw(renderer):
+        draw_calls.append(("patch", renderer))
+        patch_draw(renderer)
+
+    def record_line_draw(renderer):
+        draw_calls.append(("line", renderer))
+        line_draw(renderer)
+
+    monkeypatch.setattr(ax.patch, "draw", record_patch_draw)
+    monkeypatch.setattr(line, "draw", record_line_draw)
+
+    assert ax.get_visible()
+    fig.canvas.draw()
+
+    renderer = fig.canvas.get_renderer()
+    assert draw_calls == [("patch", renderer), ("line", renderer)]
+
+
+def test_m3dvis_005_hide_visible_3d_axes_keeps_attached_data_unaltered():
+    """GUID: M3DVIS-005 -- hiding preserves attached plotted data unchanged."""
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    line, = ax.plot([0, 1], [2, 3], [4, 5])
+
+    assert ax.get_visible()
+    fig.canvas.draw()
+    children = tuple(ax.get_children())
+    data = tuple(values.copy() for values in line.get_data_3d())
+
+    ax.set_visible(False)
+    fig.canvas.draw()
+
+    assert not ax.get_visible()
+    assert tuple(ax.get_children()) == children
+    assert line in ax.lines
+    assert line.get_visible()
+    for actual, expected in zip(line.get_data_3d(), data):
+        np.testing.assert_array_equal(actual, expected)
+
+
+def test_m3dvis_006_restore_hidden_3d_axes_redraws_content_no_recreation(
+        monkeypatch):
+    """GUID: M3DVIS-006 -- a restored axes redraws its existing content."""
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    line, = ax.plot([0, 1], [0, 1], [0, 1])
+    draw_calls = []
+    line_draw = line.draw
+
+    def record_line_draw(renderer):
+        draw_calls.append(renderer)
+        line_draw(renderer)
+
+    monkeypatch.setattr(line, "draw", record_line_draw)
+
+    ax.set_visible(False)
+    fig.canvas.draw()
+    assert draw_calls == []
+
+    ax.set_visible(True)
+    fig.canvas.draw()
+
+    assert draw_calls == [fig.canvas.get_renderer()]
+    assert list(ax.lines) == [line]
+
+
+def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
+    """GUID: M3DVIS-007 -- figure draw containing hidden axes succeeds."""
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1])
+    ax.set_visible(False)
+
+    fig.canvas.draw()
+
+
+def test_m3dvis_008_hidden_3d_axes_layout_succeeds_figure_stays_drawable():
+    """GUID: M3DVIS-008 -- layout succeeds and the figure remains drawable."""
+    fig = plt.figure(layout="constrained")
+    ax = fig.add_subplot(121, projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1])
+    ax.set_visible(False)
+    fig.add_subplot(122).plot([0, 1], [1, 0])
+
+    fig.get_layout_engine().execute(fig)
+    fig.canvas.draw()
+
+
+@pytest.mark.parametrize("extension", ["png", "pdf", "svg"])
+def test_m3dvis_010_supported_backends_omit_invisible_3d_axes_output(
+        extension, tmp_path, monkeypatch):
+    """GUID: M3DVIS-010 -- supported backends omit hidden axes output."""
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1])
+    ax.set_visible(False)
+    monkeypatch.setattr(
+        ax, "get_proj",
+        lambda: pytest.fail("backend projected an invisible Axes3D"))
+
+    fig.savefig(tmp_path / f"hidden_axes.{extension}")
+
+
 @mpl3d_image_comparison(['bar3d.png'])
 def test_bar3d():
     fig = plt.figure()

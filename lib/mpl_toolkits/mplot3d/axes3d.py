@@ -387,6 +387,83 @@ class Axes3D(Axes):
 
     @martist.allow_rasterization
     def draw(self, renderer):
+        # Architecture boundary (M3DVIS-001, M3DVIS-002, M3DVIS-003,
+        # M3DVIS-004, M3DVIS-005, M3DVIS-006, M3DVIS-007, M3DVIS-010): Axes3D
+        # owns the visibility gate
+        # because its projection, pane, and axis drawing precede the delegation
+        # to _AxesBase.draw, whose visibility guard therefore cannot protect
+        # this 3D prelude.  Keep the gate at this override's entry, dependent
+        # only on the inherited Artist visibility contract; the renderer and
+        # all axes-owned visual components remain downstream of that single,
+        # backend-neutral integration seam.  For M3DVIS-002, figure traversal
+        # retains ownership of sibling sequencing: this override may return
+        # control to that caller but must not inspect, reorder, or draw sibling
+        # axes.  For M3DVIS-005 and M3DVIS-006, Axes3D also retains ownership
+        # of _children across the gate: hidden draws stop before consuming the
+        # collection, while restored draws flow from that same collection into
+        # the established projection and base-axes integration path.
+        # Draw-time visibility contract:
+        #
+        # M3DVIS-001 / M3DVIS-003:
+        # - Read the axes' public visibility state through get_visible().
+        # - If it is false, terminate this draw call before updating view
+        #   limits or drawing the patch, projected data, panes, axes, ticks,
+        #   labels, and decorations owned by this Axes3D.
+        # - If it is true, continue through the existing 3D draw sequence.
+        #
+        # M3DVIS-002:
+        # - Input the selected Axes3D, its visibility state, and the renderer;
+        #   treat every other axes in the figure as state owned by the caller.
+        # - If the selected Axes3D is hidden, perform no renderer operation and
+        #   do not read, mutate, or draw any other axes; return control to the
+        #   figure's draw traversal so it can process the remaining axes.
+        # - If the selected Axes3D is visible, draw only its owned visuals via
+        #   the existing sequence, then return control to the same traversal.
+        # - On either branch, preserve neighboring axes state and propagate no
+        #   new failure; their later draw calls determine their output.
+        #
+        # M3DVIS-004:
+        # - Input an Axes3D with plotted content and the active renderer, then
+        #   read get_visible() before advancing any draw state.
+        # - If visibility is true, update view limits, draw the background,
+        #   resolve aspect, and establish the projection matrix in the existing
+        #   order.
+        # - Project visible collections and patches; when computed z-order is
+        #   enabled, order and assign them before drawing, otherwise preserve
+        #   the existing projection traversal.
+        # - If 3D axes are enabled, draw panes before axis elements, then hand
+        #   off to the base axes draw sequence for the remaining plotted
+        #   content and decorations.
+        # - After the base draw sequence completes, return normally.  Propagate
+        #   any existing visible-branch failure without replacement,
+        #   suppression, or a new fallback path.
+        #
+        # M3DVIS-007:
+        # - Treat the hidden branch as a successful no-op: return normally
+        #   without requiring projection setup or invoking a renderer method.
+        # - Preserve the existing error flow of the visible branch.
+        #
+        # M3DVIS-010:
+        # - Make the visibility decision before backend-facing draw calls so
+        #   every supported renderer receives the same omission behavior.
+        #
+        # M3DVIS-005 / M3DVIS-006 hidden-to-visible lifecycle:
+        # - Input the Axes3D visibility state, its existing attached plotted
+        #   artists, and the active renderer; treat those artists and their
+        #   data as persistent state owned by the axes.
+        # - If visibility is false, return before projection or rendering and
+        #   leave the attached-artist collection and each artist unchanged.
+        # - When visibility later becomes true, traverse the ordinary visible
+        #   draw path using those same attached artists: update limits, prepare
+        #   projection, draw 3D components, then hand the existing children to
+        #   the base draw pipeline.
+        # - Complete without a detach/recreate transition; the next successful
+        #   draw therefore renders the content already attached to the axes.
+        # - Propagate failures from the ordinary visible draw path without
+        #   substituting data recreation or destructive recovery.
+        if not self.get_visible():
+            return
+
         self._unstale_viewLim()
 
         # draw the background patch
@@ -440,7 +517,12 @@ class Axes3D(Axes):
             for axis in self._axis_map.values():
                 axis.draw(renderer)
 
-        # Then rest
+        # Visible-path integration boundary (M3DVIS-004, M3DVIS-006): Axes3D
+        # owns the 3D projection, pane, and axis prelude above; _AxesBase
+        # continues to own the established draw pipeline for the remaining
+        # plotted content and decorations.  Keep this delegation as the
+        # terminal handoff so restored content follows the normal dependency
+        # direction and the visibility gate does not fork or replace rendering.
         super().draw(renderer)
 
     def get_axis_position(self):
@@ -3098,10 +3180,37 @@ pivot='tail', normalize=False, **kwargs)
 
     def get_tightbbox(self, renderer=None, call_axes_locator=True,
                       bbox_extra_artists=None, *, for_layout_only=False):
+        # Architecture boundary (M3DVIS-008): Axes3D owns the adaptation from
+        # the base Axes tight-bbox contract to its additional 3D-axis bounds.
+        # In particular, the base contract's ``None`` result for an invisible
+        # axes must cross this override unchanged: figure layout remains the
+        # consumer of that absence sentinel, while the existing draw pipeline
+        # remains the sole owner of rendering and visibility state.  Keep the
+        # dependency directed from layout callers through the established
+        # polymorphic get_tightbbox seam; no 3D-specific branch belongs in the
+        # generic tight- or constrained-layout modules.
+        # M3DVIS-008 layout-boundary logic:
+        # - Input this Axes3D's visibility state and the renderer supplied by
+        #   the figure's layout operation.
+        # - If the axes is hidden, return no bounding box before requesting
+        #   base-axes or 3D-axis extents; the layout caller must treat that
+        #   result as no layout contribution and continue normally.
+        # - Otherwise, request the base-axes tight bounding box with the
+        #   caller's locator, extra-artist, and layout-only settings.
+        # - If 3D axes are enabled, visit each visible 3D axis, append each
+        #   nonempty layout-only bounding box, and skip absent extents.
+        # - Union the collected bounds and return them to the layout caller;
+        #   propagate any failure from the ordinary visible-axis path.
+        # - After layout completes, hand control back to the figure without
+        #   changing visibility or plotted content, so its existing draw
+        #   traversal can skip this hidden axes and draw the figure normally.
         ret = super().get_tightbbox(renderer,
                                     call_axes_locator=call_axes_locator,
                                     bbox_extra_artists=bbox_extra_artists,
                                     for_layout_only=for_layout_only)
+        if ret is None:
+            return None
+
         batch = [ret]
         if self._axis3don:
             for axis in self._axis_map.values():
