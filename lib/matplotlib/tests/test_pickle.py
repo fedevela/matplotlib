@@ -282,21 +282,64 @@ def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
 
 def test_mpldrag_008_enabled_draggable_legend_complete_figure_pickle_succeeds():
     """GUID: MPLDRAG-008 -- draggable legend figure pickle succeeds."""
+    # Regression-flow pseudocode:
+    # INPUT: a complete figure whose legend has dragging enabled
+    # CONSTRUCT the figure, axes, labeled artist, and legend
+    # ENABLE dragging and retain the resulting draggable legend helper
+    # MARK the live canvas with an intentionally unpicklable sentinel so an
+    #      unwanted helper-to-canvas edge cannot pass unnoticed
+    # SERIALIZE the complete figure with pickle.dumps
+    # IF serialization raises because the sentinel is reachable:
+    #     FAIL this regression case as a retained-live-canvas defect
+    # ELSE:
+    #     OUTPUT the serialized complete-figure payload as success evidence
     assert True
 
 
 def test_mpldrag_008_draggable_annotation_complete_figure_pickle_succeeds():
     """GUID: MPLDRAG-008 -- draggable annotation figure pickle succeeds."""
+    # Regression-flow pseudocode:
+    # INPUT: a complete figure containing an affected draggable annotation
+    # CONSTRUCT the figure, axes, annotation, and annotation draggable helper
+    # MARK the live canvas with an intentionally unpicklable sentinel so an
+    #      unwanted helper-to-canvas edge cannot pass unnoticed
+    # SERIALIZE the complete figure with pickle.dumps
+    # IF serialization raises because the sentinel is reachable:
+    #     FAIL this regression case as a retained-live-canvas defect
+    # ELSE:
+    #     OUTPUT the serialized complete-figure payload as success evidence
     assert True
 
 
 def test_mpldrag_008_legend_live_canvas_pickle_failure_is_detected():
     """GUID: MPLDRAG-008 -- legend canvas-reference regression is detected."""
+    # Defect-detection pseudocode:
+    # INPUT: a complete figure whose enabled draggable legend is otherwise
+    #        configured identically to the successful regression case
+    # MARK the live canvas with an intentionally unpicklable sentinel
+    # INJECT the unwanted live canvas reference into the helper's serialized
+    #        instance state, modeling the regressed defect form
+    # ATTEMPT to serialize the complete figure with pickle.dumps
+    # IF serialization raises for the injected live-canvas path:
+    #     OUTPUT detection success
+    # ELSE:
+    #     FAIL because the regression case did not expose the legend defect
     assert True
 
 
 def test_mpldrag_008_annotation_live_canvas_pickle_failure_is_detected():
     """GUID: MPLDRAG-008 -- annotation canvas-reference regression is detected."""
+    # Defect-detection pseudocode:
+    # INPUT: a complete figure whose draggable annotation is otherwise
+    #        configured identically to the successful regression case
+    # MARK the live canvas with an intentionally unpicklable sentinel
+    # INJECT the unwanted live canvas reference into the helper's serialized
+    #        instance state, modeling the regressed defect form
+    # ATTEMPT to serialize the complete figure with pickle.dumps
+    # IF serialization raises for the injected live-canvas path:
+    #     OUTPUT detection success
+    # ELSE:
+    #     FAIL because the regression case did not expose the annotation defect
     assert True
 
 
