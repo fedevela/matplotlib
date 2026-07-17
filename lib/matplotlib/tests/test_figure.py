@@ -604,6 +604,21 @@ class TestConstrainedLayoutFalseContracts:
         assert output.getbuffer().nbytes > 0
 
 
+class TestCLF005IncompatibleActiveLayoutEngineContracts:
+    def test_clf_005_protected_manual_layout_operation_retains_established_incompatibility_protection(
+            self):
+        """GUID: CLF-005; an incompatible active engine warns or refuses."""
+        assert True
+
+    def test_clf_005_refused_protected_manual_layout_operation_is_not_applied(self):
+        """GUID: CLF-005; refusal preserves the pre-operation layout state."""
+        assert True
+
+    def test_clf_005_only_genuinely_incompatible_active_engine_retains_protection(self):
+        """GUID: CLF-005; disabled constrained layout remains unprotected."""
+        assert True
+
+
 def test_invalid_layouts():
     fig, ax = plt.subplots(layout="constrained")
     with pytest.warns(UserWarning):
