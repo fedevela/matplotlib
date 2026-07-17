@@ -11,6 +11,7 @@ import pytest
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib._api import MatplotlibDeprecationWarning
+from matplotlib._pylab_helpers import Gcf
 
 
 def test_pyplot_up_to_date(tmpdir):
@@ -41,34 +42,87 @@ def test_pyplot_up_to_date(tmpdir):
         )
 
 
+def _create_figures_with_unresolved_backend(count=1):
+    """Recreate an rc_context restoring the auto-backend sentinel."""
+    plt.close("all")
+    expected_backend = mpl.get_backend()
+    dict.__setitem__(mpl.rcParams, "backend",
+                     mpl.rcsetup._auto_backend_sentinel)
+    with mpl.rc_context({"interactive": False}):
+        figures = [plt.figure() for _ in range(count)]
+    return figures, expected_backend
+
+
 def test_backend_001_first_noninteractive_rc_figure_survives_get_backend():
     """GUID: BACKEND-001; the first rc-context figure stays registered."""
-    assert True
+    figures, _ = _create_figures_with_unresolved_backend()
+    figure, = figures
+
+    mpl.get_backend()
+
+    assert figure.number in Gcf.figs
+    assert Gcf.figs[figure.number].canvas.figure is figure
 
 
 def test_backend_002_gcf_registry_identity_survives_get_backend():
     """GUID: BACKEND-002; the Gcf registry object keeps its identity."""
-    assert True
+    _create_figures_with_unresolved_backend()
+    gcf = Gcf
+    registry = Gcf.figs
+
+    mpl.get_backend()
+
+    assert Gcf is gcf
+    assert Gcf.figs is registry
 
 
 def test_backend_003_gcf_entries_keep_order_after_get_backend():
     """GUID: BACKEND-003; all Gcf entries retain their original order."""
-    assert True
+    _create_figures_with_unresolved_backend(3)
+    entries = list(Gcf.figs.items())
+
+    mpl.get_backend()
+
+    assert list(Gcf.figs.items()) == entries
 
 
 def test_backend_004_gcf_entries_keep_manager_identity_after_get_backend():
     """GUID: BACKEND-004; every Gcf entry keeps its identical manager."""
-    assert True
+    _create_figures_with_unresolved_backend(3)
+    managers = list(Gcf.figs.items())
+
+    mpl.get_backend()
+
+    assert list(Gcf.figs) == [key for key, _ in managers]
+    assert all(Gcf.figs[key] is manager for key, manager in managers)
 
 
-def test_backend_005_get_backend_does_not_close_destroy_or_unregister_figs():
+def test_backend_005_get_backend_does_not_close_destroy_or_unregister_figs(
+        monkeypatch):
     """GUID: BACKEND-005; existing figures remain registered and alive."""
-    assert True
+    _create_figures_with_unresolved_backend(2)
+    entries = list(Gcf.figs.items())
+    destroyed = []
+    for manager in Gcf.figs.values():
+        monkeypatch.setattr(
+            manager, "destroy",
+            lambda manager=manager: destroyed.append(manager))
+
+    mpl.get_backend()
+
+    assert not destroyed
+    assert list(Gcf.figs.items()) == entries
 
 
 def test_backend_007_get_backend_reports_backend_and_preserves_figures():
     """GUID: BACKEND-007; backend reporting and figures are preserved."""
-    assert True
+    _, expected_backend = _create_figures_with_unresolved_backend(2)
+    entries = list(Gcf.figs.items())
+
+    backend = mpl.get_backend()
+
+    assert backend == expected_backend
+    assert list(Gcf.figs.items()) == entries
 
 
 def test_copy_docstring_and_deprecators(recwarn):
