@@ -912,6 +912,8 @@ class Poly3DCollection(PolyCollection):
         self.update_scalarmappable()
         if self._face_is_mapped:
             self._facecolor3d = self._facecolors
+        elif not hasattr(self, '_facecolor3d'):
+            self._facecolor3d = PolyCollection.get_facecolor(self)
         return self._facecolor3d
 
     def get_edgecolor(self):

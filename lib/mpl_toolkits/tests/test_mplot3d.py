@@ -645,12 +645,38 @@ def test_p3dfc_005_get_facecolor_predraw_preprojection_returns_valid_data():
 
 def test_p3dfc_006_direct_equivalent_poly3d_get_facecolors_predraw_returns_valid_data():
     """GUID: P3DFC-006 -- plural pre-draw access returns valid color data."""
-    assert True
+    collection = art3d.Poly3DCollection(
+        [np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])])
+    # Retain valid Collection state without the derived 3D color cache.
+    del collection._facecolor3d
+    PolyCollection.set_facecolor(collection, "tab:orange")
+
+    assert not hasattr(collection, "_facecolors2d")
+    colors = collection.get_facecolors()
+
+    assert isinstance(colors, np.ndarray)
+    np.testing.assert_array_equal(
+        colors, mcolors.to_rgba_array("tab:orange"))
+    assert not hasattr(collection, "_facecolors2d")
 
 
 def test_p3dfc_006_direct_equivalent_poly3d_get_facecolor_predraw_matches_facecolors():
     """GUID: P3DFC-006 -- singular pre-draw access exposes plural state."""
-    assert True
+    collection = art3d.Poly3DCollection(
+        [np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])])
+    # Retain valid Collection state without the derived 3D color cache.
+    del collection._facecolor3d
+    PolyCollection.set_facecolor(collection, "tab:blue")
+
+    assert not hasattr(collection, "_facecolors2d")
+    facecolor = collection.get_facecolor()
+    facecolors = collection.get_facecolors()
+
+    assert isinstance(facecolor, np.ndarray)
+    np.testing.assert_array_equal(
+        facecolor, mcolors.to_rgba_array("tab:blue"))
+    np.testing.assert_array_equal(facecolor, facecolors)
+    assert not hasattr(collection, "_facecolors2d")
 
 
 @mpl3d_image_comparison(['surface3d_shaded.png'])
