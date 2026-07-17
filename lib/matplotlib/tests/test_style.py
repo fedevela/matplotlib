@@ -295,25 +295,18 @@ def test_scblind_007_direct_lookup_valid_across_supported_os_backends(backend):
 #   [SCBLIND-008, SCBLIND-009]
 def test_scblind_008_exact_seaborn_colorblind_lookup_returns_mapping():
     """GUID: SCBLIND-008 -- exact public-key lookup returns a valid mapping."""
-    # PSEUDOCODE (SCBLIND-008):
-    #   GIVEN the public style library exposed by pyplot
-    #   WHEN style_mapping := plt.style.library["seaborn-colorblind"]
-    #   IF the exact key is absent, fail the regression test with the lookup
-    #      error
-    #   THEN verify style_mapping is a valid, non-empty style mapping whose
-    #        entries can be consumed as Matplotlib runtime configuration
-    assert True
+    colorblind = plt.style.library["seaborn-colorblind"]
+
+    assert isinstance(colorblind, mpl.RcParams)
+    assert colorblind
+    assert colorblind.keys() <= mpl.rcParams.keys()
+    with plt.style.context(colorblind):
+        pass
 
 
-def test_scblind_009_existing_unrelated_style_library_tests_continue_to_pass():
-    """GUID: SCBLIND-009 -- unrelated style-library tests remain passing."""
-    # PSEUDOCODE (SCBLIND-009):
-    #   GIVEN the existing style-library tests unrelated to SCBLIND-008
-    #   WHEN the style-library test suite runs with the compatibility coverage
-    #   FOR EACH unrelated test result
-    #       IF the result is failing, preserve its failure and fail the suite
-    #   THEN succeed only when every unrelated test result remains passing
-    assert True
+# GUID: SCBLIND-009 is verified by running this module.  Its existing tests are
+# independently collected, so any unrelated style-library regression remains a
+# normal pytest failure instead of being hidden behind a coordinating test.
 
 
 def test_up_to_date_blacklist():
