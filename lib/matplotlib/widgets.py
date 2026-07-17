@@ -231,6 +231,22 @@ class Button(AxesWidget):
             event.canvas.grab_mouse(self.ax)
 
     def _release(self, event):
+        # INPUT-005 -- button-initiated clear-rebuild-redraw logic:
+        #   INPUT: a release event matching the Axes that acquired the mouse
+        #     for this Button's preceding press.
+        #   IF the release does not belong to this Button's acquisition,
+        #     ignore it without dispatching a callback or changing state.
+        #   OTHERWISE release the mouse acquisition before handing the event
+        #     synchronously to the registered clicked callbacks.
+        #   CALLBACK TRANSITIONS: a callback may clear the Figure, create and
+        #     register replacement widgets on new Axes, then redraw the Figure;
+        #     preserve that order and wait for the entire handoff to return.
+        #   ON SUCCESS, finish this release with no acquisition owned by the
+        #     removed Button Axes, so the next mouse event can be routed to a
+        #     replacement widget and invoke its newly registered callback.
+        #   FAILURE PATH: if callback dispatch raises, leave the old mouse
+        #     acquisition released and propagate the exception; do not retry
+        #     the callback, repeat reconstruction, or retain a blocking state.
         if self.ignore(event) or event.canvas.mouse_grabber != self.ax:
             return
         event.canvas.release_mouse(self.ax)
