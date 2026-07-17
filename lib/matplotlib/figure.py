@@ -3135,6 +3135,21 @@ class Figure(FigureBase):
         #       because backend device scaling is applied.
         #   OUTPUT a completed backend draw with R consistent under D.
 
+        # ARCHITECTURE (GUID: DPI-005, DPI-006, DPI-007):
+        # Figure.__setstate__ owns the restored-state boundary.  The retained
+        # figure dictionary is the single contract carrying logical ``_dpi``,
+        # dimensions and rendering state; FigureCanvasBase construction is the
+        # backend-neutral canvas-attachment seam, and the existing manager
+        # factory is the only integration path to FigureCanvasMac.  Canvas and
+        # backend modules remain downstream: they may derive device-scaled
+        # rendering state through their normal initialization and draw paths,
+        # but must not rewrite the restored logical-DPI contract or introduce
+        # a MacOSX-specific deserialization adapter.  Renderer invalidation is
+        # owned by __getstate__, while this boundary owns the post-restore
+        # stale transition.  The GUID-tagged loci in tests/test_pickle.py own
+        # verification of backend operations, dimensions, and draw-state
+        # preservation across this seam.
+
         version = state.pop('__mpl_version__')
         restore_to_pylab = state.pop('_restore_to_pylab', False)
 
