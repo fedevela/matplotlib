@@ -215,6 +215,16 @@ class Button(AxesWidget):
         self.hovercolor = hovercolor
 
     def _click(self, event):
+        # INPUT-008 -- unaffected Button press logic:
+        #   INPUT: mouse input for an interaction that does not enter the
+        #     RangeSlider clear-rebuild-redraw sequence.
+        #   IF the Button is inactive, the press is outside this Axes, or
+        #     callbacks are disabled, preserve the established ignored-event
+        #     outcome and return without acquiring input state.
+        #   OTHERWISE preserve the established transition to mouse-acquired
+        #     state for this Axes; do not introduce a rebuild-specific gate.
+        #   HANDOFF: allow the matching release path to decide callback
+        #     dispatch under its existing eventson and in-Axes conditions.
         # INPUT-002 -- rebuilt-button next-click logic:
         #   INPUT: a press routed using the canvas' current interaction state.
         #   IF the press targets this rebuilt Button and events are enabled,
@@ -240,6 +250,18 @@ class Button(AxesWidget):
     # AxesWidget.connect_event and require no reconstruction-aware canvas
     # adapter, callback-registry change, or new public API.
     def _release(self, event):
+        # INPUT-008 -- unaffected Button release and callback logic:
+        #   INPUT: a release belonging to an ordinary Button interaction
+        #     outside the affected clear-rebuild-redraw sequence.
+        #   IF this Axes does not own the mouse acquisition, preserve the
+        #     established no-op outcome and do not invoke a clicked callback.
+        #   OTHERWISE release the acquisition, then, exactly when events are
+        #     enabled and the release remains in this Axes, synchronously
+        #     invoke each callback through the existing clicked signal.
+        #   OUTPUT: return with the ordinary interaction complete and no
+        #     newly retained input state, callback suppression, or extra draw.
+        #   FAILURE PATH: propagate an existing callback exception unchanged;
+        #     do not retry, translate, or convert it into sequence recovery.
         # INPUT-005 -- button-initiated clear-rebuild-redraw logic:
         #   INPUT: a release event matching the Axes that acquired the mouse
         #     for this Button's preceding press.
@@ -917,6 +939,22 @@ class RangeSlider(SliderBase):
     # existing event and callback contracts without an adapter or new public API.
     def _update(self, event):
         """Update the slider position."""
+        # INPUT-008 -- unaffected RangeSlider interaction logic:
+        #   INPUT: an established press, motion, or release that does not
+        #     cause its callback to clear, rebuild, and redraw the Figure.
+        #   APPLY the existing ignore/button/drag gates in their current
+        #     order; an ignored event remains a no-op and an accepted press
+        #     transitions IDLE -> DRAGGING with this Axes owning the mouse.
+        #   WHILE DRAGGING, preserve nearest-handle selection, bounded value
+        #     derivation, visual update, and synchronous changed-signal handoff.
+        #   IF the callback returns with this Axes still attached, retain the
+        #     ordinary drag state until release; do not run rebuild cleanup.
+        #   ON release, transition DRAGGING -> IDLE, release this Axes' mouse
+        #     acquisition, and clear the active handle exactly once.
+        #   OUTPUT: every callback receives the established interaction value,
+        #     and later RangeSlider or Button input remains routable.
+        #   FAILURE PATH: preserve exception propagation while ensuring the
+        #     existing exceptional cleanup cannot leave input blocked or hang.
         # INPUT-001, INPUT-003, INPUT-007 -- range interaction lifecycle:
         #   INPUT: a left-button press, motion, or release routed to the
         #     currently displayed RangeSlider.
