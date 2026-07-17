@@ -377,6 +377,10 @@ class TestColormapSentinelIndexingContracts:
             warnings.simplefilter("error", DeprecationWarning)
             cmap(np.array(values, dtype=dtype))
 
+    # Verification boundary (GUID: CMAP-008, CMAP-009): These regression
+    # loci exercise the public Colormap.__call__ integration seam.  Float and
+    # sentinel-capable integer value/shape baselines belong here; production
+    # adapters or test hooks are outside this boundary.
     def test_cmap_008_supported_floating_point_input_retains_output_values(
             self):
         """GUID: CMAP-008; floating-point output values remain unchanged."""

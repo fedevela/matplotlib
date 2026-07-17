@@ -733,6 +733,15 @@ class Colormap:
         #   established.  If classification or lookup cannot complete,
         #   propagate the error without committing working state back to X.
 
+        # Regression-preservation architecture (GUID: CMAP-008, CMAP-009):
+        # Keep input-kind preparation owned by this method: the floating-point
+        # branch owns LUT-space scaling, while the integer branch owns only the
+        # sentinel-representability check and any required widening.  Both
+        # branches must converge on the existing shared classification,
+        # ``lut.take``, bytes/alpha, and scalar/array return seams below.  Tests
+        # depend on this public call boundary; do not introduce a parallel
+        # mapping path or a test-only production hook for these regressions.
+
         # Unaffected-input regression logic:
         # - GUID: CMAP-008: Given supported floating-point X, retain the
         #   established sequence: scale into LUT-index space, classify the
