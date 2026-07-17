@@ -304,7 +304,17 @@ def test_mplal_006_deserialized_unaligned_figure_axes_data_labels_remain_usable(
     restored.canvas.draw()
 
 
+# MPLAL-007 / MPLAL-008 architecture contract: test_pickle owns the regression
+# seam between Figure.align_labels() and the standard-library pickle round trip.
+# Setup enters through pyplot's existing multi-subplot API; verification leaves
+# through the restored Figure/Axes and canvas APIs.  Keep numeric samples on the
+# test side of that seam so Figure serialization has no dependency on their
+# values and requires no production adapter or alternate pickle entry point.
+
+
 def test_mplal_007_aligned_multi_subplot_pickle_round_trip_returns_usable_figure():
+    # MPLAL-007 ownership: this test owns the multi-subplot construction,
+    # alignment call, pickle boundary, restored-Figure contract, and draw seam.
     # MPLAL-007 logic obligation:
     # GIVEN a Figure containing multiple labeled subplots,
     # WHEN align_labels() establishes the shared-label groups,
@@ -316,6 +326,9 @@ def test_mplal_007_aligned_multi_subplot_pickle_round_trip_returns_usable_figure
 
 
 def test_mplal_008_aligned_multi_subplot_pickle_round_trip_with_other_values_succeeds():
+    # MPLAL-008 ownership: alternate values are injected by this test before
+    # control crosses the same alignment/pickle seam owned above; production
+    # Figure state must remain unaware of which deterministic samples were used.
     # MPLAL-008 logic obligation:
     # GIVEN deterministic x and y values distinct from the reported reproduction,
     # create multiple labeled subplots and plot those alternate values on each.
