@@ -676,7 +676,10 @@ grestore
                 thisx += width * scale
             ps_name = (font.postscript_name
                        .encode("ascii", "replace").decode("ascii"))
-            stream.append((ps_name, xs_names))
+            # MPLPS-003/MPLPS-006: As in the TrueType branch below, an empty
+            # layout line has no font run to emit.
+            if xs_names:
+                stream.append((ps_name, xs_names))
 
         else:
             font = self._get_font_ttf(prop)

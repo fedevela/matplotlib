@@ -276,37 +276,75 @@ def test_no_duplicate_definition():
     assert max(Counter(wds).values()) == 1
 
 
-# MPLPS-003 through MPLPS-007 and MPLPS-010 specification placeholders:
-# These names preserve the PostScript empty-line verification obligations until
-# a later phase replaces the no-op bodies with behavioral assertions.
-def test_mplps_003_ps_and_eps_multiline_empty_line_avoids_absent_stream_unpack():
+def _save_figure_text(text, format):
+    fig = Figure(figsize=(2, 2))
+    fig.text(.5, .5, text)
+    output = io.StringIO()
+    fig.savefig(output, format=format)
+    return output.getvalue()
+
+
+@pytest.mark.parametrize("format", ["ps", "eps"])
+@pytest.mark.parametrize("useafm", [False, True])
+def test_mplps_003_ps_and_eps_multiline_empty_line_avoids_absent_stream_unpack(
+        format, useafm):
     """MPLPS-003: Empty lines do not unpack an absent PS/EPS text stream."""
-    assert True
+    with mpl.rc_context({"ps.useafm": useafm}):
+        output = _save_figure_text("First\n\nLast", format)
+
+    _assert_eps_contains_text(output, "First")
+    _assert_eps_contains_text(output, "Last")
 
 
 def test_mplps_004_postscript_empty_line_preserves_following_lines_in_order():
     """MPLPS-004: Following non-empty lines remain present and ordered."""
-    assert True
+    output = _save_figure_text("Alpha\n\nBeta\nGamma", "ps")
+
+    # Empty lines emit no glyphs, so concatenating the expected visible lines
+    # also verifies their order in the generated glyph stream.
+    _assert_eps_contains_text(output, "AlphaBetaGamma")
 
 
-def test_mplps_005_postscript_empty_line_preserves_multiline_placement_spacing():
+def test_mplps_005_postscript_empty_line_preserves_multiline_placement_spacing(
+        monkeypatch):
     """MPLPS-005: Empty lines preserve multiline placement and spacing."""
-    assert True
+    from matplotlib.backends.backend_ps import RendererPS
+
+    calls = []
+    draw_text = RendererPS.draw_text
+
+    def record_draw_text(self, gc, x, y, s, prop, angle, ismath=False,
+                         mtext=None):
+        calls.append((s, x, y))
+        return draw_text(self, gc, x, y, s, prop, angle, ismath, mtext)
+
+    monkeypatch.setattr(RendererPS, "draw_text", record_draw_text)
+    _save_figure_text("Top\n\nBottom", "ps")
+
+    assert [text for text, x, y in calls] == ["Top", "", "Bottom"]
+    assert calls[0][2] - calls[1][2] == pytest.approx(
+        calls[1][2] - calls[2][2])
 
 
-def test_mplps_006_ps_and_eps_leading_middle_trailing_empty_lines_complete():
+@pytest.mark.parametrize("format", ["ps", "eps"])
+@pytest.mark.parametrize("text", ["\nVisible", "Before\n\nAfter", "Visible\n"])
+def test_mplps_006_ps_and_eps_leading_middle_trailing_empty_lines_complete(
+        format, text):
     """MPLPS-006: PS/EPS accept leading, middle, and trailing empty lines."""
-    assert True
+    assert _save_figure_text(text, format)
 
 
-def test_mplps_007_ps_and_eps_ordinary_single_multiline_text_still_complete():
+@pytest.mark.parametrize("format", ["ps", "eps"])
+@pytest.mark.parametrize("text", ["Single line", "First line\nSecond line"])
+def test_mplps_007_ps_and_eps_ordinary_single_multiline_text_still_complete(
+        format, text):
     """MPLPS-007: Ordinary single- and multiline PS/EPS text still works."""
-    assert True
+    assert _save_figure_text(text, format)
 
 
 def test_mplps_010_postscript_empty_line_change_leaves_other_backends_unchanged():
     """MPLPS-010: The PostScript correction does not alter other backends."""
-    assert True
+    assert _save_figure_text("Before\n\nAfter", "svg")
 
 
 # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 architecture:
