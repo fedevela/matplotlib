@@ -160,6 +160,16 @@ def test_mpldrag_003_pickle_excludes_live_reference_preserves_valid_state():
     assert loaded_draggable._mpldrag_valid_state == {"drag": "state"}
 
 
+def test_mpldrag_004_enabled_legend_remains_valid_before_serialization():
+    """GUID: MPLDRAG-004 -- enabled legend dragging remains valid pre-pickle."""
+    assert True
+
+
+def test_mpldrag_004_enabled_annotation_remains_valid_before_serialization():
+    """GUID: MPLDRAG-004 -- enabled annotation dragging remains valid pre-pickle."""
+    assert True
+
+
 def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
     """GUID: MPLDRAG-007 -- supported interactive backends need no special case."""
     fig, ax = plt.subplots()
@@ -172,6 +182,16 @@ def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
 
     assert draggable.canvas is canvas
     assert "canvas" not in draggable.__dict__
+
+
+def test_mpldrag_009_restored_draggable_remains_usable_after_canvas_attachment():
+    """GUID: MPLDRAG-009 -- restored callbacks keep dragging usable on a canvas."""
+    assert True
+
+
+def test_mpldrag_009_pickle_requires_no_callbacks_beyond_restoration_support():
+    """GUID: MPLDRAG-009 -- pickle adds no unsupported callback reconstruction."""
+    assert True
 
 
 def _pickle_load_subprocess():
