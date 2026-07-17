@@ -1232,7 +1232,8 @@ class Axis(martist.Artist):
 
         self.set_view_interval(v0, v1, ignore=True)
         # Mark viewlims as no longer stale without triggering an autoscale.
-        for ax in self._get_shared_axes():
+        shared = self._get_shared_axes()
+        for ax in shared:
             ax._stale_viewlims[name] = False
         if auto is not None:
             self._set_autoscale_on(bool(auto))
@@ -1240,10 +1241,11 @@ class Axis(martist.Artist):
         if emit:
             self.axes.callbacks.process(f"{name}lim_changed", self.axes)
             # Call all of the other axes that are shared with this one
-            for other in self._get_shared_axes():
+            for other in shared:
                 if other is not self.axes:
                     other._axis_map[name]._set_lim(
                         v0, v1, emit=False, auto=auto)
+                    other.callbacks.process(f"{name}lim_changed", other)
                     if other.figure != self.figure:
                         other.figure.canvas.draw_idle()
 
