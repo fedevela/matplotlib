@@ -818,52 +818,68 @@ def test_legend_004_draggable_true_uses_existing_drag_interaction_behavior():
 
 def test_legend_005_axes_legend_propagates_explicit_draggable_true():
     """GUID: LEGEND-005 -- Axes.legend preserves enabled creation state."""
-    assert True
+    fig, ax = plt.subplots()
+    legend = ax.legend([], [], draggable=True)
+    assert legend.get_draggable()
 
 
 def test_legend_005_axes_legend_propagates_explicit_draggable_false():
     """GUID: LEGEND-005 -- Axes.legend preserves disabled creation state."""
-    assert True
+    fig, ax = plt.subplots()
+    legend = ax.legend([], [], draggable=False)
+    assert not legend.get_draggable()
 
 
 def test_legend_005_figure_legend_propagates_explicit_draggable_true():
     """GUID: LEGEND-005 -- Figure.legend preserves enabled creation state."""
-    assert True
+    fig = plt.figure()
+    legend = fig.legend([], [], draggable=True)
+    assert legend.get_draggable()
 
 
 def test_legend_005_figure_legend_propagates_explicit_draggable_false():
     """GUID: LEGEND-005 -- Figure.legend preserves disabled creation state."""
-    assert True
+    fig = plt.figure()
+    legend = fig.legend([], [], draggable=False)
+    assert not legend.get_draggable()
 
 
 def test_legend_005_subfigure_legend_propagates_explicit_draggable_true():
     """GUID: LEGEND-005 -- SubFigure.legend preserves enabled creation state."""
-    assert True
+    subfig = plt.figure().subfigures()
+    legend = subfig.legend([], [], draggable=True)
+    assert legend.get_draggable()
 
 
 def test_legend_005_subfigure_legend_propagates_explicit_draggable_false():
     """GUID: LEGEND-005 -- SubFigure.legend preserves disabled creation state."""
-    assert True
+    subfig = plt.figure().subfigures()
+    legend = subfig.legend([], [], draggable=False)
+    assert not legend.get_draggable()
 
 
 def test_legend_005_pyplot_legend_propagates_explicit_draggable_true():
     """GUID: LEGEND-005 -- pyplot.legend preserves enabled creation state."""
-    assert True
+    legend = plt.legend([], [], draggable=True)
+    assert legend.get_draggable()
 
 
 def test_legend_005_pyplot_legend_propagates_explicit_draggable_false():
     """GUID: LEGEND-005 -- pyplot.legend preserves disabled creation state."""
-    assert True
+    legend = plt.legend([], [], draggable=False)
+    assert not legend.get_draggable()
 
 
 def test_legend_005_pyplot_figlegend_propagates_explicit_draggable_true():
     """GUID: LEGEND-005 -- pyplot.figlegend preserves enabled creation state."""
-    assert True
+    legend = plt.figlegend([], [], draggable=True)
+    assert legend.get_draggable()
 
 
 def test_legend_005_pyplot_figlegend_propagates_explicit_draggable_false():
     """GUID: LEGEND-005 -- pyplot.figlegend preserves disabled creation state."""
-    assert True
+    legend = plt.figlegend([], [], draggable=False)
+    assert not legend.get_draggable()
 
 
 def test_alpha_handles():
