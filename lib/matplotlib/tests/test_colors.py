@@ -309,23 +309,59 @@ class TestColormapSentinelIndexingContracts:
     def test_cmap_004_valid_integer_values_retain_regular_color_mappings(
             self):
         """GUID: CMAP-004; valid integers retain regular-color mappings."""
-        assert True
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        values = np.array([0, 1, 2], dtype=np.uint8)
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array(["red", "green", "blue"]))
 
     def test_cmap_005_under_range_integer_values_retain_under_color(self):
         """GUID: CMAP-005; under-range integers retain the under color."""
-        assert True
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_under("yellow")
+
+        assert_array_equal(
+            cmap(np.array([-1], dtype=np.int8)),
+            mcolors.to_rgba_array(["yellow"]))
 
     def test_cmap_005_over_range_integer_values_retain_over_color(self):
         """GUID: CMAP-005; over-range integers retain the over color."""
-        assert True
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_over("cyan")
+
+        assert_array_equal(
+            cmap(np.array([3, 255], dtype=np.uint8)),
+            mcolors.to_rgba_array(["cyan", "cyan"]))
 
     def test_cmap_005_invalid_integer_values_retain_bad_color(self):
         """GUID: CMAP-005; invalid integers retain the bad color."""
-        assert True
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_bad("magenta")
+        values = np.ma.array([0, 1, 2], dtype=np.uint8,
+                             mask=[False, True, False])
 
-    def test_cmap_006_integer_input_retains_shape_dtype_mask_and_values(self):
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array(["red", "magenta", "blue"]))
+
+    @pytest.mark.parametrize("values", [
+        np.array([[0, 255], [1, 2]], dtype=np.uint8),
+        np.ma.array([[-1, 0], [3, 1]], dtype=np.int8,
+                    mask=[[False, True], [False, False]]),
+    ], ids=["ndarray", "masked-array"])
+    def test_cmap_006_integer_input_retains_shape_dtype_mask_and_values(
+            self, values):
         """GUID: CMAP-006; integer input state is unchanged after evaluation."""
-        assert True
+        original = values.copy()
+
+        mcolors.ListedColormap(["red", "green", "blue"])(values)
+
+        assert values.shape == original.shape
+        assert values.dtype == original.dtype
+        assert_array_equal(
+            np.ma.getmaskarray(values), np.ma.getmaskarray(original))
+        assert_array_equal(np.ma.getdata(values), np.ma.getdata(original))
 
     @pytest.mark.parametrize("dtype, values", [
         (np.int8, []),
