@@ -884,22 +884,67 @@ def test_legend_005_pyplot_figlegend_propagates_explicit_draggable_false():
 
 def test_legend_006_post_creation_configuration_enables_draggability():
     """GUID: LEGEND-006 -- post-creation enabling makes a legend draggable."""
-    assert True
+    legend = plt.legend()
+
+    assert not legend.get_draggable()
+    draggable = legend.set_draggable(True)
+
+    assert legend.get_draggable()
+    assert isinstance(draggable, mlegend.DraggableLegend)
 
 
 def test_legend_006_post_creation_configuration_disables_draggability():
     """GUID: LEGEND-006 -- post-creation disabling makes a legend non-draggable."""
-    assert True
+    legend = plt.legend(draggable=True)
+    draggable = legend._draggable
+
+    assert legend.get_draggable()
+    with mock.patch.object(draggable, "disconnect",
+                           wraps=draggable.disconnect) as disconnect:
+        assert legend.set_draggable(False) is None
+
+    assert not legend.get_draggable()
+    disconnect.assert_called_once_with()
 
 
-def test_legend_007_creation_option_preserves_legend_appearance():
+@pytest.mark.parametrize("draggable", [False, True])
+@check_figures_equal()
+def test_legend_007_creation_option_preserves_legend_appearance(
+        fig_test, fig_ref, draggable):
     """GUID: LEGEND-007 -- creation-time state does not change appearance."""
-    assert True
+    ax_test = fig_test.subplots()
+    ax_ref = fig_ref.subplots()
+    for ax in [ax_test, ax_ref]:
+        ax.plot([0, 1], [1, 0], marker="o", label="data")
+
+    ax_test.legend(title="Legend", draggable=draggable)
+    ax_ref.legend(title="Legend")
 
 
-def test_legend_007_creation_option_preserves_non_drag_behavior():
+@pytest.mark.parametrize("draggable", [False, True])
+def test_legend_007_creation_option_preserves_non_drag_behavior(draggable):
     """GUID: LEGEND-007 -- creation-time state does not change other behavior."""
-    assert True
+    fig, (ax_test, ax_ref) = plt.subplots(ncols=2)
+    for ax in [ax_test, ax_ref]:
+        ax.plot([], label="data")
+
+    legend = ax_test.legend(draggable=draggable)
+    reference = ax_ref.legend()
+    for current in [legend, reference]:
+        current.set_title("Updated title")
+        current.set_frame_on(False)
+        current.set_visible(False)
+
+    assert legend.get_title().get_text() == reference.get_title().get_text()
+    assert legend.get_frame_on() == reference.get_frame_on()
+    assert legend.get_visible() == reference.get_visible()
+    assert [text.get_text() for text in legend.get_texts()] == [
+        text.get_text() for text in reference.get_texts()]
+
+    legend.remove()
+    reference.remove()
+    assert ax_test.get_legend() is None
+    assert ax_ref.get_legend() is None
 
 
 def test_alpha_handles():
