@@ -592,8 +592,10 @@ class ScalarMappable:
 
     @norm.setter
     def norm(self, norm):
-        # ARCHITECTURE (MPLNORM-001, MPLNORM-003): ScalarMappable owns norm
-        # identity and callback rewiring at this public replacement boundary.
+        # ARCHITECTURE (MPLNORM-001, MPLNORM-003, MPLNORM-005):
+        # ScalarMappable owns norm identity and callback rewiring at this
+        # public replacement boundary.  The existing instance is the unit of
+        # mutation; replacement must not be delegated to an artist factory.
         # Limit mutation remains owned by Normalize; listeners receive the
         # installed norm only through ScalarMappable.changed.
         # PSEUDOCODE (MPLNORM-001, MPLNORM-003):
