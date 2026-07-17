@@ -214,76 +214,13 @@ class Button(AxesWidget):
         self.color = color
         self.hovercolor = hovercolor
 
-    # INPUT-008 -- unaffected Button interaction boundary: Button remains the
-    # owner of its press/release lifecycle.  Its only input-state dependency is
-    # FigureCanvasBase's existing mouse-grab contract, and callback delivery
-    # remains behind its existing CallbackRegistry ``clicked`` signal.  The
-    # RangeSlider rebuild path must not add an adapter, gate, or reverse
-    # dependency at this boundary.
     def _click(self, event):
-        # INPUT-008 -- unaffected Button press logic:
-        #   INPUT: mouse input for an interaction that does not enter the
-        #     RangeSlider clear-rebuild-redraw sequence.
-        #   IF the Button is inactive, the press is outside this Axes, or
-        #     callbacks are disabled, preserve the established ignored-event
-        #     outcome and return without acquiring input state.
-        #   OTHERWISE preserve the established transition to mouse-acquired
-        #     state for this Axes; do not introduce a rebuild-specific gate.
-        #   HANDOFF: allow the matching release path to decide callback
-        #     dispatch under its existing eventson and in-Axes conditions.
-        # INPUT-002 -- rebuilt-button next-click logic:
-        #   INPUT: a press routed using the canvas' current interaction state.
-        #   IF the press targets this rebuilt Button and events are enabled,
-        #     acquire the mouse for this Button's Axes.
-        #   ON the matching release, relinquish that acquisition before
-        #     dispatching this Button's registered callback.
-        #   OTHERWISE ignore the event without changing canvas state.
-        #   FAILURE PATH: if stale state names a removed Axes, the press cannot
-        #     be routed here; INPUT-001 cleanup must have removed that state at
-        #     the callback boundary, without requiring another redraw.
         if self.ignore(event) or event.inaxes != self.ax or not self.eventson:
             return
         if event.canvas.mouse_grabber != self.ax:
             event.canvas.grab_mouse(self.ax)
 
-    # INPUT-005 -- ownership and integration boundary: Button._release owns
-    # the ordering between relinquishing the current Axes' mouse grab and
-    # dispatching the clicked signal.  It depends on FigureCanvasBase's
-    # existing release_mouse contract for event-routing state and on
-    # CallbackRegistry.process for synchronous callback delivery.  Figure
-    # clearing, replacement-widget construction, and redraw remain owned by
-    # the registered callback; replacement Buttons reconnect through
-    # AxesWidget.connect_event and require no reconstruction-aware canvas
-    # adapter, callback-registry change, or new public API.
     def _release(self, event):
-        # INPUT-008 -- unaffected Button release and callback logic:
-        #   INPUT: a release belonging to an ordinary Button interaction
-        #     outside the affected clear-rebuild-redraw sequence.
-        #   IF this Axes does not own the mouse acquisition, preserve the
-        #     established no-op outcome and do not invoke a clicked callback.
-        #   OTHERWISE release the acquisition, then, exactly when events are
-        #     enabled and the release remains in this Axes, synchronously
-        #     invoke each callback through the existing clicked signal.
-        #   OUTPUT: return with the ordinary interaction complete and no
-        #     newly retained input state, callback suppression, or extra draw.
-        #   FAILURE PATH: propagate an existing callback exception unchanged;
-        #     do not retry, translate, or convert it into sequence recovery.
-        # INPUT-005 -- button-initiated clear-rebuild-redraw logic:
-        #   INPUT: a release event matching the Axes that acquired the mouse
-        #     for this Button's preceding press.
-        #   IF the release does not belong to this Button's acquisition,
-        #     ignore it without dispatching a callback or changing state.
-        #   OTHERWISE release the mouse acquisition before handing the event
-        #     synchronously to the registered clicked callbacks.
-        #   CALLBACK TRANSITIONS: a callback may clear the Figure, create and
-        #     register replacement widgets on new Axes, then redraw the Figure;
-        #     preserve that order and wait for the entire handoff to return.
-        #   ON SUCCESS, finish this release with no acquisition owned by the
-        #     removed Button Axes, so the next mouse event can be routed to a
-        #     replacement widget and invoke its newly registered callback.
-        #   FAILURE PATH: if callback dispatch raises, leave the old mouse
-        #     acquisition released and propagate the exception; do not retry
-        #     the callback, repeat reconstruction, or retain a blocking state.
         if self.ignore(event) or event.canvas.mouse_grabber != self.ax:
             return
         event.canvas.release_mouse(self.ax)
@@ -927,69 +864,8 @@ class RangeSlider(SliderBase):
             else:
                 self._active_handle.set_xdata([val])
 
-    # INPUT-008 -- regression-containment boundary: RangeSlider._update retains
-    # ownership of ordinary drag input and its ``changed`` callback handoff.
-    # Rebuild-specific cleanup belongs only at that handoff's return seam; the
-    # shared canvas event contract and Button's independent interaction owner
-    # remain upstream/downstream-neutral and require no new integration layer.
-    #
-    # INPUT-001, INPUT-002, INPUT-003, INPUT-004, INPUT-006, INPUT-007 --
-    # ownership and integration boundary: RangeSlider._update owns the complete
-    # drag lifecycle because it owns ``drag_active`` and ``_active_handle``.  It
-    # depends on FigureCanvasBase's existing grab_mouse/release_mouse contract
-    # for routing, and on set_val's synchronous observer dispatch for value
-    # delivery.  Callback return is therefore the seam at which _update can
-    # detect that its Axes left the Figure and retire both widget-local state
-    # and that Axes' canvas grab.  For INPUT-006, FigureCanvasTk.button_press_event
-    # and FigureCanvasQT.mousePressEvent remain native-input adapters into the
-    # shared MouseEvent dispatch contract; dependency points from each backend
-    # through MouseEvent to this owner, never from this widget to a backend.
-    # Backend availability and event-loop integration remain owned by
-    # test_backend_tk.py and test_backend_qt.py.  FigureCanvasBase, Figure.clear,
-    # Button, and CallbackRegistry remain downstream-neutral: they acquire no
-    # knowledge of RangeSlider recreation, and rebuilt widgets consume their
-    # existing event and callback contracts without an adapter or new public API.
     def _update(self, event):
         """Update the slider position."""
-        # INPUT-008 -- unaffected RangeSlider interaction logic:
-        #   INPUT: an established press, motion, or release that does not
-        #     cause its callback to clear, rebuild, and redraw the Figure.
-        #   APPLY the existing ignore/button/drag gates in their current
-        #     order; an ignored event remains a no-op and an accepted press
-        #     transitions IDLE -> DRAGGING with this Axes owning the mouse.
-        #   WHILE DRAGGING, preserve nearest-handle selection, bounded value
-        #     derivation, visual update, and synchronous changed-signal handoff.
-        #   IF the callback returns with this Axes still attached, retain the
-        #     ordinary drag state until release; do not run rebuild cleanup.
-        #   ON release, transition DRAGGING -> IDLE, release this Axes' mouse
-        #     acquisition, and clear the active handle exactly once.
-        #   OUTPUT: every callback receives the established interaction value,
-        #     and later RangeSlider or Button input remains routable.
-        #   FAILURE PATH: preserve exception propagation while ensuring the
-        #     existing exceptional cleanup cannot leave input blocked or hang.
-        # INPUT-001, INPUT-003, INPUT-007 -- range interaction lifecycle:
-        #   INPUT: a left-button press, motion, or release routed to the
-        #     currently displayed RangeSlider.
-        #   ON press inside this Axes, transition IDLE -> DRAGGING and acquire
-        #     the canvas mouse grab for this Axes.
-        #   WHILE DRAGGING, select the nearest handle, derive its candidate
-        #     value from the event position, and hand it to the value-update
-        #     procedure; that handoff may synchronously clear the Figure,
-        #     rebuild both widgets, and redraw it.
-        #   AFTER that callback handoff completes, if this slider's Axes was
-        #     removed, transition the originating interaction to IDLE, clear
-        #     its active handle, and release any canvas grab owned by that Axes
-        #     before a rebuilt widget can receive the next event (INPUT-001).
-        #   OTHERWISE, on release or an outside press, perform the same
-        #     DRAGGING -> IDLE cleanup through the ordinary release path.
-        #   NEXT INTERACTION: with no stale grab, route a press to the rebuilt
-        #     RangeSlider, repeat value derivation, and invoke its newly
-        #     registered callback without redraw or recreation (INPUT-003).
-        #   LOOP INVARIANT: every clear-rebuild-redraw cycle exits with either
-        #     no grab or a grab owned by a live interaction, so repeated cycles
-        #     cannot block a later rebuilt Button or RangeSlider (INPUT-007).
-        #   FAILURE PATH: cleanup must still restore IDLE/no-stale-grab when
-        #     callback dispatch exits exceptionally; then propagate the error.
         if self.ignore(event) or event.button != 1:
             return
 
@@ -1079,17 +955,6 @@ class RangeSlider(SliderBase):
         ----------
         val : tuple or array-like of float
         """
-        # INPUT-004 -- interaction-value delivery logic:
-        #   Normalize the two values produced by the current interaction,
-        #   constrain them to the slider bounds, and update the displayed
-        #   selection, handles, text, and ``self.val`` to the same tuple.
-        #   IF events are enabled, synchronously dispatch that exact normalized
-        #   tuple to each registered change callback before accepting another
-        #   interaction; do not reread values from rebuilt widget state.
-        #   AFTER dispatch, return control to the interaction lifecycle so its
-        #   callback-boundary cleanup can release stale canvas state.
-        #   FAILURE PATH: a callback failure must not substitute old, future,
-        #   or rebuilt-slider values for the tuple already being dispatched.
         val = np.sort(val)
         _api.check_shape((2,), val=val)
         # Reset value to allow _value_in_bounds() to work.
