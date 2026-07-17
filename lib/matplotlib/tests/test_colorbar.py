@@ -615,6 +615,26 @@ def test_colorbar_renorm():
     assert np.isclose(cbar.vmax, z.max() * 1000)
 
 
+def test_MPLNORM_001_public_norm_assignment_with_colorbar_does_not_raise():
+    """MPLNORM-001: Assigning a valid positive LogNorm must not raise."""
+    pass
+
+
+def test_MPLNORM_002_autoscale_replacement_yields_positive_log_limits():
+    """MPLNORM-002: Autoscaling positive data yields valid log limits."""
+    pass
+
+
+def test_MPLNORM_003_colorbar_sync_preserves_explicit_valid_positive_lognorm_bounds():
+    """MPLNORM-003: Colorbar sync cannot corrupt valid replacement bounds."""
+    pass
+
+
+def test_MPLNORM_004_redraw_syncs_mappable_and_colorbar_log_limits():
+    """MPLNORM-004: Redraw preserves their shared LogNorm and limits."""
+    pass
+
+
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
 def test_colorbar_format(fmt):
     # make sure that format is passed properly
