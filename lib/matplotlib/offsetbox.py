@@ -1500,6 +1500,37 @@ class DraggableBase:
     coordinate and set a relevant attribute.
     """
 
+    # Serialization pseudocode
+    #
+    # Logic obligations:
+    # - MPLDRAG-001 / test_mpldrag_001_pickle_draggable_legend_excludes_live_canvas:
+    #   a draggable legend must not carry its live canvas into figure state.
+    # - MPLDRAG-002 / test_mpldrag_002_pickle_draggable_annotation_excludes_live_canvas:
+    #   a draggable annotation must cross the same serialization boundary.
+    # - MPLDRAG-003 /
+    #   test_mpldrag_003_pickle_excludes_live_reference_preserves_valid_state:
+    #   exclude only the live interaction reference; preserve all legitimate
+    #   artist, figure, callback-identifier, drag, and subclass state.
+    # - MPLDRAG-007 /
+    #   test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception:
+    #   apply the boundary by state identity, without inspecting the backend.
+    #
+    # def __getstate__(self):
+    #     INPUT: this helper is reached while its complete figure is serialized
+    #     COPY the helper's instance state so serialization cannot mutate the
+    #         live draggable helper
+    #     IF the copied state contains the direct live-canvas reference:
+    #         REMOVE that reference unconditionally
+    #     ELSE:
+    #         CONTINUE with the already canvas-free state
+    #     RETAIN every other state entry unchanged, including the reference
+    #         artist and draggable-subclass fields
+    #     HAND OFF the filtered state to the serializer; the figure owns its
+    #         separate canvas-removal and canvas-reconstruction lifecycle
+    #     IF serialization of any retained, legitimate state fails:
+    #         PROPAGATE that failure; do not catch backend-specific exceptions
+    #     OUTPUT: helper state with no live canvas and no other omissions
+
     def __init__(self, ref_artist, use_blit=False):
         self.ref_artist = ref_artist
         if not ref_artist.pickable():
