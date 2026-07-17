@@ -503,6 +503,14 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
+        # CBNORM-001..005 architecture contract:
+        # `update_normal` is the integration seam for norm identity and update
+        # orchestration (CBNORM-001, CBNORM-002, CBNORM-004).  Data remains
+        # owned by the supplied ScalarMappable; its autoscaling contract is
+        # the dependency into the norm's valid transform domain before
+        # `_process_values` consumes limits (CBNORM-003).  Scale selection
+        # remains owned by `_reset_locator_formatter_scale`, and observable
+        # boundary/tick rebuilding remains owned by `_draw_all` (CBNORM-005).
         # CBNORM-001..005 pseudocode -- normalization-replacement update:
         # INPUT: mappable and its existing colorbar (self).
         # IF mappable.norm is not self.norm (identity comparison):
