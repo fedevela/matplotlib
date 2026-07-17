@@ -703,6 +703,12 @@ class Colormap:
         Tuple of RGBA values if X is scalar, otherwise an array of
         RGBA values with a shape of ``X.shape + (4, )``.
         """
+        # Architecture boundary (GUID: CMAP-004, CMAP-005, CMAP-006):
+        # Colormap.__call__ owns integer-index preparation through LUT lookup.
+        # Caller-owned X is an input-only dependency; the private xa workspace
+        # is the sole input to sentinel classification and ``lut.take``.  Keep
+        # this seam local so regular and special-color index semantics cannot
+        # bypass the input-isolation boundary.
         if not self._isinit:
             self._init()
 
@@ -710,10 +716,64 @@ class Colormap:
         # np.isnan() to after we have converted to an array.
         mask_bad = X.mask if np.ma.is_masked(X) else None
         xa = np.array(X, copy=True)
+
+        # Integer-mapping and input-preservation contract:
+        # - GUID: CMAP-006: Treat X and its mask as caller-owned state.  Make
+        #   xa the private working copy; perform every dtype transition,
+        #   classification write, and lookup preparation on xa, never X.  If
+        #   evaluation fails, propagate the failure with X's shape, dtype,
+        #   mask, and element values unchanged.
+        # - GUID: CMAP-004: For each unmasked integer already in [0, N), keep
+        #   its value as the regular LUT index through classification, then
+        #   return the color at that established index.
+        # - GUID: CMAP-005: Classify each unmasked integer above N - 1 as
+        #   _i_over and each below zero as _i_under, then override every
+        #   invalid/masked position with _i_bad.  Resolve those indices through
+        #   the existing LUT so under-, over-, and bad-color mappings remain
+        #   established.  If classification or lookup cannot complete,
+        #   propagate the error without committing working state back to X.
+
+        # Regression-preservation architecture (GUID: CMAP-008, CMAP-009):
+        # Keep input-kind preparation owned by this method: the floating-point
+        # branch owns LUT-space scaling, while the integer branch owns only the
+        # sentinel-representability check and any required widening.  Both
+        # branches must converge on the existing shared classification,
+        # ``lut.take``, bytes/alpha, and scalar/array return seams below.  Tests
+        # depend on this public call boundary; do not introduce a parallel
+        # mapping path or a test-only production hook for these regressions.
+
+        # Unaffected-input regression logic:
+        # - GUID: CMAP-008: Given supported floating-point X, retain the
+        #   established sequence: scale into LUT-index space, classify the
+        #   boundary and invalid cases, convert to integer indices, and resolve
+        #   those indices through the selected LUT.  Apply the established
+        #   bytes and alpha transformations, if requested.  For an array,
+        #   return those same RGBA values with shape X.shape + (4,); for a
+        #   scalar, return the same four-value tuple.  If any established step
+        #   fails, propagate its exception without producing a fallback value.
+        # - GUID: CMAP-009: Given supported integer X, first compare its dtype
+        #   range with _i_under through _i_bad.  If every sentinel is
+        #   representable, retain the dtype and established integer indices;
+        #   classify under, over, masked, and invalid entries, then resolve the
+        #   resulting indices through the selected LUT.  Apply the established
+        #   bytes and alpha transformations, if requested.  For an array,
+        #   return those same RGBA values with shape X.shape + (4,); for a
+        #   scalar, return the same four-value tuple.  If classification,
+        #   lookup, or output transformation fails, propagate its exception
+        #   without substituting an output.
+
         if mask_bad is None:
             mask_bad = np.isnan(xa)
         if not xa.dtype.isnative:
             xa = xa.byteswap().newbyteorder()  # Native byteorder is faster.
+        # Ensure that the special indices will be representable; in particular,
+        # NumPy 1.24 deprecates assigning 256 to a uint8 array, even if the
+        # assignment is to an empty mask (GH#24970).
+        if xa.dtype.kind in "iu":
+            data_min, data_max = np.iinfo(xa.dtype).min, np.iinfo(xa.dtype).max
+            if self._i_under < data_min or self._i_bad > data_max:
+                sentinel_dtype = np.min_scalar_type(self._i_bad)
+                xa = xa.astype(np.promote_types(xa.dtype, sentinel_dtype))
         if xa.dtype.kind == "f":
             with np.errstate(invalid="ignore"):
                 xa *= self.N

@@ -1,6 +1,7 @@
 import copy
 import itertools
 import unittest.mock
+import warnings
 
 from io import BytesIO
 import numpy as np
@@ -264,6 +265,167 @@ def test_colormap_return_types():
     # multi-dimensional array input
     x2d = np.zeros((2, 2))
     assert cmap(x2d).shape == x2d.shape + (4,)
+
+
+class TestColormapSentinelIndexingContracts:
+    def test_cmap_001_empty_uint8_default_rgba_emits_no_out_of_bound_warning(
+            self):
+        """GUID: CMAP-001; empty uint8 input emits no conversion warning."""
+        cmap = mpl.colormaps["plasma"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            cmap(np.empty(0, dtype=np.uint8))
+
+    def test_cmap_002_empty_shape_zero_default_rgba_returns_shape_zero_four(
+            self):
+        """GUID: CMAP-002; shape (0,) input returns RGBA shape (0, 4)."""
+        rgba = mpl.colormaps["plasma"](np.empty(0, dtype=np.uint8))
+        assert rgba.shape == (0, 4)
+
+    def test_cmap_003_sentinels_fit_index_dtype(self):
+        """GUID: CMAP-003; sentinel representation holds all indices."""
+        cmap = mcolors.ListedColormap(["black", "white"])
+        cmap._init()
+        lut = cmap._lut
+        indices = []
+
+        class LutProxy:
+            def take(self, xa, **kwargs):
+                indices.append(xa.copy())
+                return lut.take(xa, **kwargs)
+
+        cmap._lut = LutProxy()
+        values = np.ma.array([-1, 2, 0], dtype=np.int8,
+                             mask=[False, False, True])
+        cmap(values)
+
+        xa, = indices
+        info = np.iinfo(xa.dtype)
+        assert info.min <= cmap._i_under <= info.max
+        assert info.min <= cmap._i_over <= info.max
+        assert info.min <= cmap._i_bad <= info.max
+        assert_array_equal(xa, [cmap._i_under, cmap._i_over, cmap._i_bad])
+
+    def test_cmap_004_valid_integer_values_retain_regular_color_mappings(
+            self):
+        """GUID: CMAP-004; valid integers retain regular-color mappings."""
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        values = np.array([0, 1, 2], dtype=np.uint8)
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array(["red", "green", "blue"]))
+
+    def test_cmap_005_under_range_integer_values_retain_under_color(self):
+        """GUID: CMAP-005; under-range integers retain the under color."""
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_under("yellow")
+
+        assert_array_equal(
+            cmap(np.array([-1], dtype=np.int8)),
+            mcolors.to_rgba_array(["yellow"]))
+
+    def test_cmap_005_over_range_integer_values_retain_over_color(self):
+        """GUID: CMAP-005; over-range integers retain the over color."""
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_over("cyan")
+
+        assert_array_equal(
+            cmap(np.array([3, 255], dtype=np.uint8)),
+            mcolors.to_rgba_array(["cyan", "cyan"]))
+
+    def test_cmap_005_invalid_integer_values_retain_bad_color(self):
+        """GUID: CMAP-005; invalid integers retain the bad color."""
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_bad("magenta")
+        values = np.ma.array([0, 1, 2], dtype=np.uint8,
+                             mask=[False, True, False])
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array(["red", "magenta", "blue"]))
+
+    @pytest.mark.parametrize("values", [
+        np.array([[0, 255], [1, 2]], dtype=np.uint8),
+        np.ma.array([[-1, 0], [3, 1]], dtype=np.int8,
+                    mask=[[False, True], [False, False]]),
+    ], ids=["ndarray", "masked-array"])
+    def test_cmap_006_integer_input_retains_shape_dtype_mask_and_values(
+            self, values):
+        """GUID: CMAP-006; integer input state is unchanged after evaluation."""
+        original = values.copy()
+
+        mcolors.ListedColormap(["red", "green", "blue"])(values)
+
+        assert values.shape == original.shape
+        assert values.dtype == original.dtype
+        assert_array_equal(
+            np.ma.getmaskarray(values), np.ma.getmaskarray(original))
+        assert_array_equal(np.ma.getdata(values), np.ma.getdata(original))
+
+    @pytest.mark.parametrize("dtype, values", [
+        (np.int8, []),
+        (np.int8, [-1, 0, 127]),
+        (np.uint8, []),
+        (np.uint8, [0, 255]),
+    ])
+    def test_cmap_007_susceptible_integer_dtypes_no_warning(
+            self, dtype, values):
+        """GUID: CMAP-007; susceptible integer inputs emit no warning."""
+        cmap = mpl.colormaps["plasma"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            cmap(np.array(values, dtype=dtype))
+
+    # Verification boundary (GUID: CMAP-008, CMAP-009): These regression
+    # loci exercise the public Colormap.__call__ integration seam.  Float and
+    # sentinel-capable integer value/shape baselines belong here; production
+    # adapters or test hooks are outside this boundary.
+    def test_cmap_008_supported_floating_point_input_retains_output_values(
+            self):
+        """GUID: CMAP-008; floating-point output values remain unchanged."""
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_under("yellow")
+        cmap.set_over("cyan")
+        cmap.set_bad("magenta")
+        values = np.array([[-0.1, 0, 1 / 3], [2 / 3, 1, np.nan]])
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array([
+                "yellow", "red", "green", "blue", "blue", "magenta",
+            ]).reshape(2, 3, 4))
+
+    def test_cmap_008_supported_floating_point_input_retains_output_shape(
+            self):
+        """GUID: CMAP-008; floating-point output shape remains unchanged."""
+        values = np.zeros((2, 1, 3), dtype=np.float32)
+
+        assert mcolors.ListedColormap(["red"])(values).shape == (2, 1, 3, 4)
+
+    def test_cmap_009_sentinel_capable_integer_input_retains_output_values(
+            self):
+        """GUID: CMAP-009; sentinel-capable integer values remain unchanged."""
+        cmap = mcolors.ListedColormap(["red", "green", "blue"])
+        cmap.set_under("yellow")
+        cmap.set_over("cyan")
+        cmap.set_bad("magenta")
+        values = np.ma.array(
+            [[-1, 0, 1], [2, 3, 0]], dtype=np.int16,
+            mask=[[False, False, False], [False, False, True]])
+
+        assert_array_equal(
+            cmap(values),
+            mcolors.to_rgba_array([
+                "yellow", "red", "green", "blue", "cyan", "magenta",
+            ]).reshape(2, 3, 4))
+
+    def test_cmap_009_sentinel_capable_integer_input_retains_output_shape(
+            self):
+        """GUID: CMAP-009; sentinel-capable integer shape remains unchanged."""
+        values = np.zeros((2, 1, 3), dtype=np.int16)
+
+        assert mcolors.ListedColormap(["red"])(values).shape == (2, 1, 3, 4)
 
 
 def test_BoundaryNorm():
