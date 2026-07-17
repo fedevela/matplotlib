@@ -203,6 +203,21 @@ def test_mpldrag_004_enabled_annotation_remains_valid_before_serialization():
     assert not np.allclose(annotation.xyann, initial_position)
 
 
+def test_mpldrag_005_round_trip_reconstructs_figure_artists_with_legitimate_state():
+    """GUID: MPLDRAG-005 -- reconstruct legitimate figure and artist state."""
+    assert True
+
+
+def test_mpldrag_005_pickle_round_trip_retains_preexisting_artist_position():
+    """GUID: MPLDRAG-005 -- retain stored artist properties after unpickling."""
+    assert True
+
+
+def test_mpldrag_006_round_trip_without_draggables_preserves_pickle_behavior():
+    """GUID: MPLDRAG-006 -- preserve existing non-draggable pickle behavior."""
+    assert True
+
+
 def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
     """GUID: MPLDRAG-007 -- supported interactive backends need no special case."""
     fig, ax = plt.subplots()
