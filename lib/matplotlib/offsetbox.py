@@ -1513,55 +1513,6 @@ class DraggableBase:
     coordinate and set a relevant attribute.
     """
 
-    # Interaction-validity pseudocode
-    #
-    # Logic obligations:
-    # - MPLDRAG-004 /
-    #   test_mpldrag_004_enabled_legend_remains_valid_before_serialization:
-    #   serialization compatibility must leave normal enabled legend dragging
-    #   valid before serialization.
-    # - MPLDRAG-004 /
-    #   test_mpldrag_004_enabled_annotation_remains_valid_before_serialization:
-    #   the same pre-serialization validity applies to annotations.
-    # - MPLDRAG-009 /
-    #   test_mpldrag_009_restored_draggable_remains_usable_after_canvas_attachment:
-    #   a restored helper remains usable after attachment to an appropriate
-    #   interactive canvas when existing restoration reconstructs its callbacks.
-    # - MPLDRAG-009 /
-    #   test_mpldrag_009_pickle_requires_no_callbacks_beyond_restoration_support:
-    #   no callback absent from existing figure restoration is synthesized.
-    #
-    # def process_supported_drag(self, event):
-    #     INPUT: an enabled legend or annotation helper before serialization
-    #     RESOLVE the current canvas through reference artist -> figure -> canvas
-    #     ON matching pick event while the artist remains parented:
-    #         TRANSITION idle -> picked
-    #         CAPTURE the pointer origin and the artist's starting offset
-    #         CONNECT the motion callback through the current canvas
-    #     ON motion event while picked and still parented:
-    #         COMPUTE displacement from the captured pointer origin
-    #         UPDATE the supported artist offset and redraw through that canvas
-    #     ON release event while picked and still parented:
-    #         FINALIZE the supported artist position
-    #         DISCONNECT the motion callback
-    #         TRANSITION picked -> idle
-    #     IF the artist is no longer parented:
-    #         DISCONNECT registered callbacks and reject the interaction
-    #     OUTPUT: the same enabled, reusable helper and updated artist position
-    #
-    # def resume_supported_drag_after_pickle(self, restored_figure):
-    #     INPUT: a restored helper linked to its restored artist and figure
-    #     WAIT until the figure is attached to an appropriate interactive canvas
-    #     RESOLVE that attached canvas dynamically through the restored artist
-    #     IF existing figure restoration reconstructed the required persistent
-    #             pick and release callbacks:
-    #         ACCEPT events from the attached canvas
-    #         FOLLOW process_supported_drag without a distinct restored path
-    #         OUTPUT: a valid and usable restored draggable artist
-    #     ELSE:
-    #         DO NOT create, replace, or infer any missing callback
-    #         OUTPUT: no usability guarantee beyond existing restoration support
-
     def __init__(self, ref_artist, use_blit=False):
         self.ref_artist = ref_artist
         if not ref_artist.pickable():

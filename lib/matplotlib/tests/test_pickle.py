@@ -7,6 +7,8 @@ import pytest
 
 import matplotlib as mpl
 from matplotlib import cm
+from matplotlib.backend_bases import MouseEvent, PickEvent
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.testing import subprocess_run_helper
 from matplotlib.testing.decorators import check_figures_equal
 from matplotlib.dates import rrulewrapper
@@ -160,14 +162,45 @@ def test_mpldrag_003_pickle_excludes_live_reference_preserves_valid_state():
     assert loaded_draggable._mpldrag_valid_state == {"drag": "state"}
 
 
+def _drag_artist(artist, dx=10, dy=5):
+    canvas = artist.figure.canvas
+    canvas.draw()
+    x, y = artist.get_window_extent().get_points().mean(axis=0)
+    mouse_event = MouseEvent("button_press_event", canvas, x, y, button=1)
+    PickEvent("pick_event", canvas, mouse_event, artist)._process()
+    MouseEvent("motion_notify_event", canvas, x + dx, y + dy,
+               button=1)._process()
+    MouseEvent("button_release_event", canvas, x + dx, y + dy,
+               button=1)._process()
+
+
 def test_mpldrag_004_enabled_legend_remains_valid_before_serialization():
     """GUID: MPLDRAG-004 -- enabled legend dragging remains valid pre-pickle."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    legend = ax.legend()
+    draggable = legend.set_draggable(True)
+
+    _drag_artist(legend)
+
+    assert legend.get_draggable()
+    assert legend._draggable is draggable
+    assert not draggable.got_artist
+    assert isinstance(legend._loc, tuple)
 
 
 def test_mpldrag_004_enabled_annotation_remains_valid_before_serialization():
     """GUID: MPLDRAG-004 -- enabled annotation dragging remains valid pre-pickle."""
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("label", (.5, .5), xytext=(.25, .25))
+    draggable = annotation.draggable(True)
+    initial_position = np.asarray(annotation.xyann).copy()
+
+    _drag_artist(annotation)
+
+    assert annotation._draggable is draggable
+    assert not draggable.got_artist
+    assert not np.allclose(annotation.xyann, initial_position)
 
 
 def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
@@ -186,12 +219,40 @@ def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
 
 def test_mpldrag_009_restored_draggable_remains_usable_after_canvas_attachment():
     """GUID: MPLDRAG-009 -- restored callbacks keep dragging usable on a canvas."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    ax.legend().set_draggable(True)
+
+    loaded = pickle.loads(pickle.dumps(fig))
+    FigureCanvasAgg(loaded)
+    loaded_legend = loaded.axes[0].get_legend()
+    loaded_draggable = loaded_legend._draggable
+
+    _drag_artist(loaded_legend)
+
+    assert loaded_draggable.canvas is loaded.canvas
+    assert not loaded_draggable.got_artist
+    assert isinstance(loaded_legend._loc, tuple)
 
 
 def test_mpldrag_009_pickle_requires_no_callbacks_beyond_restoration_support():
     """GUID: MPLDRAG-009 -- pickle adds no unsupported callback reconstruction."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    draggable = ax.legend().set_draggable(True)
+
+    def unsupported_callback(event):
+        pass
+
+    unsupported_cid = fig.canvas.mpl_connect(
+        "motion_notify_event", unsupported_callback)
+    loaded = pickle.loads(pickle.dumps(fig))
+    loaded_callbacks = loaded.canvas.callbacks.callbacks
+
+    assert draggable.cids[0] in loaded_callbacks["pick_event"]
+    assert draggable.cids[1] in loaded_callbacks["button_release_event"]
+    assert unsupported_cid not in loaded_callbacks.get(
+        "motion_notify_event", {})
 
 
 def _pickle_load_subprocess():
