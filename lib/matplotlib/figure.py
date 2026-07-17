@@ -1309,17 +1309,23 @@ default: %(va)s
             The height of the padding between subplots,
             as a fraction of the average Axes height.
         """
-        # ARCHITECTURE (GUID: CLF-002, CLF-003): FigureBase owns the manual
+        # ARCHITECTURE (GUID: CLF-002, CLF-003, CLF-005): FigureBase owns the manual
         # adjustment boundary.  Layout engines expose only adjust_compatible;
         # this method owns warning policy and the SubplotParams/Axes update
         # seam, so engine-specific state must not leak past that contract.
-        # GUID: CLF-002, CLF-003 -- manual adjustment decision and effects.
+        # GUID: CLF-002, CLF-003, CLF-005 -- manual adjustment decision,
+        # incompatibility protection, and effects.
         # PSEUDOCODE:
-        #   inspect the figure's effective layout engine;
-        #   IF an active engine is incompatible with manual adjustment:
+        #   read the figure's effective layout engine before changing state;
+        #   IF an engine is active AND its contract marks manual adjustment
+        #   incompatible:
+        #       retain the established incompatibility warning/refusal path;
         #       emit the constrained-layout incompatibility warning;
-        #       stop without changing subplot geometry;
+        #       return before updating subplot parameters or axes positions;
+        #       preserve the complete pre-operation manual layout state;
         #   ELSE:
+        #       this includes constrained layout explicitly disabled (no active
+        #       incompatible engine) and any adjustment-compatible engine;
         #       emit no constrained-layout incompatibility warning;
         #       merge every supplied adjustment, including wspace = 0, into
         #       the subplot parameters without treating zero as absent;
