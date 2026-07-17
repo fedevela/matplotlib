@@ -1309,6 +1309,10 @@ default: %(va)s
             The height of the padding between subplots,
             as a fraction of the average Axes height.
         """
+        # ARCHITECTURE (GUID: CLF-002, CLF-003): FigureBase owns the manual
+        # adjustment boundary.  Layout engines expose only adjust_compatible;
+        # this method owns warning policy and the SubplotParams/Axes update
+        # seam, so engine-specific state must not leak past that contract.
         # GUID: CLF-002, CLF-003 -- manual adjustment decision and effects.
         # PSEUDOCODE:
         #   inspect the figure's effective layout engine;
@@ -2439,6 +2443,11 @@ class Figure(FigureBase):
             if isinstance(tight_layout, dict):
                 self.get_layout_engine().set(**tight_layout)
         elif constrained_layout is not None:
+            # ARCHITECTURE (GUID: CLF-001): Figure construction owns
+            # interpretation of the legacy constrained_layout argument before
+            # delegating engine materialization to set_layout_engine.  An
+            # explicit False must cross that seam as the disabled selection;
+            # set_layout_engine remains unaware of legacy argument semantics.
             # GUID: CLF-001 -- explicit constrained-layout state selection.
             # PSEUDOCODE:
             #   IF constrained_layout is false:
@@ -2572,6 +2581,9 @@ class Figure(FigureBase):
             like padding and margin sizes.  Only used if *layout* is a string.
 
         """
+        # ARCHITECTURE (GUID: CLF-001): this is the sole Figure-owned engine
+        # materialization boundary.  Callers must supply a normalized layout
+        # selection; this method owns engine/None construction and attachment.
         if layout is None:
             if mpl.rcParams['figure.autolayout']:
                 layout = 'tight'
