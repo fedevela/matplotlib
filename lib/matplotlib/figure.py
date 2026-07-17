@@ -3060,6 +3060,15 @@ class Figure(FigureBase):
         #       cycle so stability is cumulative rather than independently
         #       sampled from the original figure.
 
+        # ARCHITECTURE (GUID: DPI-002, DPI-004): this existing Figure state
+        # boundary owns the invariant for every cycle; no repeat-count or
+        # MacOSX-specific serialization adapter belongs downstream.  The
+        # persisted ``_dpi`` value is the stable input to Figure.__setstate__,
+        # whose base-canvas reconstruction is the sole integration seam into
+        # the next cycle.  Device scaling remains canvas-owned and must not
+        # become accumulating serialized state.  Repeated-cycle verification
+        # remains owned by the GUID-tagged loci in tests/test_pickle.py.
+
         # ARCHITECTURE (GUID: DPI-001, DPI-003, DPI-010): Figure.__getstate__
         # owns the logical-DPI serialization boundary.  In the state handed to
         # pickle, ``_dpi`` is the logical-DPI contract; ``_original_dpi`` is
