@@ -130,24 +130,63 @@ __bibtex__ = r"""@Article{Hunter:2007,
 }"""
 
 
+_VersionInfo = namedtuple(
+    "_VersionInfo", "major minor micro releaselevel serial")
+
+
+def _parse_to_version_info(version_str):
+    """Parse a version string to a namedtuple analogous to sys.version_info."""
+    version = parse_version(version_str)
+    if version.dev is not None:
+        return _VersionInfo(
+            version.major, version.minor, version.micro,
+            "alpha", version.dev)
+    if version.pre is not None:
+        releaselevel = {
+            "a": "alpha", "b": "beta", "rc": "candidate",
+        }.get(version.pre[0], "alpha")
+        return _VersionInfo(
+            version.major, version.minor, version.micro,
+            releaselevel, version.pre[1])
+    if version.post is not None:
+        # setuptools_scm's post-release scheme describes the next development
+        # version using the previous release plus the post-release distance.
+        return _VersionInfo(
+            version.major, version.minor, version.micro + 1,
+            "alpha", version.post)
+    return _VersionInfo(
+        version.major, version.minor, version.micro, "final", 0)
+
+
+def _get_version():
+    """Return the version string used for __version__."""
+    import setuptools_scm
+    # Only shell out to a git subprocess if really needed, and not on a
+    # shallow clone, such as those used by CI, as the latter would trigger
+    # a warning from setuptools_scm.
+    root = Path(__file__).resolve().parents[2]
+    if (root / ".git").exists() and not (root / ".git/shallow").exists():
+        return setuptools_scm.get_version(
+            root=root,
+            version_scheme="post-release",
+            local_scheme="node-and-date",
+            fallback_version=_version.version,
+        )
+    # Get the version from the _version.py setuptools_scm file.
+    return _version.version
+
+
 def __getattr__(name):
     if name == "__version__":
-        import setuptools_scm
         global __version__  # cache it.
-        # Only shell out to a git subprocess if really needed, and not on a
-        # shallow clone, such as those used by CI, as the latter would trigger
-        # a warning from setuptools_scm.
-        root = Path(__file__).resolve().parents[2]
-        if (root / ".git").exists() and not (root / ".git/shallow").exists():
-            __version__ = setuptools_scm.get_version(
-                root=root,
-                version_scheme="post-release",
-                local_scheme="node-and-date",
-                fallback_version=_version.version,
-            )
-        else:  # Get the version from the _version.py setuptools_scm file.
-            __version__ = _version.version
+        __version__ = _get_version()
         return __version__
+    if name == "__version_info__":
+        global __version_info__  # cache it.
+        if "__version__" not in globals():
+            __getattr__("__version__")
+        __version_info__ = _parse_to_version_info(__version__)
+        return __version_info__
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
