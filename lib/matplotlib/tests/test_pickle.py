@@ -205,17 +205,65 @@ def test_mpldrag_004_enabled_annotation_remains_valid_before_serialization():
 
 def test_mpldrag_005_round_trip_reconstructs_figure_artists_with_legitimate_state():
     """GUID: MPLDRAG-005 -- reconstruct legitimate figure and artist state."""
-    assert True
+    fig, ax = plt.subplots()
+    fig.set_label("pickled figure")
+    ax.set_title("stored title")
+    line, = ax.plot([1, 2], [3, 4], color="tab:orange", label="data")
+    legend = ax.legend()
+    legend.set_draggable(True, update="bbox")
+
+    loaded = pickle.loads(pickle.dumps(fig))
+    loaded_ax = loaded.axes[0]
+    loaded_line = loaded_ax.lines[0]
+    loaded_legend = loaded_ax.get_legend()
+
+    assert loaded.get_label() == "pickled figure"
+    assert loaded_ax.figure is loaded
+    assert loaded_ax.get_title() == "stored title"
+    np.testing.assert_array_equal(loaded_line.get_xydata(), line.get_xydata())
+    assert loaded_line.get_color() == "tab:orange"
+    assert loaded_legend.axes is loaded_ax
+    assert loaded_legend._draggable.ref_artist is loaded_legend
+    assert loaded_legend._draggable._update == "bbox"
 
 
 def test_mpldrag_005_pickle_round_trip_retains_preexisting_artist_position():
     """GUID: MPLDRAG-005 -- retain stored artist properties after unpickling."""
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate(
+        "stored position", (.8, .9), xytext=(.2, .3),
+        xycoords="axes fraction", textcoords="axes fraction")
+    annotation.draggable(True)
+
+    loaded = pickle.loads(pickle.dumps(fig))
+    loaded_annotation = loaded.axes[0].texts[0]
+
+    np.testing.assert_array_equal(loaded_annotation.xy, (.8, .9))
+    np.testing.assert_array_equal(loaded_annotation.xyann, (.2, .3))
+    assert loaded_annotation.get_text() == "stored position"
+    assert loaded_annotation._draggable.annotation is loaded_annotation
 
 
 def test_mpldrag_006_round_trip_without_draggables_preserves_pickle_behavior():
     """GUID: MPLDRAG-006 -- preserve existing non-draggable pickle behavior."""
-    assert True
+    fig, ax = plt.subplots()
+    fig.set_size_inches(4, 3)
+    ax.set(xlim=(-1, 5), ylim=(-2, 6), title="ordinary figure")
+    line, = ax.plot([0, 2, 4], [1, 3, 5], marker="s")
+    text = ax.text(.25, .75, "ordinary artist", transform=ax.transAxes)
+
+    loaded = pickle.loads(pickle.dumps(fig))
+    loaded_ax = loaded.axes[0]
+
+    np.testing.assert_array_equal(loaded.get_size_inches(), (4, 3))
+    np.testing.assert_array_equal(loaded_ax.get_xlim(), (-1, 5))
+    np.testing.assert_array_equal(loaded_ax.get_ylim(), (-2, 6))
+    np.testing.assert_array_equal(loaded_ax.lines[0].get_xydata(),
+                                  line.get_xydata())
+    np.testing.assert_array_equal(loaded_ax.texts[0].get_position(),
+                                  text.get_position())
+    assert loaded_ax.get_title() == "ordinary figure"
+    assert loaded_ax.texts[0].get_text() == "ordinary artist"
 
 
 def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():

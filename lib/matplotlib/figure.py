@@ -3165,49 +3165,6 @@ None}, default: None
     # absence follows this same unconditional path with no compatibility
     # branch.  Backend-manager restoration remains downstream of this boundary.
     #
-    # Figure pickle-preservation pseudocode
-    #
-    # Logic obligations:
-    # - MPLDRAG-005 /
-    #   test_mpldrag_005_round_trip_reconstructs_figure_artists_with_legitimate_state:
-    #   reconstruct the complete figure and relevant artist graph without
-    #   corrupting legitimate stored state when draggable artists are present.
-    # - MPLDRAG-006 /
-    #   test_mpldrag_006_round_trip_without_draggables_preserves_pickle_behavior:
-    #   a figure without draggable artists must continue through the existing
-    #   figure and artist pickle flow without a new conditional path.
-    #
-    # def serialize_figure_graph(figure):
-    #     INPUT: a supported figure, with zero or more draggable artists
-    #     OBTAIN the inherited Artist state containing the existing object graph
-    #     REMOVE the live canvas edge from the copied figure state
-    #     NORMALIZE stored dpi and RECORD the Matplotlib version
-    #     IF the figure manager is registered with pyplot:
-    #         RECORD the existing pyplot-restoration marker
-    #     DO NOT inspect, filter, replace, or branch on draggable artists
-    #     RECURSIVELY serialize retained artists using their existing state hook
-    #     IF any retained legitimate state cannot be serialized:
-    #         PROPAGATE the existing pickle failure; do not mutate source state
-    #     OUTPUT: detached figure state with its legitimate object graph intact
-    #
-    # def restore_figure_graph(serialized_state):
-    #     INPUT: state produced by serialize_figure_graph
-    #     READ and remove serialization metadata
-    #     IF the recorded version differs from the running version:
-    #         EMIT the existing compatibility warning and continue
-    #     RESTORE the complete retained state in one graph-preserving handoff
-    #     ATTACH a fresh base canvas so restored artists resolve this figure
-    #     IF the pyplot-restoration marker is set:
-    #         RECREATE the manager through the existing backend workflow
-    #     MARK the reconstructed figure stale
-    #     OUTPUT: the figure and artists with retained stored properties intact
-    #     IF required metadata is absent or manager restoration fails:
-    #         PROPAGATE the existing restoration failure without partial repair
-    #
-    # State transition for both obligations:
-    #     attached figure -> detached serialized graph -> reconstructed graph
-    #                     -> fresh-canvas-attached figure
-    # The transition is identical when the graph contains no draggable helper.
     def __getstate__(self):
         state = super().__getstate__()
 
