@@ -686,6 +686,15 @@ class RangeSlider(SliderBase):
 
         # Set a value to allow _value_in_bounds() to work.
         self.val = [valmin, valmax]
+        # RANGE-006, RANGE-007, RANGE-008 -- constructor handoff pseudocode:
+        # - Choose the default endpoint pair when no initial value is supplied;
+        #   otherwise carry the supplied candidate into the shared range-value
+        #   flow used by later updates.
+        # - In that flow, require exactly two elements, order them, and constrain
+        #   them through the existing bound validation before retaining or
+        #   displaying either endpoint.
+        # - If exact-shape validation fails, propagate the established ValueError
+        #   and do not complete a partially initialized range representation.
         if valinit is None:
             # Place at the 25th and 75th percentiles
             extent = valmax - valmin
@@ -918,6 +927,19 @@ class RangeSlider(SliderBase):
         #   update the displayed text, and commit self.val.
         # - Once all three representations agree, request a redraw when enabled,
         #   then notify observers when enabled with that effective pair.
+        # RANGE-006, RANGE-007, RANGE-008 -- compatibility-flow pseudocode:
+        # - Sort the incoming candidate, then require shape (2,); on mismatch,
+        #   raise the established ValueError and stop before any state, display,
+        #   drawing, or observer transition.
+        # - Pass the ordered lower and upper candidates through the existing
+        #   lower-bound and upper-bound validators to obtain the effective pair.
+        # - Retain both distinct effective endpoints, map them to the orientation's
+        #   selection-polygon coordinates, and display their formatted range.
+        # RANGE-009, RANGE-010 -- successful handoff pseudocode:
+        # - Commit the effective pair to self.val after polygon and text updates.
+        # - If drawing is enabled, request an idle draw; otherwise skip drawing.
+        # - After the state commit, if observers are enabled, publish the changed
+        #   event with that same effective pair; otherwise skip notification.
         val = np.sort(val)
         _api.check_shape((2,), val=val)
         val[0] = self._min_in_bounds(val[0])
