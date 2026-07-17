@@ -2301,6 +2301,23 @@ class FigureCanvasBase:
             if bbox_inches is None:
                 bbox_inches = rcParams['savefig.bbox']
 
+            # GUID: CLF-004 -- tight-bbox save compatibility and completion.
+            # PSEUDOCODE:
+            #   read the figure's effective layout engine and bbox request;
+            #   IF constrained layout was explicitly disabled and therefore
+            #   no layout engine is active:
+            #       treat the state as disabled, not incompatible;
+            #       emit no layout-engine incompatibility warning;
+            #   ELSE:
+            #       preserve the active layout engine's existing behavior;
+            #   IF tight bounding-box output was requested:
+            #       obtain a renderer and draw to establish artist locations;
+            #       compute and pad the tight bounding box;
+            #       continue to the backend print operation without refusing
+            #       the save solely because constrained layout was disabled;
+            #   IF rendering, bbox calculation, or printing fails for an
+            #   unrelated reason:
+            #       propagate that failure through the existing error path.
             if (self.figure.get_layout_engine() is not None or
                     bbox_inches == "tight"):
                 # we need to trigger a draw before printing to make sure
