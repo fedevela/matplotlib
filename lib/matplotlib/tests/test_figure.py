@@ -546,6 +546,107 @@ def test_valid_layouts():
     assert fig.get_constrained_layout()
 
 
+class TestConstrainedLayoutFalseContracts:
+    def test_clf_001_effective_state_remains_disabled_after_layout_operations(self):
+        """GUID: CLF-001."""
+        with mpl.rc_context({"figure.constrained_layout.use": True}):
+            fig = Figure(constrained_layout=False)
+            fig.subplots(1, 2)
+
+            assert fig.get_layout_engine() is None
+            assert not fig.get_constrained_layout()
+
+            fig.subplots_adjust(wspace=0)
+
+            assert fig.get_layout_engine() is None
+            assert not fig.get_constrained_layout()
+
+    def test_clf_002_subplots_adjust_wspace_zero_emits_no_warning(self):
+        """GUID: CLF-002; no constrained-layout incompatibility warning."""
+        fig = Figure(constrained_layout=False)
+        fig.subplots(1, 2)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            fig.subplots_adjust(wspace=0)
+
+    def test_clf_003_subplots_adjust_wspace_zero_applies_zero_spacing(self):
+        """GUID: CLF-003; geometry changes to the requested zero spacing."""
+        fig = Figure(constrained_layout=False)
+        axs = fig.subplots(1, 2)
+        initial_gap = axs[1].get_position().x0 - axs[0].get_position().x1
+
+        fig.subplots_adjust(wspace=0)
+
+        assert initial_gap > 0
+        assert axs[0].get_position().x1 == pytest.approx(
+            axs[1].get_position().x0)
+
+    def test_clf_004_constrained_layout_false_tight_bbox_emits_no_warning(self):
+        """GUID: CLF-004; tight-bbox save emits no incompatibility warning."""
+        with mpl.rc_context({"figure.constrained_layout.use": True}):
+            fig = Figure(constrained_layout=False)
+            fig.subplots()
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", UserWarning)
+                fig.savefig(io.BytesIO(), format="png", bbox_inches="tight")
+
+    def test_clf_004_constrained_layout_false_tight_bbox_save_completes(self):
+        """GUID: CLF-004; tight-bbox save completes without refusal."""
+        with mpl.rc_context({"figure.constrained_layout.use": True}):
+            fig = Figure(constrained_layout=False)
+            fig.subplots()
+            output = io.BytesIO()
+
+            fig.savefig(output, format="png", bbox_inches="tight")
+
+        assert output.getbuffer().nbytes > 0
+
+
+class TestCLF005IncompatibleActiveLayoutEngineContracts:
+    def test_clf_005_protected_manual_layout_operation_retains_established_incompatibility_protection(
+            self):
+        """GUID: CLF-005; an incompatible active engine warns or refuses."""
+        fig = Figure(layout="constrained")
+        fig.subplots()
+
+        with pytest.warns(
+                UserWarning, match="incompatible with subplots_adjust"):
+            fig.subplots_adjust(top=0.8)
+
+    def test_clf_005_refused_protected_manual_layout_operation_is_not_applied(self):
+        """GUID: CLF-005; refusal preserves the pre-operation layout state."""
+        fig = Figure(layout="constrained")
+        ax = fig.subplots()
+        initial_top = fig.subplotpars.top
+        initial_position = ax.get_position().frozen()
+
+        with pytest.warns(UserWarning):
+            fig.subplots_adjust(top=0.8)
+
+        assert fig.subplotpars.top == initial_top
+        assert ax.get_position().bounds == initial_position.bounds
+
+    def test_clf_005_only_genuinely_incompatible_active_engine_retains_protection(self):
+        """GUID: CLF-005; disabled constrained layout remains unprotected."""
+        disabled_fig = Figure(constrained_layout=False)
+        disabled_fig.subplots()
+        incompatible_fig = Figure(layout="constrained")
+        incompatible_fig.subplots()
+        incompatible_initial_top = incompatible_fig.subplotpars.top
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            disabled_fig.subplots_adjust(top=0.8)
+        with pytest.warns(
+                UserWarning, match="incompatible with subplots_adjust"):
+            incompatible_fig.subplots_adjust(top=0.8)
+
+        assert disabled_fig.subplotpars.top == 0.8
+        assert incompatible_fig.subplotpars.top == incompatible_initial_top
+
+
 def test_invalid_layouts():
     fig, ax = plt.subplots(layout="constrained")
     with pytest.warns(UserWarning):

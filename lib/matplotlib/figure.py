@@ -1309,6 +1309,29 @@ default: %(va)s
             The height of the padding between subplots,
             as a fraction of the average Axes height.
         """
+        # ARCHITECTURE (GUID: CLF-002, CLF-003, CLF-005): FigureBase owns the manual
+        # adjustment boundary.  Layout engines expose only adjust_compatible;
+        # this method owns warning policy and the SubplotParams/Axes update
+        # seam, so engine-specific state must not leak past that contract.
+        # GUID: CLF-002, CLF-003, CLF-005 -- manual adjustment decision,
+        # incompatibility protection, and effects.
+        # PSEUDOCODE:
+        #   read the figure's effective layout engine before changing state;
+        #   IF an engine is active AND its contract marks manual adjustment
+        #   incompatible:
+        #       retain the established incompatibility warning/refusal path;
+        #       emit the constrained-layout incompatibility warning;
+        #       return before updating subplot parameters or axes positions;
+        #       preserve the complete pre-operation manual layout state;
+        #   ELSE:
+        #       this includes constrained layout explicitly disabled (no active
+        #       incompatible engine) and any adjustment-compatible engine;
+        #       emit no constrained-layout incompatibility warning;
+        #       merge every supplied adjustment, including wspace = 0, into
+        #       the subplot parameters without treating zero as absent;
+        #       FOR EACH axes associated with a subplot specification:
+        #           recompute and apply its position from the updated parameters;
+        #       mark the figure stale so the requested geometry is rendered.
         if (self.get_layout_engine() is not None and
                 not self.get_layout_engine().adjust_compatible):
             _api.warn_external(
@@ -2426,7 +2449,24 @@ class Figure(FigureBase):
             if isinstance(tight_layout, dict):
                 self.get_layout_engine().set(**tight_layout)
         elif constrained_layout is not None:
-            self.set_layout_engine(layout='constrained')
+            # ARCHITECTURE (GUID: CLF-001): Figure construction owns
+            # interpretation of the legacy constrained_layout argument before
+            # delegating engine materialization to set_layout_engine.  An
+            # explicit False must cross that seam as the disabled selection;
+            # set_layout_engine remains unaware of legacy argument semantics.
+            # GUID: CLF-001 -- explicit constrained-layout state selection.
+            # PSEUDOCODE:
+            #   IF constrained_layout is false:
+            #       retain an effectively disabled constrained-layout state;
+            #       do not install a constrained-layout engine, including when
+            #       later layout operations inspect the effective state.
+            #   ELSE:
+            #       install the constrained-layout engine;
+            #       IF options were supplied as a mapping:
+            #           apply those options to the installed engine.
+            self.set_layout_engine(
+                layout='none' if constrained_layout is False
+                else 'constrained')
             if isinstance(constrained_layout, dict):
                 self.get_layout_engine().set(**constrained_layout)
         else:
@@ -2549,6 +2589,9 @@ class Figure(FigureBase):
             like padding and margin sizes.  Only used if *layout* is a string.
 
         """
+        # ARCHITECTURE (GUID: CLF-001): this is the sole Figure-owned engine
+        # materialization boundary.  Callers must supply a normalized layout
+        # selection; this method owns engine/None construction and attachment.
         if layout is None:
             if mpl.rcParams['figure.autolayout']:
                 layout = 'tight'
