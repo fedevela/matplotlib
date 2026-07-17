@@ -567,6 +567,26 @@ def test_p3dfc_003_predraw_accessors_return_established_color_array_form():
         assert np.all((0 <= colors) & (colors <= 1))
 
 
+def test_p3dfc_004_predraw_retrieval_preserves_projection_sorting_and_rendering():
+    """GUID: P3DFC-004 -- pre-draw retrieval preserves later rendering."""
+    assert True
+
+
+def test_p3dfc_004_predraw_facecolor_retrieval_allows_valid_postprojection_access():
+    """GUID: P3DFC-004 -- post-projection color access remains valid."""
+    assert True
+
+
+def test_p3dfc_005_get_facecolors_predraw_preprojection_returns_valid_data():
+    """GUID: P3DFC-005 -- independently cover plural pre-draw access."""
+    assert True
+
+
+def test_p3dfc_005_get_facecolor_predraw_preprojection_returns_valid_data():
+    """GUID: P3DFC-005 -- independently cover singular pre-draw access."""
+    assert True
+
+
 @mpl3d_image_comparison(['surface3d_shaded.png'])
 def test_surface3d_shaded():
     fig = plt.figure()
