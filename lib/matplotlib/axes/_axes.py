@@ -2163,6 +2163,26 @@ class Axes(_AxesBase):
         # x should be an array...
         assert type(xconv) is np.ndarray
 
+        # Pseudocode -- GUID: BAR-010, BAR-011
+        # INPUT: original unit-aware positions x0, converted positions xconv,
+        # supported width value(s) dx, and the matching unit converter
+        # IF xconv is empty:
+        #     return direct conversion of dx
+        # representative_original := first finite element of x0
+        # representative_converted := first finite element of xconv
+        # IF either finite-element search is exhausted:
+        #     select that input's first element without filtering positions
+        # FOR EACH supplied width, preserving scalar-versus-sequence shape:
+        #     converted_width := convert(representative_original + width)
+        #                        - representative_converted
+        # IF supported representative arithmetic cannot perform conversion:
+        #     converted_widths := direct conversion of dx
+        # RESULT: finite-search exhaustion is handled internally and never
+        # exposes StopIteration to the Axes.bar caller                  [BAR-010]
+        # RESULT: width conversion neither removes nor replaces any converted
+        # x position, including a non-finite position                  [BAR-011]
+        # FAILURE: established conversion failures other than exhausted finite
+        # search retain the existing direct-conversion fallback behavior.
         if xconv.size == 0:
             # xconv has already been converted, but maybe empty...
             return convert(dx)
@@ -2390,6 +2410,20 @@ class Axes(_AxesBase):
             if yerr is not None:
                 yerr = self._convert_dx(yerr, y0, y, self.convert_yunits)
 
+        # Pseudocode -- GUID: BAR-009, BAR-011, BAR-013
+        # converted_x := unit conversion result for every supplied x position
+        # converted_width := supported width conversion result
+        # IF conversion or array validation rejects an established invalid
+        # input, including a generator:
+        #     propagate the established failure; do not materialize, retry, or
+        #     reinterpret the invalid input as a supported sequence          [BAR-013]
+        # broadcast converted_x, height, converted_width, baseline, and styles
+        # IF their shapes cannot be broadcast under established validation:
+        #     propagate the established broadcasting failure                [BAR-013]
+        # RESULT: ordinary finite numeric values retain their converted values
+        # and supported broadcast shape                                     [BAR-009]
+        # RESULT: N supported unit-aware x positions, finite or non-finite,
+        # produce N aligned bar tuples; non-finiteness is not a filter       [BAR-011]
         x, height, width, y, linewidth, hatch = np.broadcast_arrays(
             # Make args iterable too.
             np.atleast_1d(x), height, width, y, linewidth, hatch)
@@ -2450,7 +2484,7 @@ class Axes(_AxesBase):
             bottom = y
 
         # Pseudocode -- GUID: BAR-001, BAR-002, BAR-003, BAR-004, BAR-005,
-        # BAR-006, BAR-007, BAR-008
+        # BAR-006, BAR-007, BAR-008, BAR-009, BAR-011
         # expected_rectangle_count := length(x) after broadcasting
         # ordered_bar_tuples := aligned, broadcast tuples in input-x order
         # patches := empty sequence
@@ -2464,6 +2498,8 @@ class Axes(_AxesBase):
         #         preserve nan left and zero height in the geometry
         #     ELSE IF input x is finite AND input height is non-finite: [BAR-008]
         #         preserve the aligned finite left and non-finite height
+        #     ELSE IF ordinary x and width are finite numeric values:   [BAR-009]
+        #         preserve established center- or edge-aligned geometry
         #     rectangle := construct one Rectangle from this ordinal's tuple
         #     preserve this tuple's aligned finite or non-finite left geometry
         #                                                               [BAR-007]
@@ -2477,6 +2513,7 @@ class Axes(_AxesBase):
         # RESULT: length(patches) == expected_rectangle_count            [BAR-005]
         # RESULT: patch order equals the supplied x-position order       [BAR-006]
         # RESULT: each patch keeps its corresponding aligned x geometry [BAR-007]
+        # RESULT: supported unit-aware input cardinality is preserved   [BAR-011]
         # FAILURE: conversion, broadcasting, or alignment errors propagate before
         # rectangle construction; non-finiteness alone neither raises, suppresses,
         # nor reorders a rectangle, and does not substitute another x geometry.
@@ -2536,9 +2573,12 @@ class Axes(_AxesBase):
         else:  # horizontal
             datavalues = width
 
-        # Pseudocode -- GUID: BAR-014
+        # Pseudocode -- GUID: BAR-009, BAR-014
         # container := BarContainer(patches, errorbar, datavalues, orientation,
         #                           public label)
+        # preserve normal patch access, data values, orientation, label,
+        # errorbar association, Axes registration, and tick-label bookkeeping
+        # for ordinary finite numeric bars                              [BAR-009]
         # return container after normal container and tick-label bookkeeping,
         # including when every supplied x position is non-finite
         # Architecture contract -- GUID: BAR-014
