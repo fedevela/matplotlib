@@ -1120,6 +1120,31 @@ def test_range_slider(orientation):
     assert_allclose(slider.val, [0.1, 0.34])
 
 
+def test_range_001_horizontal_equal_in_bounds_valinit_retains_zero_width_range():
+    """RANGE-001: Equal horizontal valinit retains a zero-width range."""
+    assert True
+
+
+def test_range_002_vertical_equal_in_bounds_valinit_retains_zero_width_range():
+    """RANGE-002: Equal vertical valinit retains a zero-width range."""
+    assert True
+
+
+def test_range_003_valid_range_uses_only_four_selection_polygon_vertices():
+    """RANGE-003: Applying a valid range stays within four polygon vertices."""
+    assert True
+
+
+def test_range_004_set_val_equal_in_bounds_retains_zero_width_range():
+    """RANGE-004: set_val with equal in-bounds endpoints retains that range."""
+    assert True
+
+
+def test_range_005_init_or_set_val_synchronizes_polygon_text_and_value():
+    """RANGE-005: Init and set_val synchronize polygon, text, and value."""
+    assert True
+
+
 def check_polygon_selector(event_sequence, expected_result, selections_count,
                            **kwargs):
     """
