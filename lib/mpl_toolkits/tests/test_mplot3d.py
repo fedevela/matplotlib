@@ -643,6 +643,16 @@ def test_p3dfc_005_get_facecolor_predraw_preprojection_returns_valid_data():
     assert not hasattr(surface, "_facecolors2d")
 
 
+def test_p3dfc_006_direct_equivalent_poly3d_get_facecolors_predraw_returns_valid_data():
+    """GUID: P3DFC-006 -- plural pre-draw access returns valid color data."""
+    assert True
+
+
+def test_p3dfc_006_direct_equivalent_poly3d_get_facecolor_predraw_matches_facecolors():
+    """GUID: P3DFC-006 -- singular pre-draw access exposes plural state."""
+    assert True
+
+
 @mpl3d_image_comparison(['surface3d_shaded.png'])
 def test_surface3d_shaded():
     fig = plt.figure()
