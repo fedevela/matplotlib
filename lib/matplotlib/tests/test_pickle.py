@@ -343,12 +343,58 @@ def test_dpi_007_deserialized_macosx_figure_preserves_rendering_state_through_dr
 
 def test_dpi_008_unaffected_backend_figure_round_trip_retains_existing_behavior():
     """GUID: DPI-008 -- unaffected serialization behavior remains unchanged."""
-    assert True
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+    logical_dpi = 100
+    fig = mfigure.Figure(figsize=(4, 3), dpi=logical_dpi)
+    FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    line, = ax.plot([0, 1, 2], [2, 0, 3], label="unaffected")
+    ax.set(xlim=(-1, 3), ylim=(-1, 4), title="Agg round trip")
+    fig.canvas.draw()
+    expected_rgba = np.asarray(fig.canvas.buffer_rgba()).copy()
+
+    restored = pickle.loads(pickle.dumps(fig))
+    FigureCanvasAgg(restored)
+    restored.canvas.draw()
+
+    assert restored.dpi == logical_dpi
+    assert restored.get_size_inches().tolist() == [4, 3]
+    assert restored.axes[0].get_title() == "Agg round trip"
+    assert restored.axes[0].lines[0].get_label() == line.get_label()
+    np.testing.assert_array_equal(
+        np.asarray(restored.canvas.buffer_rgba()), expected_rgba)
 
 
-def test_dpi_009_existing_supported_figure_pickle_deserializes_without_migration():
+def test_dpi_009_existing_supported_figure_pickle_deserializes_without_migration(
+        monkeypatch):
     """GUID: DPI-009 -- existing figure pickles need no format migration."""
-    assert True
+    current_getstate = mfigure.Figure.__getstate__
+
+    # Reproduce the pre-correction state handoff, which persisted the live
+    # device-scaled DPI instead of normalizing it to ``_original_dpi``.
+    def legacy_getstate(fig):
+        state = current_getstate(fig)
+        state["_dpi"] = fig._dpi
+        return state
+
+    fig = mfigure.Figure(figsize=(4, 3), dpi=144)
+    fig.subplots().plot([1, 2, 3], [3, 2, 1])
+    fig.canvas._set_device_pixel_ratio(2)
+    monkeypatch.setattr(mfigure.Figure, "__getstate__", legacy_getstate)
+    legacy_pickle = pickle.dumps(fig)
+
+    # Deserialize with the corrected implementation and the original pickle
+    # bytes; no state rewrite or format migration is interposed.
+    monkeypatch.setattr(mfigure.Figure, "__getstate__", current_getstate)
+    restored = pickle.loads(legacy_pickle)
+
+    assert isinstance(restored, mfigure.Figure)
+    assert restored.dpi == 288
+    assert restored._original_dpi == 144
+    assert restored.canvas.figure is restored
+    np.testing.assert_array_equal(
+        restored.axes[0].lines[0].get_ydata(), [3, 2, 1])
 
 
 def test_mpl_toolkits():
