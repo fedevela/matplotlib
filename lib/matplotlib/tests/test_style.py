@@ -240,12 +240,41 @@ def test_scblind_005_legacy_colorblind_lookup_and_use_need_no_seaborn(
 
 def test_scblind_006_restoration_preserves_unrelated_style_retrieval_and_definitions():
     """GUID: SCBLIND-006 -- unrelated styles remain retrievable and usable."""
-    assert True
+    legacy_name = "seaborn-colorblind"
+    unrelated = {
+        name: settings.copy()
+        for name, settings in mpl.style.library.items()
+        if name != legacy_name
+    }
+
+    mpl.style.reload_library()
+
+    assert mpl.style.library.keys() - {legacy_name} == unrelated.keys()
+    for name, expected in unrelated.items():
+        actual = mpl.style.library[name]
+        assert actual == expected
+        with mpl.style.context(actual):
+            pass
 
 
-def test_scblind_007_direct_lookup_valid_across_supported_os_backends():
+@pytest.mark.parametrize("backend", ["agg", "svg"])
+def test_scblind_007_direct_lookup_valid_across_supported_os_backends(backend):
     """GUID: SCBLIND-007 -- lookup is valid across supported OSes/backends."""
-    assert True
+    plt.switch_backend(backend)
+
+    mpl.style.reload_library()
+    colorblind = mpl.style.library["seaborn-colorblind"]
+
+    assert mpl.get_backend().lower() == backend
+    assert isinstance(colorblind, mpl.RcParams)
+    assert colorblind
+    assert colorblind.keys() <= mpl.rcParams.keys()
+    with mpl.style.context(colorblind):
+        fig, ax = plt.subplots()
+        line, = ax.plot([0, 1], [0, 1])
+
+    assert line.get_color() == "#0072B2"
+    plt.close(fig)
 
 
 def test_up_to_date_blacklist():
