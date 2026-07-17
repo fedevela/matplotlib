@@ -566,6 +566,20 @@ class Legend(Artist):
         #    is non-draggable.
         # 5. PROPAGATE any failure from the existing handoff; do not introduce
         #    a second interaction path or a partially initialized helper.
+        # PSEUDOCODE [LEGEND-007]:
+        # Verification loci:
+        # - test_legend_007_creation_option_preserves_legend_appearance
+        # - test_legend_007_creation_option_preserves_non_drag_behavior
+        # 1. BUILD the legend patch, layout boxes, handles, labels, title, and
+        #    location from the same non-drag inputs regardless of `draggable`.
+        # 2. APPLY `draggable` only through the helper-lifecycle handoff; do not
+        #    use it as an input to visual properties or ordinary legend state.
+        # 3. BEFORE any drag interaction, expose the same appearance for
+        #    otherwise equivalent legends with omitted, true, or false values.
+        # 4. FOR each non-drag operation, continue through the established
+        #    Legend behavior without branching on the creation option.
+        # 5. IF helper creation fails, propagate the failure; do not alter the
+        #    visual or non-drag paths to compensate for drag configuration.
         self._draggable = None
         self.set_draggable(draggable)
 
@@ -1129,6 +1143,21 @@ class Legend(Artist):
             If *state* is ``True`` this returns the `.DraggableLegend` helper
             instance. Otherwise this returns *None*.
         """
+        # PSEUDOCODE [LEGEND-006]:
+        # Verification loci:
+        # - test_legend_006_post_creation_configuration_enables_draggability
+        # - test_legend_006_post_creation_configuration_disables_draggability
+        # 1. RECEIVE the requested post-creation `state` and existing helper.
+        # 2. IF enabling and no helper exists, create the established
+        #    `DraggableLegend` with `use_blit` and `update`, then store it.
+        # 3. ELSE IF enabling and a helper exists, retain that helper so the
+        #    already-draggable legend remains enabled without a duplicate.
+        # 4. IF disabling and a helper exists, disconnect it, then clear the
+        #    helper slot so `get_draggable` transitions to false.
+        # 5. ELSE IF disabling and no helper exists, retain the disabled state.
+        # 6. PROPAGATE helper creation or disconnection failures and do not
+        #    report a successful transition that did not complete.
+        # 7. RETURN the stored helper when enabled, otherwise return null.
         if state:
             if self._draggable is None:
                 self._draggable = DraggableLegend(self,
