@@ -18,12 +18,32 @@ from matplotlib.offsetbox import (
 
 def test_mpl_001_release_check_treats_detached_artist_as_unparented_without_canvas():
     """MPL-001: A detached reference is unparented without canvas access."""
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("foo", (.5, .5))
+    draggable = annotation.draggable(True)
+
+    annotation.remove()
+
+    assert annotation.figure is None
+    assert not draggable._check_still_parented()
 
 
 def test_mpl_002_release_cleanup_disconnects_detached_artist_without_canvas_or_error():
     """MPL-002: Detached-reference callback cleanup completes without error."""
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("foo", (.5, .5))
+    draggable = annotation.draggable(True)
+    callback_ids = [
+        disconnector.args[0] for disconnector in draggable._disconnectors]
+
+    annotation.remove()
+    MouseEvent("button_release_event", fig.canvas, 1, 1)._process()
+
+    assert all(
+        callback_id not in callbacks
+        for callbacks in fig._canvas_callbacks.callbacks.values()
+        for callback_id in callback_ids
+    )
 
 
 @image_comparison(['offsetbox_clipping'], remove_text=True)
