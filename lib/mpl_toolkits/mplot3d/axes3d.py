@@ -394,7 +394,10 @@ class Axes3D(Axes):
         # 3D prelude.  Keep the gate at this override's entry, dependent only
         # on the inherited Artist visibility contract; the renderer and all
         # axes-owned visual components remain downstream of that single,
-        # backend-neutral integration seam.
+        # backend-neutral integration seam.  For M3DVIS-002, figure traversal
+        # retains ownership of sibling sequencing: this override may return
+        # control to that caller but must not inspect, reorder, or draw sibling
+        # axes.
         # Draw-time visibility contract:
         #
         # M3DVIS-001 / M3DVIS-003:
