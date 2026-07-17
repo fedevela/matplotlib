@@ -701,6 +701,8 @@ class RangeSlider(SliderBase):
             valinit = np.array([valmin + extent * 0.25,
                                 valmin + extent * 0.75])
         else:
+            valinit = np.sort(valinit)
+            _api.check_shape((2,), val=valinit)
             valinit = self._value_in_bounds(valinit)
         self.val = valinit
         self.valinit = valinit

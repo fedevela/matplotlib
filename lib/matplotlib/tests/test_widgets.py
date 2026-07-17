@@ -1190,34 +1190,98 @@ def test_range_005_init_or_set_val_synchronizes_polygon_text_and_value(
     assert_allclose(slider.val, (.6, .6))
 
 
-def test_range_006_distinct_endpoints_retain_and_display_effective_range():
+@pytest.mark.parametrize(
+    "orientation, initial_xy, updated_xy",
+    [("horizontal",
+      [(.2, .25), (.2, .75), (.8, .75), (.8, .25)],
+      [(.3, .25), (.3, .75), (.7, .75), (.7, .25)]),
+     ("vertical",
+      [(.25, .2), (.25, .8), (.75, .8), (.75, .2)],
+      [(.25, .3), (.25, .7), (.75, .7), (.75, .3)])])
+def test_range_006_distinct_endpoints_retain_and_display_effective_range(
+        orientation, initial_xy, updated_xy):
     """RANGE-006: Init/set_val retain and display both orientations' range."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.2, .8), orientation=orientation,
+        valfmt="%.1f")
+
+    assert_allclose(slider.val, (.2, .8))
+    assert_allclose(slider.poly.xy, initial_xy)
+    assert slider.valtext.get_text() == "(0.2, 0.8)"
+
+    slider.set_val((.3, .7))
+
+    assert_allclose(slider.val, (.3, .7))
+    assert_allclose(slider.poly.xy, updated_xy)
+    assert slider.valtext.get_text() == "(0.3, 0.7)"
 
 
 def test_range_007_descending_values_are_sorted_ascending():
     """RANGE-007: Initial or subsequent descending values are sorted."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.8, .2))
+
+    assert_allclose(slider.val, (.2, .8))
+
+    slider.set_val((.7, .3))
+
+    assert_allclose(slider.val, (.3, .7))
 
 
 def test_range_007_out_of_bounds_values_use_existing_validation():
     """RANGE-007: Initial/subsequent values use existing bound validation."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(-1, 2))
+
+    assert_allclose(slider.val, (0, 1))
+
+    slider.set_val((-.5, 1.5))
+
+    assert_allclose(slider.val, (0, 1))
 
 
-def test_range_008_non_two_element_values_raise_value_error():
+@pytest.mark.parametrize("val", [.2, (.2,), (.1, .2, .3), [[.1, .2]]])
+def test_range_008_non_two_element_values_raise_value_error(val):
     """RANGE-008: Values not shaped as two elements raise ValueError."""
-    assert True
+    fig, ax = plt.subplots()
+    with pytest.raises(ValueError):
+        widgets.RangeSlider(ax, "", 0, 1, valinit=val)
+
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.2, .8))
+    with pytest.raises(ValueError):
+        slider.set_val(val)
 
 
-def test_range_009_set_val_requests_draw_when_enabled():
+def test_range_009_set_val_requests_draw_when_enabled(monkeypatch):
     """RANGE-009: Successful set_val requests drawing when enabled."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.2, .8))
+    draw_calls = []
+    monkeypatch.setattr(fig.canvas, "draw_idle", lambda: draw_calls.append(True))
+
+    slider.set_val((.3, .7))
+
+    assert draw_calls == [True]
 
 
 def test_range_010_state_updates_before_observer_gets_effective_value():
     """RANGE-010: State updates before observers get the effective value."""
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.2, .8))
+    observed = []
+
+    def on_changed(val):
+        observed.append((np.array(val), np.array(slider.val)))
+
+    slider.on_changed(on_changed)
+    slider.set_val((1.5, .3))
+
+    assert len(observed) == 1
+    received, state_during_callback = observed[0]
+    assert_allclose(received, (.3, 1))
+    assert_allclose(state_during_callback, received)
 
 
 def check_polygon_selector(event_sequence, expected_result, selections_count,
