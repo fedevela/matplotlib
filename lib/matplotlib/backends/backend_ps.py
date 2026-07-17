@@ -627,6 +627,18 @@ grestore
             return self.draw_mathtext(gc, x, y, s, prop, angle)
 
         # MPLPS-003, MPLPS-004, MPLPS-005, MPLPS-006, MPLPS-007, MPLPS-010
+        # architecture -- RendererPS owns the PostScript line-to-run boundary.
+        # Text layout remains upstream: it splits multiline input, preserves
+        # line order, and supplies each line's computed position and spacing.
+        # This method consumes one such line through a private ``stream`` of
+        # concrete font/glyph runs; zero runs is a valid empty-line contract.
+        # Both the AFM and TrueType branches must satisfy that contract before
+        # the common emission loop.  PS and EPS share this renderer boundary,
+        # while other backends neither depend on nor expose it.  Keep the seam
+        # private: no adapter, public API, or reverse dependency into Text is
+        # required.  Existing backend_ps tests own verification at savefig and
+        # generated-output boundaries.
+        # MPLPS-003, MPLPS-004, MPLPS-005, MPLPS-006, MPLPS-007, MPLPS-010
         # pseudocode -- shared PS/EPS empty-line handling:
         # INPUT the next layout line, its already-computed (x, y) position,
         # font properties, and rotation, in the original multiline order.
