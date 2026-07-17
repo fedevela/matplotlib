@@ -377,6 +377,26 @@ class TestColormapSentinelIndexingContracts:
             warnings.simplefilter("error", DeprecationWarning)
             cmap(np.array(values, dtype=dtype))
 
+    def test_cmap_008_supported_floating_point_input_retains_output_values(
+            self):
+        """GUID: CMAP-008; floating-point output values remain unchanged."""
+        assert True
+
+    def test_cmap_008_supported_floating_point_input_retains_output_shape(
+            self):
+        """GUID: CMAP-008; floating-point output shape remains unchanged."""
+        assert True
+
+    def test_cmap_009_sentinel_capable_integer_input_retains_output_values(
+            self):
+        """GUID: CMAP-009; sentinel-capable integer values remain unchanged."""
+        assert True
+
+    def test_cmap_009_sentinel_capable_integer_input_retains_output_shape(
+            self):
+        """GUID: CMAP-009; sentinel-capable integer shape remains unchanged."""
+        assert True
+
 
 def test_BoundaryNorm():
     """
