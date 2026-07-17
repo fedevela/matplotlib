@@ -1230,63 +1230,23 @@ class Axis(martist.Artist):
         v0, v1 = self.limit_range_for_scale(v0, v1)
         v0, v1 = sorted([v0, v1], reverse=bool(reverse))
 
-        # Shared x-limit callback pseudocode (no runtime behavior):
-        #
-        # INPUT: normalized limits (v0, v1), the initiating axis, and emit.
-        # IF limit validation fails, abort before changing or notifying any axis.
-        # SNAPSHOT the initiating axis's shared x-axis group; axes absent from
-        #     this snapshot remain unchanged and unnotified.  [GUID: XLIM-007]
-        # INSTALL (v0, v1) on the initiating axis.  [GUID: XLIM-002]
-        # IF emit is false:
-        #     SKIP every xlim_changed callback and shared-axis propagation.
-        #     RETURN the installed limits.  [GUID: XLIM-008]
-        # EMIT xlim_changed once for the initiating Axes, passing that Axes as
-        #     the callback argument.  [GUID: XLIM-004] [GUID: XLIM-006]
-        # FOR EACH other Axes in the shared-group snapshot, excluding the
-        #     initiator:
-        #     APPLY (v0, v1) with propagation and callback emission disabled,
-        #         so the update cannot cycle or be recursively reapplied.
-        #         [GUID: XLIM-002] [GUID: XLIM-003]
-        #     AFTER its limits are installed, EMIT xlim_changed exactly once
-        #         for that affected Axes, passing that Axes as the callback
-        #         argument.  [GUID: XLIM-001] [GUID: XLIM-004]
-        #         [GUID: XLIM-005]
-        #     REQUEST any required cross-figure redraw without changing the
-        #         propagation or notification state.
-        # END FOR; terminate with every affected shared axis synchronized and
-        #     notified once for this logical update.  [GUID: XLIM-001]
-        #     [GUID: XLIM-002] [GUID: XLIM-003]
-        # OUTPUT: the normalized, installed limits (v0, v1).
-
         self.set_view_interval(v0, v1, ignore=True)
         # Mark viewlims as no longer stale without triggering an autoscale.
-        for ax in self._get_shared_axes():
+        shared = self._get_shared_axes()
+        for ax in shared:
             ax._stale_viewlims[name] = False
         if auto is not None:
             self._set_autoscale_on(bool(auto))
 
-        # Shared x-limit notification architecture:
-        # Axis._set_lim owns the update transaction: installation, initiating
-        # notification, and traversal of the Axes._shared_axes group.  Group
-        # membership remains owned by Axes, and CallbackRegistry remains only
-        # the notification sink; neither dependency should gain propagation
-        # policy.  [GUID: XLIM-002] [GUID: XLIM-006] [GUID: XLIM-007]
-        #
-        # The existing ``emit`` boundary is the suppression and cycle-breaking
-        # contract.  A later implementation belongs in the sibling loop below:
-        # install through the sibling Axis with ``emit=False``, then notify via
-        # that sibling Axes only after installation.  The notification addition
-        # must be x-axis-specific so this issue does not alter ylim behavior.
-        # No new public helper or callback-registry contract is required.
-        # [GUID: XLIM-001] [GUID: XLIM-003] [GUID: XLIM-004]
-        # [GUID: XLIM-005] [GUID: XLIM-008]
         if emit:
             self.axes.callbacks.process(f"{name}lim_changed", self.axes)
             # Call all of the other axes that are shared with this one
-            for other in self._get_shared_axes():
+            for other in shared:
                 if other is not self.axes:
                     other._axis_map[name]._set_lim(
                         v0, v1, emit=False, auto=auto)
+                    if name == "x":
+                        other.callbacks.process("xlim_changed", other)
                     if other.figure != self.figure:
                         other.figure.canvas.draw_idle()
 
