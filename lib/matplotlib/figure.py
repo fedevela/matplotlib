@@ -3023,6 +3023,23 @@ class Figure(FigureBase):
         # Set cached renderer to None -- it can't be pickled.
         state["_cachedRenderer"] = None
 
+        # GUID: DPI-001, DPI-003, DPI-010 -- logical-DPI round-trip contract.
+        # PSEUDOCODE:
+        #   INPUT copied figure state, whose current DPI may include a
+        #       backend-applied device-pixel ratio.
+        #   IF the state records the original configured DPI:
+        #       SELECT that value as the persisted logical DPI.
+        #   ELSE:
+        #       SELECT the current DPI as the compatibility fallback.
+        #   WRITE the selected value to the serialized DPI field without
+        #       multiplying by, dividing by, or otherwise applying the device
+        #       pixel ratio; use the same branch for every valid DPI value.
+        #   HAND OFF the state so restoration initializes the figure and any
+        #       backend scaling from the persisted logical DPI baseline.
+        #   OUTPUT after one round trip: restored logical DPI equals the
+        #       configured pre-serialization DPI; serialization failures keep
+        #       the existing pickle error path unchanged.
+
         # add version information to the state
         state['__mpl_version__'] = mpl.__version__
 
