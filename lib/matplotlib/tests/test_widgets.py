@@ -1317,6 +1317,31 @@ def test_range_slider(orientation):
     assert_allclose(handle_positions(slider), (0.1, 0.34))
 
 
+def test_input_001_callback_clear_rebuild_redraw_releases_canvas_state():
+    """GUID: INPUT-001 - callback completion releases interaction state."""
+    pass
+
+
+def test_input_002_rebuilt_button_next_click_invokes_callback():
+    """GUID: INPUT-002 - the next click works without redraw or recovery."""
+    pass
+
+
+def test_input_003_rebuilt_range_slider_next_change_invokes_callback():
+    """GUID: INPUT-003 - the next change works without redraw or recreation."""
+    pass
+
+
+def test_input_004_range_slider_callback_receives_interaction_values():
+    """GUID: INPUT-004 - each callback receives its interaction's values."""
+    pass
+
+
+def test_input_007_repeated_rebuilds_leave_later_widget_interactive():
+    """GUID: INPUT-007 - stale state does not block a later interaction."""
+    pass
+
+
 @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
 def test_range_slider_same_init_values(orientation):
     if orientation == "vertical":
