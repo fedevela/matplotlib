@@ -687,22 +687,59 @@ def test_MPLNORM_004_redraw_syncs_mappable_and_colorbar_log_limits():
 
 def test_MPLNORM_005_norm_replacement_redraw_has_no_normalization_error():
     """MPLNORM-005: Replacement and redraw must not cause a norm error."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    fig.colorbar(mappable)
+    fig.canvas.draw()
+
+    mappable.norm = LogNorm(vmin=1, vmax=8)
+    fig.canvas.draw()
 
 
 def test_MPLNORM_005_replacement_redraw_retains_existing_mappable():
     """MPLNORM-005: Redraw must retain the originally created mappable."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    original_mappable = mappable
+    fig.canvas.draw()
+
+    mappable.norm = LogNorm(vmin=1, vmax=8)
+    fig.canvas.draw()
+
+    assert ax.images[0] is original_mappable
+    assert colorbar.mappable is original_mappable
 
 
 def test_MPLNORM_005_replacement_redraw_retains_existing_colorbar():
     """MPLNORM-005: Redraw must retain the originally created colorbar."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    original_colorbar = colorbar
+    fig.canvas.draw()
+
+    mappable.norm = LogNorm(vmin=1, vmax=8)
+    fig.canvas.draw()
+
+    assert mappable.colorbar is original_colorbar
+    assert colorbar.ax._colorbar is original_colorbar
 
 
 def test_MPLNORM_005_replacement_redraw_updates_retained_artists_to_lognorm():
     """MPLNORM-005: Redraw makes both retained artists reflect LogNorm."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    fig.canvas.draw()
+    norm = LogNorm(vmin=1, vmax=8)
+
+    mappable.norm = norm
+    fig.canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert isinstance(mappable.norm, LogNorm)
+    assert colorbar.ax.get_yscale() == 'log'
 
 
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
