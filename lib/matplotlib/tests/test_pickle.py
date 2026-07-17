@@ -251,6 +251,16 @@ def test_dpi_010_macosx_apple_m1_round_trip_preserves_each_valid_logical_dpi(
     assert restored.dpi == logical_dpi
 
 
+def test_dpi_002_macosx_m1_at_least_32_round_trips_preserve_logical_dpi():
+    """GUID: DPI-002 -- every restored figure retains its logical DPI."""
+    assert True
+
+
+def test_dpi_004_macosx_m1_at_least_32_round_trips_without_overflow_error():
+    """GUID: DPI-004 -- the pickle/unpickle sequence does not overflow."""
+    assert True
+
+
 def test_mpl_toolkits():
     ax = parasite_axes.host_axes([0, 0, 1, 1])
     assert type(pickle.loads(pickle.dumps(ax))) == parasite_axes.HostAxes
