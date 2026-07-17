@@ -182,6 +182,12 @@ def __getattr__(name):
         else:  # Get the version from the _version.py setuptools_scm file.
             __version__ = _version.version
         return __version__
+    if name == "__version_info__":
+        global __version_info__  # cache it.
+        if "__version__" not in globals():
+            __getattr__("__version__")
+        __version_info__ = parse_version(__version__)
+        return __version_info__
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
