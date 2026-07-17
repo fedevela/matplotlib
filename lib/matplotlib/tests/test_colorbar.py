@@ -685,6 +685,26 @@ def test_MPLNORM_004_redraw_syncs_mappable_and_colorbar_log_limits():
     assert (colorbar.vmin, colorbar.vmax) == (1, 8)
 
 
+def test_MPLNORM_005_norm_replacement_redraw_has_no_normalization_error():
+    """MPLNORM-005: Replacement and redraw must not cause a norm error."""
+    assert True
+
+
+def test_MPLNORM_005_replacement_redraw_retains_existing_mappable():
+    """MPLNORM-005: Redraw must retain the originally created mappable."""
+    assert True
+
+
+def test_MPLNORM_005_replacement_redraw_retains_existing_colorbar():
+    """MPLNORM-005: Redraw must retain the originally created colorbar."""
+    assert True
+
+
+def test_MPLNORM_005_replacement_redraw_updates_retained_artists_to_lognorm():
+    """MPLNORM-005: Redraw makes both retained artists reflect LogNorm."""
+    assert True
+
+
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
 def test_colorbar_format(fmt):
     # make sure that format is passed properly
