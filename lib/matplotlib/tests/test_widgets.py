@@ -1120,6 +1120,230 @@ def test_range_slider(orientation):
     assert_allclose(slider.val, [0.1, 0.34])
 
 
+def test_range_001_horizontal_equal_in_bounds_valinit_retains_zero_width_range():
+    """RANGE-001: Equal horizontal valinit retains a zero-width range."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="horizontal")
+
+    assert_allclose(slider.val, (.4, .4))
+
+
+def test_range_002_vertical_equal_in_bounds_valinit_retains_zero_width_range():
+    """RANGE-002: Equal vertical valinit retains a zero-width range."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="vertical")
+
+    assert_allclose(slider.val, (.4, .4))
+
+
+@pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
+def test_range_003_valid_range_uses_only_four_selection_polygon_vertices(
+        orientation):
+    """RANGE-003: Applying a valid range stays within four polygon vertices."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.5, .5), orientation=orientation)
+
+    assert len(slider.poly.xy) == 4
+    slider.set_val((.3, .3))
+    assert len(slider.poly.xy) == 4
+
+
+@pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
+def test_range_004_set_val_equal_in_bounds_retains_zero_width_range(orientation):
+    """RANGE-004: set_val with equal in-bounds endpoints retains that range."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.2, .8), orientation=orientation)
+
+    slider.set_val((.6, .6))
+
+    assert_allclose(slider.val, (.6, .6))
+
+
+@pytest.mark.parametrize(
+    "orientation, initial_xy, updated_xy",
+    [("horizontal",
+      [(0.4, .25), (0.4, .75), (0.4, .75), (0.4, .25)],
+      [(0.6, .25), (0.6, .75), (0.6, .75), (0.6, .25)]),
+     ("vertical",
+      [(.25, 0.4), (.25, 0.4), (.75, 0.4), (.75, 0.4)],
+      [(.25, 0.6), (.25, 0.6), (.75, 0.6), (.75, 0.6)])])
+def test_range_005_init_or_set_val_synchronizes_polygon_text_and_value(
+        orientation, initial_xy, updated_xy):
+    """RANGE-005: Init and set_val synchronize polygon, text, and value."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation=orientation,
+        valfmt="%.1f")
+
+    assert_allclose(slider.poly.xy, initial_xy)
+    assert_allclose(slider.val, (.4, .4))
+    assert slider.valtext.get_text() == "(0.4, 0.4)"
+
+    slider.set_val((.6, .6))
+
+    assert_allclose(slider.poly.xy, updated_xy)
+    assert slider.valtext.get_text() == "(0.6, 0.6)"
+    assert_allclose(slider.val, (.6, .6))
+
+
+@pytest.mark.parametrize(
+    "orientation, initial_xy, updated_xy",
+    [("horizontal",
+      [(.2, .25), (.2, .75), (.8, .75), (.8, .25)],
+      [(.3, .25), (.3, .75), (.7, .75), (.7, .25)]),
+     ("vertical",
+      [(.25, .2), (.25, .8), (.75, .8), (.75, .2)],
+      [(.25, .3), (.25, .7), (.75, .7), (.75, .3)])])
+def test_range_006_distinct_endpoints_retain_and_display_effective_range(
+        orientation, initial_xy, updated_xy):
+    """RANGE-006: Init/set_val retain and display both orientations' range."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.2, .8), orientation=orientation,
+        valfmt="%.1f")
+
+    assert_allclose(slider.val, (.2, .8))
+    assert_allclose(slider.poly.xy, initial_xy)
+    assert slider.valtext.get_text() == "(0.2, 0.8)"
+
+    slider.set_val((.3, .7))
+
+    assert_allclose(slider.val, (.3, .7))
+    assert_allclose(slider.poly.xy, updated_xy)
+    assert slider.valtext.get_text() == "(0.3, 0.7)"
+
+
+def test_range_007_descending_values_are_sorted_ascending():
+    """RANGE-007: Initial or subsequent descending values are sorted."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.8, .2))
+
+    assert_allclose(slider.val, (.2, .8))
+
+    slider.set_val((.7, .3))
+
+    assert_allclose(slider.val, (.3, .7))
+
+
+def test_range_007_out_of_bounds_values_use_existing_validation():
+    """RANGE-007: Initial/subsequent values use existing bound validation."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(-1, 2))
+
+    assert_allclose(slider.val, (0, 1))
+
+    slider.set_val((-.5, 1.5))
+
+    assert_allclose(slider.val, (0, 1))
+
+
+@pytest.mark.parametrize("val", [.2, (.2,), (.1, .2, .3), [[.1, .2]]])
+def test_range_008_non_two_element_values_raise_value_error(val):
+    """RANGE-008: Values not shaped as two elements raise ValueError."""
+    fig, ax = plt.subplots()
+    with pytest.raises(ValueError):
+        widgets.RangeSlider(ax, "", 0, 1, valinit=val)
+
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.2, .8))
+    with pytest.raises(ValueError):
+        slider.set_val(val)
+
+
+def test_range_009_set_val_requests_draw_when_enabled(monkeypatch):
+    """RANGE-009: Successful set_val requests drawing when enabled."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.2, .8))
+    draw_calls = []
+    monkeypatch.setattr(fig.canvas, "draw_idle", lambda: draw_calls.append(True))
+
+    slider.set_val((.3, .7))
+
+    assert draw_calls == [True]
+
+
+def test_range_010_state_updates_before_observer_gets_effective_value():
+    """RANGE-010: State updates before observers get the effective value."""
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(ax, "", 0, 1, valinit=(.2, .8))
+    observed = []
+
+    def on_changed(val):
+        observed.append((np.array(val), np.array(slider.val)))
+
+    slider.on_changed(on_changed)
+    slider.set_val((1.5, .3))
+
+    assert len(observed) == 1
+    received, state_during_callback = observed[0]
+    assert_allclose(received, (.3, 1))
+    assert_allclose(state_during_callback, received)
+
+
+# RANGE-011 architecture: this RangeSlider regression cluster owns the public
+# construction boundary for coincident endpoints.  The horizontal and vertical
+# tests below are the orientation-specific integration seams; the shared
+# recurrence test owns the four-explicit-vertex contract and leaves indexing
+# exceptions uncaught.  These tests depend on RangeSlider's existing public API
+# and Polygon representation, so no production test hook or adapter is needed.
+def test_range_011_horizontal_coincident_endpoints_construct_and_remain_equal():
+    """RANGE-011: Horizontal coincident endpoints remain constructible."""
+    # RANGE-011 -- horizontal regression-flow pseudocode:
+    # - Create a RangeSlider with horizontal orientation, finite bounds, and an
+    #   initial endpoint pair whose lower and upper values are identical.
+    # - Allow construction and its polygon update to run without intercepting an
+    #   IndexError; any coordinate access beyond the four vertices therefore
+    #   fails this test immediately.
+    # - After construction completes, compare both retained slider endpoints to
+    #   the coincident input and fail if either endpoint was changed or discarded.
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="horizontal")
+
+    assert_allclose(slider.val, (.4, .4))
+
+
+def test_range_011_vertical_coincident_endpoints_construct_and_remain_equal():
+    """RANGE-011: Vertical coincident endpoints remain constructible."""
+    # RANGE-011 -- vertical regression-flow pseudocode:
+    # - Create a RangeSlider with vertical orientation, finite bounds, and an
+    #   initial endpoint pair whose lower and upper values are identical.
+    # - Allow construction and its orientation-specific polygon update to run
+    #   without intercepting an IndexError; an access beyond four vertices thus
+    #   transitions this test directly to failure.
+    # - After construction completes, compare both retained slider endpoints to
+    #   the coincident input and fail if either endpoint was changed or discarded.
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="vertical")
+
+    assert_allclose(slider.val, (.4, .4))
+
+
+def test_range_011_either_orientation_detects_index_beyond_four_vertices():
+    """RANGE-011: Either orientation detects polygon indexing recurrence."""
+    # RANGE-011 -- recurrence-detection pseudocode:
+    # - For each orientation, construct the coincident-endpoint scenario used by
+    #   its regression test and expose a selection polygon with exactly four
+    #   available coordinate slots, indexed from zero through three.
+    # - Execute the complete construction/update path without suppressing polygon
+    #   indexing exceptions, then verify the coincident endpoint pair is retained.
+    # - If either orientation addresses index four or greater, let the resulting
+    #   out-of-bounds exception escape so that orientation's case, and therefore
+    #   at least one RANGE-011 regression test, transitions to failure.
+    for orientation in ["horizontal", "vertical"]:
+        fig, ax = plt.subplots()
+        slider = widgets.RangeSlider(
+            ax, "", 0, 1, valinit=(.4, .4), orientation=orientation)
+
+        assert slider.poly.xy.shape == (4, 2)
+        assert_allclose(slider.val, (.4, .4))
+
+
 def check_polygon_selector(event_sequence, expected_result, selections_count,
                            **kwargs):
     """

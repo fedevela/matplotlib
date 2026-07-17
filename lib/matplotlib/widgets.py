@@ -692,6 +692,8 @@ class RangeSlider(SliderBase):
             valinit = np.array([valmin + extent * 0.25,
                                 valmin + extent * 0.75])
         else:
+            valinit = np.sort(valinit)
+            _api.check_shape((2,), val=valinit)
             valinit = self._value_in_bounds(valinit)
         self.val = valinit
         self.valinit = valinit
@@ -812,8 +814,6 @@ class RangeSlider(SliderBase):
         else:
             val = self._max_in_bounds(pos)
             self.set_max(val)
-        if self._active_handle:
-            self._active_handle.set_xdata([val])
 
     def _update(self, event):
         """Update the slider position."""
@@ -897,24 +897,20 @@ class RangeSlider(SliderBase):
         _api.check_shape((2,), val=val)
         val[0] = self._min_in_bounds(val[0])
         val[1] = self._max_in_bounds(val[1])
-        xy = self.poly.xy
         if self.orientation == "vertical":
-            xy[0] = .25, val[0]
-            xy[1] = .25, val[1]
-            xy[2] = .75, val[1]
-            xy[3] = .75, val[0]
-            xy[4] = .25, val[0]
+            self.poly.xy = [(.25, val[0]), (.25, val[1]),
+                            (.75, val[1]), (.75, val[0])]
+            for handle, value in zip(self._handles, val):
+                handle.set_ydata([value])
         else:
-            xy[0] = val[0], .25
-            xy[1] = val[0], .75
-            xy[2] = val[1], .75
-            xy[3] = val[1], .25
-            xy[4] = val[0], .25
-        self.poly.xy = xy
+            self.poly.xy = [(val[0], .25), (val[0], .75),
+                            (val[1], .75), (val[1], .25)]
+            for handle, value in zip(self._handles, val):
+                handle.set_xdata([value])
         self.valtext.set_text(self._format(val))
+        self.val = val
         if self.drawon:
             self.ax.figure.canvas.draw_idle()
-        self.val = val
         if self.eventson:
             self._observers.process("changed", val)
 
