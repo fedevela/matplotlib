@@ -3023,6 +3023,88 @@ class Figure(FigureBase):
         # Set cached renderer to None -- it can't be pickled.
         state["_cachedRenderer"] = None
 
+        # GUID: DPI-001, DPI-003, DPI-010 -- logical-DPI round-trip contract.
+        # PSEUDOCODE:
+        #   INPUT copied figure state, whose current DPI may include a
+        #       backend-applied device-pixel ratio.
+        #   IF the state records the original configured DPI:
+        #       SELECT that value as the persisted logical DPI.
+        #   ELSE:
+        #       SELECT the current DPI as the compatibility fallback.
+        #   WRITE the selected value to the serialized DPI field without
+        #       multiplying by, dividing by, or otherwise applying the device
+        #       pixel ratio; use the same branch for every valid DPI value.
+        #   HAND OFF the state so restoration initializes the figure and any
+        #       backend scaling from the persisted logical DPI baseline.
+        #   OUTPUT after one round trip: restored logical DPI equals the
+        #       configured pre-serialization DPI; serialization failures keep
+        #       the existing pickle error path unchanged.
+
+        # GUID: DPI-008 -- unaffected serialization non-regression obligation.
+        # PSEUDOCODE:
+        #   INPUT a figure using any supported platform and backend.
+        #   COPY the figure's state through the existing serialization path.
+        #   NORMALIZE only the persisted DPI field to its logical-DPI source;
+        #       RETAIN every other serialized field, version marker, and
+        #       pyplot-restoration marker under the existing pickle contract.
+        #   DO NOT branch on platform or backend and DO NOT introduce a new
+        #       state shape for unaffected configurations.
+        #   SERIALIZE and DESERIALIZE through the existing pickle handoff.
+        #   IF either operation fails:
+        #       PROPAGATE the existing serialization failure path.
+        #   OUTPUT on an unaffected configuration: the round-tripped figure
+        #       retains the same observable serialization behavior as before
+        #       the logical-DPI correction.
+
+        # ARCHITECTURE (GUID: DPI-008): Figure.__getstate__ remains the sole
+        # owner of the backend-neutral figure serialization contract.  The
+        # existing state dictionary is the integration seam into pickle;
+        # logical-DPI normalization may replace only its existing ``_dpi``
+        # value and must not introduce platform/backend dependencies or a
+        # second state shape.  Version and pyplot-restoration metadata retain
+        # their existing ownership here.  The GUID-tagged locus in
+        # tests/test_pickle.py owns unaffected-backend verification.
+
+        # GUID: DPI-002, DPI-004 -- bounded repeated-round-trip contract.
+        # PSEUDOCODE:
+        #   INPUT a MacOSX-backed figure on Apple M1, its initial logical DPI
+        #       D, and a required round-trip count N where N >= 32.
+        #   SET current figure to the input figure and completed cycles to 0.
+        #   WHILE completed cycles < N:
+        #       SERIALIZE current figure through this logical-DPI boundary.
+        #       DESERIALIZE that state as the next current figure.
+        #       IF serialization or deserialization raises OverflowError:
+        #           FAIL DPI-004 and terminate the repeated sequence.
+        #       IF the next current figure's logical DPI differs from D:
+        #           FAIL DPI-002 and terminate the repeated sequence.
+        #       INCREMENT completed cycles exactly once.
+        #   OUTPUT after N consecutive cycles: every restored figure reports
+        #       D, completed cycles is at least 32, and no OverflowError has
+        #       escaped or interrupted the sequence.
+        #   HAND OFF each restored figure as the sole input to the following
+        #       cycle so stability is cumulative rather than independently
+        #       sampled from the original figure.
+
+        # ARCHITECTURE (GUID: DPI-002, DPI-004): this existing Figure state
+        # boundary owns the invariant for every cycle; no repeat-count or
+        # MacOSX-specific serialization adapter belongs downstream.  The
+        # persisted ``_dpi`` value is the stable input to Figure.__setstate__,
+        # whose base-canvas reconstruction is the sole integration seam into
+        # the next cycle.  Device scaling remains canvas-owned and must not
+        # become accumulating serialized state.  Repeated-cycle verification
+        # remains owned by the GUID-tagged loci in tests/test_pickle.py.
+
+        # ARCHITECTURE (GUID: DPI-001, DPI-003, DPI-010): Figure.__getstate__
+        # owns the logical-DPI serialization boundary.  In the state handed to
+        # pickle, ``_dpi`` is the logical-DPI contract; ``_original_dpi`` is
+        # the canvas-owned source when device scaling has changed live figure
+        # DPI.  Backends remain downstream consumers of that state and may
+        # derive physical DPI after restoration, but serialization must not
+        # depend on a backend type or a particular valid logical-DPI value.
+
+        # Discard any changes to the DPI due to device pixel ratio changes.
+        state["_dpi"] = state.get("_original_dpi", state["_dpi"])
+
         # add version information to the state
         state['__mpl_version__'] = mpl.__version__
 
@@ -3033,6 +3115,94 @@ class Figure(FigureBase):
         return state
 
     def __setstate__(self, state):
+        # GUID: DPI-009 -- existing supported-pickle compatibility obligation.
+        # PSEUDOCODE:
+        #   INPUT a supported figure state produced before the logical-DPI
+        #       correction, using the existing serialization format.
+        #   READ the existing version marker and optional pyplot-restoration
+        #       marker; DO NOT require a new schema key, format version, or
+        #       migration step.
+        #   RESTORE the retained state through the existing figure-state and
+        #       base-canvas reconstruction sequence.
+        #   IF the recorded Matplotlib version differs:
+        #       EMIT the existing compatibility warning and continue.
+        #   IF the pickle is malformed or otherwise unsupported:
+        #       PROPAGATE the existing deserialization failure path.
+        #   HAND OFF optional pyplot restoration through the existing manager
+        #       path, then mark the restored figure stale.
+        #   OUTPUT a deserialized figure without rewriting or migrating the
+        #       source pickle to a new serialization format.
+
+        # ARCHITECTURE (GUID: DPI-009): Figure.__setstate__ remains the
+        # compatibility boundary for supported figure pickles.  Its input
+        # contract is the existing state dictionary, including the established
+        # version marker and optional pyplot-restoration marker; no schema
+        # adapter, migration layer, or newly required key belongs between
+        # pickle and this method.  Restored state flows downstream to
+        # FigureCanvasBase and, when requested, the existing manager factory.
+        # The GUID-tagged locus in tests/test_pickle.py owns legacy-pickle
+        # deserialization verification.
+
+        # GUID: DPI-005 -- restored MacOSX-backend usability obligation.
+        # PSEUDOCODE:
+        #   INPUT serialized figure state and its preserved logical DPI.
+        #   RESTORE the retained figure state onto this figure.
+        #   ATTACH a base canvas so the restored figure has a valid canvas
+        #       before any backend-specific association is requested.
+        #   IF restoration requests pyplot/backend-manager association:
+        #       HAND OFF this restored figure to the active backend manager;
+        #       request the backend's normal interactive draw path.
+        #   WHEN the selected backend is MacOSX:
+        #       PERFORM supported canvas and figure operations through that
+        #       association without a restoration-only branch.
+        #   IF state restoration, backend association, or an operation fails:
+        #       PROPAGATE the existing failure path to the caller.
+        #   OUTPUT an operational restored figure associated through the
+        #       backend's normal figure-manager boundary.
+
+        # GUID: DPI-006 -- restored logical-DPI dimension obligation.
+        # PSEUDOCODE:
+        #   INPUT preserved logical DPI D and preserved figure dimensions S.
+        #   RESTORE D, S, the DPI scale transform, and the figure bounds from
+        #       the same serialized state before backend association.
+        #   DO NOT apply a device-pixel ratio to D or rewrite S as part of
+        #       restoration.
+        #   REPORT the restored dimensions from S under logical DPI D.
+        #   IF the reported dimensions differ from the pre-serialization S:
+        #       FAIL the dimension-preservation obligation through the
+        #       caller's existing verification/error path.
+        #   OUTPUT restored dimensions equal to S and logical DPI equal to D.
+
+        # GUID: DPI-007 -- restored rendering-state draw obligation.
+        # PSEUDOCODE:
+        #   INPUT retained rendering state R and preserved logical DPI D.
+        #   RESTORE R and D together; DISCARD any non-serializable cached
+        #       renderer rather than treating it as retained rendering state.
+        #   MARK the restored figure stale so its next backend draw rebuilds
+        #       renderer-dependent state through the normal draw path.
+        #   HAND OFF the figure to the MacOSX canvas and REQUEST a draw.
+        #   IF association or drawing raises an error:
+        #       PROPAGATE the existing backend failure path to the caller.
+        #   AFTER drawing, REQUIRE the corresponding R to remain present and
+        #       D to remain the logical-DPI baseline; do not mutate R merely
+        #       because backend device scaling is applied.
+        #   OUTPUT a completed backend draw with R consistent under D.
+
+        # ARCHITECTURE (GUID: DPI-005, DPI-006, DPI-007):
+        # Figure.__setstate__ owns the restored-state boundary.  The retained
+        # figure dictionary is the single contract carrying logical ``_dpi``,
+        # dimensions and rendering state; FigureCanvasBase construction is the
+        # backend-neutral canvas-attachment seam, and the existing manager
+        # factory is the only integration path to FigureCanvasMac.  Canvas and
+        # backend modules remain downstream: they may derive device-scaled
+        # rendering state through their normal initialization and draw paths,
+        # but must not rewrite the restored logical-DPI contract or introduce
+        # a MacOSX-specific deserialization adapter.  Renderer invalidation is
+        # owned by __getstate__, while this boundary owns the post-restore
+        # stale transition.  The GUID-tagged loci in tests/test_pickle.py own
+        # verification of backend operations, dimensions, and draw-state
+        # preservation across this seam.
+
         version = state.pop('__mpl_version__')
         restore_to_pylab = state.pop('_restore_to_pylab', False)
 
@@ -3042,6 +3212,12 @@ class Figure(FigureBase):
                 f"is unlikely to function correctly.")
 
         self.__dict__ = state
+
+        # ``_dpi`` is serialized at the logical DPI, but ``dpi_scale_trans``
+        # may have been serialized after a backend applied its device pixel
+        # ratio.  Restore both parts of the DPI state to the same baseline.
+        # (GUID: DPI-006, DPI-007)
+        self.dpi_scale_trans.clear().scale(self._dpi)
 
         # re-initialise some of the unstored state information
         FigureCanvasBase(self)  # Set self.canvas.

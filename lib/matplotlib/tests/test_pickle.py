@@ -217,6 +217,186 @@ def test_unpickle_canvas():
     assert fig2.canvas is not None
 
 
+def test_dpi_001_macosx_apple_m1_pickle_round_trip_preserves_logical_dpi():
+    """GUID: DPI-001 -- restoration preserves the configured logical DPI."""
+    fig = mfigure.Figure(dpi=200)
+    fig.canvas._set_device_pixel_ratio(2)
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.dpi == 200
+
+
+def test_dpi_003_macosx_restoration_device_scale_does_not_change_logical_dpi():
+    """GUID: DPI-003 -- device-pixel scaling leaves persisted DPI unchanged."""
+    fig = mfigure.Figure(dpi=144)
+    fig.canvas._set_device_pixel_ratio(2.5)
+    assert fig.dpi == 360
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.dpi == 144
+    assert restored.canvas.device_pixel_ratio == 1
+
+
+@pytest.mark.parametrize("logical_dpi", [200, 144])
+def test_dpi_010_macosx_apple_m1_round_trip_preserves_each_valid_logical_dpi(
+        logical_dpi):
+    """GUID: DPI-010 -- preservation applies to 200 and non-200 DPI values."""
+    fig = mfigure.Figure(dpi=logical_dpi)
+    fig.canvas._set_device_pixel_ratio(2)
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.dpi == logical_dpi
+
+
+def test_dpi_002_macosx_m1_at_least_32_round_trips_preserve_logical_dpi():
+    """GUID: DPI-002 -- every restored figure retains its logical DPI."""
+    logical_dpi = 200
+    fig = mfigure.Figure(dpi=logical_dpi)
+
+    for _ in range(32):
+        # Simulate the MacOSX canvas reapplying its device scale after each
+        # restoration, so any persisted physical DPI would accumulate.
+        fig.canvas._set_device_pixel_ratio(2)
+        fig = pickle.loads(pickle.dumps(fig))
+        assert fig.dpi == logical_dpi
+
+
+def test_dpi_004_macosx_m1_at_least_32_round_trips_without_overflow_error():
+    """GUID: DPI-004 -- the pickle/unpickle sequence does not overflow."""
+    fig = mfigure.Figure(dpi=200)
+
+    try:
+        for _ in range(32):
+            fig.canvas._set_device_pixel_ratio(2)
+            fig = pickle.loads(pickle.dumps(fig))
+    except OverflowError:
+        pytest.fail("32 consecutive figure pickle round trips overflowed")
+
+
+@pytest.mark.backend("macosx", skip_on_importerror=True)
+def test_dpi_005_deserialized_macosx_figure_supports_backend_operations():
+    """GUID: DPI-005 -- a restored MacOSX figure remains operational."""
+    fig, ax = plt.subplots()
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.canvas.manager is not None
+    assert restored.canvas.figure is restored
+
+    line, = restored.axes[0].plot([0, 1], [1, 0])
+    restored.canvas.draw()
+
+    assert line.figure is restored
+    assert restored._cachedRenderer is not None
+
+
+def test_dpi_006_deserialized_figure_preserves_logical_dpi_dimensions():
+    """GUID: DPI-006 -- restored dimensions match the pre-pickle dimensions."""
+    logical_dpi = 144
+    fig = mfigure.Figure(figsize=(6.25, 4.75), dpi=logical_dpi)
+    size_inches = fig.get_size_inches()
+    fig.canvas._set_device_pixel_ratio(2)
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.dpi == logical_dpi
+    assert restored._original_dpi == logical_dpi
+    np.testing.assert_array_equal(restored.get_size_inches(), size_inches)
+    np.testing.assert_array_equal(restored.bbox.size, size_inches * logical_dpi)
+    assert restored.canvas.get_width_height() == tuple(
+        (size_inches * logical_dpi).astype(int))
+
+
+@pytest.mark.backend("macosx", skip_on_importerror=True)
+def test_dpi_007_deserialized_macosx_figure_preserves_rendering_state_through_draw():
+    """GUID: DPI-007 -- a backend draw preserves restored rendering state."""
+    logical_dpi = 144
+    fig, ax = plt.subplots(figsize=(5.5, 3.5), dpi=logical_dpi)
+    line, = ax.plot([0, 1, 2], [2, 1, 3], color="tab:orange", linewidth=3)
+    ax.set(xlim=(-1, 3), ylim=(0, 4), title="preserved state")
+    expected_line_data = line.get_data()
+    expected_size_inches = fig.get_size_inches()
+
+    restored = pickle.loads(pickle.dumps(fig))
+    restored_line = restored.axes[0].lines[0]
+
+    assert restored._cachedRenderer is None
+    assert restored.stale
+    restored.canvas.draw()
+
+    assert restored._original_dpi == logical_dpi
+    np.testing.assert_array_equal(
+        restored.get_size_inches(), expected_size_inches)
+    np.testing.assert_array_equal(
+        restored.bbox.size, expected_size_inches * restored.dpi)
+    np.testing.assert_array_equal(restored_line.get_xdata(), expected_line_data[0])
+    np.testing.assert_array_equal(restored_line.get_ydata(), expected_line_data[1])
+    assert restored_line.get_color() == "tab:orange"
+    assert restored_line.get_linewidth() == 3
+    assert restored.axes[0].get_xlim() == (-1, 3)
+    assert restored.axes[0].get_ylim() == (0, 4)
+    assert restored.axes[0].get_title() == "preserved state"
+    assert restored._cachedRenderer is not None
+
+
+def test_dpi_008_unaffected_backend_figure_round_trip_retains_existing_behavior():
+    """GUID: DPI-008 -- unaffected serialization behavior remains unchanged."""
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+    logical_dpi = 100
+    fig = mfigure.Figure(figsize=(4, 3), dpi=logical_dpi)
+    FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    line, = ax.plot([0, 1, 2], [2, 0, 3], label="unaffected")
+    ax.set(xlim=(-1, 3), ylim=(-1, 4), title="Agg round trip")
+    fig.canvas.draw()
+    expected_rgba = np.asarray(fig.canvas.buffer_rgba()).copy()
+
+    restored = pickle.loads(pickle.dumps(fig))
+    FigureCanvasAgg(restored)
+    restored.canvas.draw()
+
+    assert restored.dpi == logical_dpi
+    assert restored.get_size_inches().tolist() == [4, 3]
+    assert restored.axes[0].get_title() == "Agg round trip"
+    assert restored.axes[0].lines[0].get_label() == line.get_label()
+    np.testing.assert_array_equal(
+        np.asarray(restored.canvas.buffer_rgba()), expected_rgba)
+
+
+def test_dpi_009_existing_supported_figure_pickle_deserializes_without_migration(
+        monkeypatch):
+    """GUID: DPI-009 -- existing figure pickles need no format migration."""
+    current_getstate = mfigure.Figure.__getstate__
+
+    # Reproduce the pre-correction state handoff, which persisted the live
+    # device-scaled DPI instead of normalizing it to ``_original_dpi``.
+    def legacy_getstate(fig):
+        state = current_getstate(fig)
+        state["_dpi"] = fig._dpi
+        return state
+
+    fig = mfigure.Figure(figsize=(4, 3), dpi=144)
+    fig.subplots().plot([1, 2, 3], [3, 2, 1])
+    fig.canvas._set_device_pixel_ratio(2)
+    monkeypatch.setattr(mfigure.Figure, "__getstate__", legacy_getstate)
+    legacy_pickle = pickle.dumps(fig)
+
+    # Deserialize with the corrected implementation and the original pickle
+    # bytes; no state rewrite or format migration is interposed.
+    monkeypatch.setattr(mfigure.Figure, "__getstate__", current_getstate)
+    restored = pickle.loads(legacy_pickle)
+
+    assert isinstance(restored, mfigure.Figure)
+    assert restored.dpi == 288
+    assert restored._original_dpi == 144
+    assert restored.canvas.figure is restored
+    np.testing.assert_array_equal(
+        restored.axes[0].lines[0].get_ydata(), [3, 2, 1])
+
+
 def test_mpl_toolkits():
     ax = parasite_axes.host_axes([0, 0, 1, 1])
     assert type(pickle.loads(pickle.dumps(ax))) == parasite_axes.HostAxes
