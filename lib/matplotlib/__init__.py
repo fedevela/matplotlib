@@ -144,6 +144,21 @@ __bibtex__ = r"""@Article{Hunter:2007,
 #     Obtain the release string through the same __version__ resolution flow.
 #     Convert that string into one directly orderable version value.
 #     IF conversion fails, propagate the failure and do not cache a value.
+#     Preserve the complete numeric release sequence as ordered numeric
+#     components, so comparison evaluates 3.10 as newer than 3.9 rather than
+#     ordering their textual forms.                                  [MPL-004]
+#     Preserve each supported prerelease label and number, development number,
+#     and post-release number as an identity-bearing component of the converted
+#     value; do not discard or collapse any present component.        [MPL-005]
+#     WHEN this value is compared with a compatible converted value: [MPL-006]
+#       Compare the numeric release components in semantic sequence.
+#       IF those components identify the same base release, compare retained
+#       development, prerelease, final-release, and post-release states so that
+#       development precedes its prerelease, prerelease precedes final release,
+#       and final release precedes its post-release.
+#       IF comparable values differ within the same state, use the retained
+#       state number to determine their order.
+#       Return the resulting less-than, equal-to, or greater-than relation.
 #     IF the converted value identifies a release different from the release
 #     string, reject it and do not publish an inconsistent value.          [MPL-003]
 #     Cache and return the converted value from exactly this one new public
