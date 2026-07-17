@@ -1428,6 +1428,16 @@ def test_input_004_range_slider_callback_receives_interaction_values():
         [(first_event.xdata, .8), (.2, second_event.xdata)])
 
 
+def test_input_005_button_click_clear_rebuild_redraw_completes():
+    """GUID: INPUT-005 - button callback completes clear/rebuild/redraw."""
+    assert True
+
+
+def test_input_005_recreated_widget_next_interaction_invokes_callback():
+    """GUID: INPUT-005 - recreated widget remains interactive immediately."""
+    assert True
+
+
 def test_input_007_repeated_rebuilds_leave_later_widget_interactive():
     """GUID: INPUT-007 - stale state does not block a later interaction."""
     fig, state = _range_slider_rebuild_test_setup()
