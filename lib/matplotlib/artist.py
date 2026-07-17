@@ -1293,6 +1293,30 @@ class Artist:
         get_cursor_data
         """
         if np.ndim(data) == 0 and isinstance(self, ScalarMappable):
+            # GUID: BNF-005, BNF-006
+            # LOGIC OBLIGATION: Preserve inverse-based scalar formatting while
+            # cursor formatting remains observationally pure for the artist.
+            #
+            # PSEUDOCODE:
+            #   INPUT supplied_scalar = data
+            #   READ the artist's norm and colormap without replacing or
+            #       mutating its data, normalization state, or colormap
+            #   IF supplied_scalar is masked:
+            #       RETURN the empty cursor representation
+            #   COMPUTE normalized_scalar in a local value
+            #   IF normalized_scalar is finite:
+            #       TRY to invert the neighboring normalized color boundaries
+            #       IF inversion succeeds:
+            #           derive precision from supplied_scalar and the inverse
+            #               neighbors, preserving the existing inverse path
+            #       IF inversion raises ValueError:
+            #           select the finite-scalar fallback precision
+            #   ELSE:
+            #       select the non-finite fallback precision
+            #   FORMAT supplied_scalar using the selected precision
+            #   RETURN only the formatted string; leave artist data, norm
+            #       boundaries and mapping, colormap, and rendered image
+            #       unchanged across this and subsequent invocations
             # This block logically belongs to ScalarMappable, but can't be
             # implemented in it because most ScalarMappable subclasses inherit
             # from Artist first and from ScalarMappable second, so
