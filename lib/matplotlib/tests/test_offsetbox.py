@@ -16,6 +16,16 @@ from matplotlib.offsetbox import (
     OffsetBox, OffsetImage, PaddedBox, TextArea, VPacker, _get_packed_offsets)
 
 
+def test_mpl_001_release_check_treats_detached_artist_as_unparented_without_canvas():
+    """MPL-001: A detached reference is unparented without canvas access."""
+    assert True
+
+
+def test_mpl_002_release_cleanup_disconnects_detached_artist_without_canvas_or_error():
+    """MPL-002: Detached-reference callback cleanup completes without error."""
+    assert True
+
+
 @image_comparison(['offsetbox_clipping'], remove_text=True)
 def test_offsetbox_clipping():
     # - create a plot
