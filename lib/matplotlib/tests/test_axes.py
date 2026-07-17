@@ -8238,17 +8238,34 @@ def test_bar_004_nan_x_zero_height_returns_one_rectangle_preserving_geometry():
 
 def test_bar_005_mixed_finite_non_finite_x_preserves_input_cardinality():
     """GUID: BAR-005."""
-    assert True
+    fig, ax = plt.subplots()
+    x = [-np.inf, 2, np.nan, np.inf, -3]
+
+    bars = ax.bar(x, [1, 2, 3, 4, 5])
+
+    assert len(bars.patches) == len(x)
 
 
 def test_bar_006_mixed_finite_non_finite_x_preserves_rectangle_order():
     """GUID: BAR-006."""
-    assert True
+    fig, ax = plt.subplots()
+    heights = [1, 2, 3, 4, 5]
+
+    bars = ax.bar([-np.inf, 2, np.nan, np.inf, -3], heights)
+
+    assert [bar.get_height() for bar in bars.patches] == heights
 
 
 def test_bar_007_mixed_finite_non_finite_x_preserves_corresponding_x_geometry():
     """GUID: BAR-007."""
-    assert True
+    fig, ax = plt.subplots()
+    x = np.array([-np.inf, 2, np.nan, np.inf, -3])
+    width = .5
+
+    bars = ax.bar(x, [1, 2, 3, 4, 5], width=width)
+
+    np.testing.assert_equal(
+        [bar.get_x() for bar in bars.patches], x - width / 2)
 
 
 @pytest.mark.parametrize('height', [np.nan, np.inf, -np.inf])

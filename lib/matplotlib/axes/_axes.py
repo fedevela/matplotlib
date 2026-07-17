@@ -2489,10 +2489,10 @@ class Axes(_AxesBase):
         # including finite and non-finite x positions [BAR-007].  add_patch owns
         # registration and delegates limit extraction to _AxesBase without
         # becoming a cardinality, ordering, or geometry-selection boundary.
-        patches = []
+        patches = [None] * len(x)
         args = zip(left, bottom, width, height, color, edgecolor, linewidth,
                    hatch, patch_labels)
-        for l, b, w, h, c, e, lw, htch, lbl in args:
+        for ordinal, (l, b, w, h, c, e, lw, htch, lbl) in enumerate(args):
             r = mpatches.Rectangle(
                 xy=(l, b), width=w, height=h,
                 facecolor=c,
@@ -2508,7 +2508,7 @@ class Axes(_AxesBase):
             else:  # horizontal
                 r.sticky_edges.x.append(l)
             self.add_patch(r)
-            patches.append(r)
+            patches[ordinal] = r
 
         if xerr is not None or yerr is not None:
             if orientation == 'vertical':
