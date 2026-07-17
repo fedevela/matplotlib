@@ -549,15 +549,38 @@ def test_valid_layouts():
 class TestConstrainedLayoutFalseContracts:
     def test_clf_001_effective_state_remains_disabled_after_layout_operations(self):
         """GUID: CLF-001."""
-        assert True
+        with mpl.rc_context({"figure.constrained_layout.use": True}):
+            fig = Figure(constrained_layout=False)
+            fig.subplots(1, 2)
+
+            assert fig.get_layout_engine() is None
+            assert not fig.get_constrained_layout()
+
+            fig.subplots_adjust(wspace=0)
+
+            assert fig.get_layout_engine() is None
+            assert not fig.get_constrained_layout()
 
     def test_clf_002_subplots_adjust_wspace_zero_emits_no_warning(self):
         """GUID: CLF-002; no constrained-layout incompatibility warning."""
-        assert True
+        fig = Figure(constrained_layout=False)
+        fig.subplots(1, 2)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            fig.subplots_adjust(wspace=0)
 
     def test_clf_003_subplots_adjust_wspace_zero_applies_zero_spacing(self):
         """GUID: CLF-003; geometry changes to the requested zero spacing."""
-        assert True
+        fig = Figure(constrained_layout=False)
+        axs = fig.subplots(1, 2)
+        initial_gap = axs[1].get_position().x0 - axs[0].get_position().x1
+
+        fig.subplots_adjust(wspace=0)
+
+        assert initial_gap > 0
+        assert axs[0].get_position().x1 == pytest.approx(
+            axs[1].get_position().x0)
 
 
 def test_invalid_layouts():

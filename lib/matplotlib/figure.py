@@ -2458,7 +2458,9 @@ class Figure(FigureBase):
             #       install the constrained-layout engine;
             #       IF options were supplied as a mapping:
             #           apply those options to the installed engine.
-            self.set_layout_engine(layout='constrained')
+            self.set_layout_engine(
+                layout='none' if constrained_layout is False
+                else 'constrained')
             if isinstance(constrained_layout, dict):
                 self.get_layout_engine().set(**constrained_layout)
         else:
