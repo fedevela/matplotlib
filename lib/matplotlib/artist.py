@@ -1013,6 +1013,12 @@ class Artist:
         ----------
         b : bool
         """
+        # Visibility ownership boundary (M3DVIS-005, M3DVIS-006): Artist owns
+        # the visibility flag and stale notification only.  Containers such as
+        # Axes3D retain ownership of their attached plotted artists and data;
+        # this setter neither depends on nor mutates that container state.  A
+        # later draw consumes the flag through the existing Artist/Axes draw
+        # contract, so restoration needs no data-lifecycle adapter or new API.
         # Visibility-transition pseudocode (M3DVIS-005, M3DVIS-006):
         # - Input the requested visibility and retain every attached child and
         #   its plotted-data state as the transition's unchanged payload.

@@ -388,7 +388,8 @@ class Axes3D(Axes):
     @martist.allow_rasterization
     def draw(self, renderer):
         # Architecture boundary (M3DVIS-001, M3DVIS-002, M3DVIS-003,
-        # M3DVIS-004, M3DVIS-007, M3DVIS-010): Axes3D owns the visibility gate
+        # M3DVIS-004, M3DVIS-005, M3DVIS-006, M3DVIS-007, M3DVIS-010): Axes3D
+        # owns the visibility gate
         # because its projection, pane, and axis drawing precede the delegation
         # to _AxesBase.draw, whose visibility guard therefore cannot protect
         # this 3D prelude.  Keep the gate at this override's entry, dependent
@@ -397,7 +398,10 @@ class Axes3D(Axes):
         # backend-neutral integration seam.  For M3DVIS-002, figure traversal
         # retains ownership of sibling sequencing: this override may return
         # control to that caller but must not inspect, reorder, or draw sibling
-        # axes.
+        # axes.  For M3DVIS-005 and M3DVIS-006, Axes3D also retains ownership
+        # of _children across the gate: hidden draws stop before consuming the
+        # collection, while restored draws flow from that same collection into
+        # the established projection and base-axes integration path.
         # Draw-time visibility contract:
         #
         # M3DVIS-001 / M3DVIS-003:
@@ -513,11 +517,12 @@ class Axes3D(Axes):
             for axis in self._axis_map.values():
                 axis.draw(renderer)
 
-        # Visible-path integration boundary (M3DVIS-004): Axes3D owns the 3D
-        # projection, pane, and axis prelude above; _AxesBase continues to own
-        # the established draw pipeline for the remaining plotted content and
-        # decorations.  Keep this delegation as the terminal handoff so the
-        # visibility gate does not fork or replace normal rendering behavior.
+        # Visible-path integration boundary (M3DVIS-004, M3DVIS-006): Axes3D
+        # owns the 3D projection, pane, and axis prelude above; _AxesBase
+        # continues to own the established draw pipeline for the remaining
+        # plotted content and decorations.  Keep this delegation as the
+        # terminal handoff so restored content follows the normal dependency
+        # direction and the visibility gate does not fork or replace rendering.
         super().draw(renderer)
 
     def get_axis_position(self):
