@@ -651,17 +651,40 @@ def test_cbnorm_005_updated_colorbar_observably_represents_logarithmic_scale():
 
 def test_cbnorm_006_replaced_norm_update_normal_preserves_mappable_association():
     """GUID: CBNORM-006."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.mappable is mappable
 
 
 def test_cbnorm_007_replaced_norm_update_normal_preserves_mappable_plotted_data():
     """GUID: CBNORM-007."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+    plotted_data = mappable.get_array().copy()
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    np.testing.assert_array_equal(mappable.get_array(), plotted_data)
 
 
 def test_cbnorm_008_replaced_norm_update_normal_preserves_mappable_colormap():
     """GUID: CBNORM-008."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]], cmap="plasma")
+    colorbar = fig.colorbar(mappable)
+    cmap = mappable.cmap
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert mappable.cmap is cmap
 
 
 def test_colorbar_renorm():
