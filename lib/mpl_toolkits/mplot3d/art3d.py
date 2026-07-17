@@ -682,7 +682,7 @@ class Poly3DCollection(PolyCollection):
     """
 
     # Architecture contract -- GUIDs: P3DFC-001, P3DFC-002, P3DFC-003,
-    # P3DFC-004, P3DFC-005.
+    # P3DFC-004, P3DFC-005, P3DFC-006.
     # Collection's scalar-mappable state remains the upstream color source;
     # this class owns its synchronization into the canonical _facecolor3d
     # state before projection.  Projection alone owns the optional, sorted
@@ -693,6 +693,10 @@ class Poly3DCollection(PolyCollection):
     # ownership of projection, sorting, or rendering state.  do_3d_projection
     # remains the sole transition to the sorted 2D cache consumed by drawing
     # and by subsequent face-color access.
+    # Direct construction ends with valid Collection-owned color state but may
+    # not pass through set_3d_properties.  The shared get_facecolor boundary
+    # therefore owns the pre-projection bridge from that configured state to
+    # _facecolor3d; construction and projection must not duplicate that bridge.
 
     def __init__(self, verts, *args, zsort='average', **kwargs):
         """
