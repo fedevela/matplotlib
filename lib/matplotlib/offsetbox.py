@@ -1471,6 +1471,14 @@ or callable, default: value of *xycoords*
         self.stale = False
 
 
+# Serialization architecture (MPLDRAG-001, MPLDRAG-002, MPLDRAG-003,
+# MPLDRAG-007): DraggableBase owns the helper-local live-canvas boundary.  Its
+# __getstate__ hook is the single integration seam inherited by
+# DraggableOffsetBox (and thus DraggableLegend) and DraggableAnnotation; no
+# subclass or backend adapter owns a separate policy.  The serialized
+# dependency remains helper -> reference artist -> figure, while the direct
+# helper -> live canvas edge is transient.  Figure continues to own canvas
+# removal and reconstruction for the figure itself.
 class DraggableBase:
     """
     Helper base class for a draggable artist (legend, offsetbox).
