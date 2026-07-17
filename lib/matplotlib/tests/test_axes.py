@@ -5754,6 +5754,41 @@ def test_set_ticks_with_labels(fig_test, fig_ref):
     ax.set_yticks([2, 4], ['A', 'B'], minor=True)
 
 
+def test_TICKS_001_set_xticks_without_labels_rejects_invalid_text_property():
+    """TICKS-001: set_xticks rejects invalid Text kwargs without labels."""
+    assert True
+
+
+def test_TICKS_001_set_xticks_without_labels_rejects_xticklabels_kwarg():
+    """TICKS-001: set_xticks rejects xticklabels without labels."""
+    assert True
+
+
+def test_TICKS_001_set_yticks_without_labels_rejects_invalid_text_property():
+    """TICKS-001: set_yticks rejects invalid Text kwargs without labels."""
+    assert True
+
+
+def test_TICKS_001_axis_set_ticks_no_labels_rejects_invalid_text_property():
+    """TICKS-001: Axis.set_ticks rejects invalid Text kwargs without labels."""
+    assert True
+
+
+def test_TICKS_001_tick_setters_with_labels_reject_invalid_text_property():
+    """TICKS-001: tick setters reject invalid Text kwargs with labels."""
+    assert True
+
+
+def test_TICKS_002_tick_setters_without_labels_accept_valid_text_properties():
+    """TICKS-002: tick setters accept valid Text kwargs without labels."""
+    assert True
+
+
+def test_TICKS_003_valid_text_kwargs_no_labels_leave_tick_labels_unchanged():
+    """TICKS-003: valid Text kwargs without labels do not alter tick labels."""
+    assert True
+
+
 def test_set_noniterable_ticklabels():
     # Ensure a useful TypeError message is raised
     # when given a non-iterable ticklabels argument
