@@ -1838,6 +1838,10 @@ class Axis(martist.Artist):
     def _format_with_dict(tickd, x, pos):
         return tickd.get(x, "")
 
+    # ARCHITECTURE [TICKS-005, TICKS-006]
+    # This is the explicit-label installation seam: it owns both label text
+    # and validated Text-property application.  Axis.set_ticks alone decides
+    # whether this seam is entered.
     def set_ticklabels(self, ticklabels, *, minor=False, **kwargs):
         r"""
         [*Discouraged*] Set the text values of the tick labels.
@@ -1961,6 +1965,10 @@ class Axis(martist.Artist):
             kwargs.update(fontdict)
         return self.set_ticklabels(labels, minor=minor, **kwargs)
 
+    # ARCHITECTURE [TICKS-004, TICKS-007]
+    # This is the location-mutation seam for both tick tiers.  It owns view
+    # expansion and locator replacement and returns the tick objects that
+    # Axis.set_ticks exposes through both public API levels.
     def _set_tick_locations(self, ticks, *, minor=False):
         # see docstring of set_ticks
 
@@ -1987,13 +1995,14 @@ class Axis(martist.Artist):
             self.set_major_locator(mticker.FixedLocator(ticks))
             return self.get_major_ticks(len(ticks))
 
-    # ARCHITECTURE [TICKS-001, TICKS-002, TICKS-003]
-    # This is the shared validation boundary for Axis.set_ticks and the
-    # Axes.set_x/yticks delegates.  Candidate label properties depend on the
-    # mtext.Text property contract, never on a live tick label.  Location
-    # mutation remains downstream of that contract, while set_ticklabels is
-    # the sole property-application seam and is entered only for explicit
-    # labels.
+    # ARCHITECTURE [TICKS-001, TICKS-002, TICKS-003, TICKS-004, TICKS-005,
+    # TICKS-006, TICKS-007]
+    # This is the shared orchestration and return boundary for Axis.set_ticks
+    # and the Axes.set_x/yticks delegates.  Candidate label properties depend
+    # on the mtext.Text property contract, never on a live tick label.  It
+    # delegates location ownership to _set_tick_locations and explicit-label
+    # ownership to set_ticklabels, preserving their order and returning only
+    # the location seam's tick objects.
     def set_ticks(self, ticks, labels=None, *, minor=False, **kwargs):
         """
         Set this Axis' tick locations and optionally labels.
