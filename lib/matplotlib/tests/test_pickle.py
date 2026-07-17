@@ -276,19 +276,69 @@ def test_dpi_004_macosx_m1_at_least_32_round_trips_without_overflow_error():
         pytest.fail("32 consecutive figure pickle round trips overflowed")
 
 
+@pytest.mark.backend("macosx", skip_on_importerror=True)
 def test_dpi_005_deserialized_macosx_figure_supports_backend_operations():
     """GUID: DPI-005 -- a restored MacOSX figure remains operational."""
-    assert True
+    fig, ax = plt.subplots()
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.canvas.manager is not None
+    assert restored.canvas.figure is restored
+
+    line, = restored.axes[0].plot([0, 1], [1, 0])
+    restored.canvas.draw()
+
+    assert line.figure is restored
+    assert restored._cachedRenderer is not None
 
 
 def test_dpi_006_deserialized_figure_preserves_logical_dpi_dimensions():
     """GUID: DPI-006 -- restored dimensions match the pre-pickle dimensions."""
-    assert True
+    logical_dpi = 144
+    fig = mfigure.Figure(figsize=(6.25, 4.75), dpi=logical_dpi)
+    size_inches = fig.get_size_inches()
+    fig.canvas._set_device_pixel_ratio(2)
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert restored.dpi == logical_dpi
+    assert restored._original_dpi == logical_dpi
+    np.testing.assert_array_equal(restored.get_size_inches(), size_inches)
+    np.testing.assert_array_equal(restored.bbox.size, size_inches * logical_dpi)
+    assert restored.canvas.get_width_height() == tuple(
+        (size_inches * logical_dpi).astype(int))
 
 
+@pytest.mark.backend("macosx", skip_on_importerror=True)
 def test_dpi_007_deserialized_macosx_figure_preserves_rendering_state_through_draw():
     """GUID: DPI-007 -- a backend draw preserves restored rendering state."""
-    assert True
+    logical_dpi = 144
+    fig, ax = plt.subplots(figsize=(5.5, 3.5), dpi=logical_dpi)
+    line, = ax.plot([0, 1, 2], [2, 1, 3], color="tab:orange", linewidth=3)
+    ax.set(xlim=(-1, 3), ylim=(0, 4), title="preserved state")
+    expected_line_data = line.get_data()
+    expected_size_inches = fig.get_size_inches()
+
+    restored = pickle.loads(pickle.dumps(fig))
+    restored_line = restored.axes[0].lines[0]
+
+    assert restored._cachedRenderer is None
+    assert restored.stale
+    restored.canvas.draw()
+
+    assert restored._original_dpi == logical_dpi
+    np.testing.assert_array_equal(
+        restored.get_size_inches(), expected_size_inches)
+    np.testing.assert_array_equal(
+        restored.bbox.size, expected_size_inches * restored.dpi)
+    np.testing.assert_array_equal(restored_line.get_xdata(), expected_line_data[0])
+    np.testing.assert_array_equal(restored_line.get_ydata(), expected_line_data[1])
+    assert restored_line.get_color() == "tab:orange"
+    assert restored_line.get_linewidth() == 3
+    assert restored.axes[0].get_xlim() == (-1, 3)
+    assert restored.axes[0].get_ylim() == (0, 4)
+    assert restored.axes[0].get_title() == "preserved state"
+    assert restored._cachedRenderer is not None
 
 
 def test_mpl_toolkits():

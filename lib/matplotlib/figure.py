@@ -3160,6 +3160,12 @@ class Figure(FigureBase):
 
         self.__dict__ = state
 
+        # ``_dpi`` is serialized at the logical DPI, but ``dpi_scale_trans``
+        # may have been serialized after a backend applied its device pixel
+        # ratio.  Restore both parts of the DPI state to the same baseline.
+        # (GUID: DPI-006, DPI-007)
+        self.dpi_scale_trans.clear().scale(self._dpi)
+
         # re-initialise some of the unstored state information
         FigureCanvasBase(self)  # Set self.canvas.
 
