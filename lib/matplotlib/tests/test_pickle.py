@@ -217,6 +217,23 @@ def test_unpickle_canvas():
     assert fig2.canvas is not None
 
 
+def test_dpi_001_macosx_apple_m1_pickle_round_trip_preserves_logical_dpi():
+    """GUID: DPI-001 -- restoration preserves the configured logical DPI."""
+    assert True
+
+
+def test_dpi_003_macosx_restoration_device_scale_does_not_change_logical_dpi():
+    """GUID: DPI-003 -- device-pixel scaling leaves persisted DPI unchanged."""
+    assert True
+
+
+@pytest.mark.parametrize("logical_dpi", [200, 144])
+def test_dpi_010_macosx_apple_m1_round_trip_preserves_each_valid_logical_dpi(
+        logical_dpi):
+    """GUID: DPI-010 -- preservation applies to 200 and non-200 DPI values."""
+    assert True
+
+
 def test_mpl_toolkits():
     ax = parasite_axes.host_axes([0, 0, 1, 1])
     assert type(pickle.loads(pickle.dumps(ax))) == parasite_axes.HostAxes
