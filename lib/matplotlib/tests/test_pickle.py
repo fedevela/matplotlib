@@ -253,12 +253,27 @@ def test_dpi_010_macosx_apple_m1_round_trip_preserves_each_valid_logical_dpi(
 
 def test_dpi_002_macosx_m1_at_least_32_round_trips_preserve_logical_dpi():
     """GUID: DPI-002 -- every restored figure retains its logical DPI."""
-    assert True
+    logical_dpi = 200
+    fig = mfigure.Figure(dpi=logical_dpi)
+
+    for _ in range(32):
+        # Simulate the MacOSX canvas reapplying its device scale after each
+        # restoration, so any persisted physical DPI would accumulate.
+        fig.canvas._set_device_pixel_ratio(2)
+        fig = pickle.loads(pickle.dumps(fig))
+        assert fig.dpi == logical_dpi
 
 
 def test_dpi_004_macosx_m1_at_least_32_round_trips_without_overflow_error():
     """GUID: DPI-004 -- the pickle/unpickle sequence does not overflow."""
-    assert True
+    fig = mfigure.Figure(dpi=200)
+
+    try:
+        for _ in range(32):
+            fig.canvas._set_device_pixel_ratio(2)
+            fig = pickle.loads(pickle.dumps(fig))
+    except OverflowError:
+        pytest.fail("32 consecutive figure pickle round trips overflowed")
 
 
 def test_mpl_toolkits():
