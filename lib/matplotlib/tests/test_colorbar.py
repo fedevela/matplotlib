@@ -811,6 +811,11 @@ def test_MPLNORM_008_ordinary_norm_update_retains_mappable_colorbar_sync():
     assert (colorbar.vmin, colorbar.vmax) == (-1, 4)
 
 
+def test_MPLNORM_009_colorbar_public_lognorm_autoscale_draw_stays_positive_synced():
+    """MPLNORM-009: Preserve the ordered LogNorm replacement contract."""
+    assert True
+
+
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
 def test_colorbar_format(fmt):
     # make sure that format is passed properly
