@@ -388,12 +388,12 @@ class Axes3D(Axes):
     @martist.allow_rasterization
     def draw(self, renderer):
         # Architecture boundary (M3DVIS-001, M3DVIS-002, M3DVIS-003,
-        # M3DVIS-007, M3DVIS-010): Axes3D owns the visibility gate because its
-        # projection, pane, and axis drawing precede the delegation to
-        # _AxesBase.draw, whose visibility guard therefore cannot protect this
-        # 3D prelude.  Keep the gate at this override's entry, dependent only
-        # on the inherited Artist visibility contract; the renderer and all
-        # axes-owned visual components remain downstream of that single,
+        # M3DVIS-004, M3DVIS-007, M3DVIS-010): Axes3D owns the visibility gate
+        # because its projection, pane, and axis drawing precede the delegation
+        # to _AxesBase.draw, whose visibility guard therefore cannot protect
+        # this 3D prelude.  Keep the gate at this override's entry, dependent
+        # only on the inherited Artist visibility contract; the renderer and
+        # all axes-owned visual components remain downstream of that single,
         # backend-neutral integration seam.  For M3DVIS-002, figure traversal
         # retains ownership of sibling sequencing: this override may return
         # control to that caller but must not inspect, reorder, or draw sibling
@@ -417,6 +417,22 @@ class Axes3D(Axes):
         #   the existing sequence, then return control to the same traversal.
         # - On either branch, preserve neighboring axes state and propagate no
         #   new failure; their later draw calls determine their output.
+        #
+        # M3DVIS-004:
+        # - Input an Axes3D with plotted content and the active renderer, then
+        #   read get_visible() before advancing any draw state.
+        # - If visibility is true, update view limits, draw the background,
+        #   resolve aspect, and establish the projection matrix in the existing
+        #   order.
+        # - Project visible collections and patches; when computed z-order is
+        #   enabled, order and assign them before drawing, otherwise preserve
+        #   the existing projection traversal.
+        # - If 3D axes are enabled, draw panes before axis elements, then hand
+        #   off to the base axes draw sequence for the remaining plotted
+        #   content and decorations.
+        # - After the base draw sequence completes, return normally.  Propagate
+        #   any existing visible-branch failure without replacement,
+        #   suppression, or a new fallback path.
         #
         # M3DVIS-007:
         # - Treat the hidden branch as a successful no-op: return normally
