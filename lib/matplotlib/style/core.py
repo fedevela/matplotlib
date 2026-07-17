@@ -259,7 +259,7 @@ def update_nested_dict(main_dict, new_dict):
 # * The published value retains the existing style-mapping boundary consumed by
 #   ``use`` and ``_apply_style``; plotting owns no compatibility-specific path.
 #   [SCBLIND-002, SCBLIND-003]
-# * Verification ownership remains in the SCBLIND placeholders in
+# * Verification ownership remains in the SCBLIND tests in
 #   ``matplotlib/tests/test_style.py``.  No new public symbol or adapter is
 #   required for this integration seam.  [SCBLIND-001..005]
 _base_library = read_style_directory(BASE_LIBRARY_PATH)
@@ -298,6 +298,7 @@ def reload_library():
     #   style mapping after every reload, independent of seaborn installation.
     global library
     library = update_user_library(_base_library)
+    library["seaborn-colorblind"] = library["seaborn-v0_8-colorblind"]
     available[:] = sorted(library.keys())
 
 

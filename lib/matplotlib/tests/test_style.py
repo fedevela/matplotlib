@@ -188,27 +188,54 @@ def test_deprecated_seaborn_styles():
 
 def test_scblind_001_direct_legacy_colorblind_lookup_avoids_key_error():
     """GUID: SCBLIND-001 -- direct legacy lookup completes."""
-    assert True
+    assert mpl.style.library["seaborn-colorblind"] is not None
 
 
 def test_scblind_002_direct_legacy_colorblind_lookup_returns_style_mapping():
     """GUID: SCBLIND-002 -- lookup returns a valid style mapping."""
-    assert True
+    colorblind = mpl.style.library["seaborn-colorblind"]
+
+    assert isinstance(colorblind, mpl.RcParams)
+    assert colorblind
+    assert colorblind.keys() <= mpl.rcParams.keys()
 
 
 def test_scblind_003_legacy_colorblind_mapping_permits_plot_creation():
     """GUID: SCBLIND-003 -- applying the mapping permits plotting."""
-    assert True
+    colorblind = mpl.style.library["seaborn-colorblind"]
+
+    with mpl.style.context(colorblind):
+        fig, ax = plt.subplots()
+        line, = ax.plot([0, 1], [0, 1])
+
+    assert line.get_color() == "#0072B2"
+    plt.close(fig)
 
 
 def test_scblind_004_legacy_colorblind_preserves_mpl_3_4_3_behavior():
     """GUID: SCBLIND-004 -- mapping preserves bundled 3.4.3 behavior."""
-    assert True
+    colorblind = mpl.style.library["seaborn-colorblind"]
+    expected_colors = [
+        "#0072B2", "#009E73", "#D55E00", "#CC79A7", "#F0E442", "#56B4E9"
+    ]
+
+    assert colorblind["axes.prop_cycle"].by_key()["color"] == expected_colors
+    assert colorblind["patch.facecolor"] == "#0072B2"
 
 
-def test_scblind_005_legacy_colorblind_lookup_and_use_need_no_seaborn():
+def test_scblind_005_legacy_colorblind_lookup_and_use_need_no_seaborn(
+        monkeypatch):
     """GUID: SCBLIND-005 -- lookup and use need no external seaborn."""
-    assert True
+    monkeypatch.setitem(sys.modules, "seaborn", None)
+
+    mpl.style.reload_library()
+    colorblind = mpl.style.library["seaborn-colorblind"]
+    with mpl.style.context(colorblind):
+        fig, ax = plt.subplots()
+        line, = ax.plot([0, 1], [0, 1])
+
+    assert line.get_color() == "#0072B2"
+    plt.close(fig)
 
 
 def test_up_to_date_blacklist():
