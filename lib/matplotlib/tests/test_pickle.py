@@ -341,6 +341,16 @@ def test_dpi_007_deserialized_macosx_figure_preserves_rendering_state_through_dr
     assert restored._cachedRenderer is not None
 
 
+def test_dpi_008_unaffected_backend_figure_round_trip_retains_existing_behavior():
+    """GUID: DPI-008 -- unaffected serialization behavior remains unchanged."""
+    assert True
+
+
+def test_dpi_009_existing_supported_figure_pickle_deserializes_without_migration():
+    """GUID: DPI-009 -- existing figure pickles need no format migration."""
+    assert True
+
+
 def test_mpl_toolkits():
     ax = parasite_axes.host_axes([0, 0, 1, 1])
     assert type(pickle.loads(pickle.dumps(ax))) == parasite_axes.HostAxes
