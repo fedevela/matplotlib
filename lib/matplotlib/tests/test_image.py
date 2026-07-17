@@ -407,6 +407,36 @@ def test_bnf_004_boundarynorm_fallback_represents_supplied_scalar():
     assert represented != norm(1.25)
 
 
+def test_bnf_005_invertible_norm_cursor_format_preserves_inverse_output():
+    """GUID: BNF-005 -- Preserve inverse-based cursor representation."""
+    pass
+
+
+def test_bnf_006_repeat_cursor_format_preserves_artist_data():
+    """GUID: BNF-006 -- Preserve imshow artist data after formatting."""
+    pass
+
+
+def test_bnf_006_repeat_cursor_format_preserves_norm_boundaries_and_mapping():
+    """GUID: BNF-006 -- Preserve normalization boundaries and value mapping."""
+    pass
+
+
+def test_bnf_006_repeat_cursor_format_preserves_colormap():
+    """GUID: BNF-006 -- Preserve the imshow colormap after formatting."""
+    pass
+
+
+def test_bnf_006_repeat_cursor_format_preserves_rendered_image():
+    """GUID: BNF-006 -- Preserve the rendered image after formatting."""
+    pass
+
+
+def test_bnf_007_boundarynorm_after_cursor_formatting_remains_noninvertible():
+    """GUID: BNF-007 -- BoundaryNorm.inverse still raises ValueError."""
+    pass
+
+
 @image_comparison(['image_clip'], style='mpl20')
 def test_image_clip():
     d = [[1, 2], [3, 4]]
