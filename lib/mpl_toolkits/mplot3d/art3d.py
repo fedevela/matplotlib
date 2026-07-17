@@ -161,6 +161,10 @@ class Line3D(lines.Line2D):
     3D line object.
     """
 
+    # M3D-002, M3D-004, M3D-006: Every Line3D reachable through an Axes
+    # artist collection has complete ``_verts3d`` state.  Axes3D.plot owns
+    # preserving this attachment-boundary invariant when promotion fails.
+
     def __init__(self, xs, ys, zs, *args, **kwargs):
         """
         Keyword arguments are passed onto :func:`~matplotlib.lines.Line2D`.
@@ -220,6 +224,10 @@ class Line3D(lines.Line2D):
 
 def line_2d_to_3d(line, zs=0, zdir='z'):
     """Convert a 2D line to 3D."""
+
+    # M3D-001, M3D-005: This is the Line2D-to-Line3D promotion seam.
+    # Callers that supplied an attached line own making promotion atomic with
+    # respect to the Line3D attachment invariant above.
 
     line.__class__ = Line3D
     line.set_3d_properties(zs, zdir)

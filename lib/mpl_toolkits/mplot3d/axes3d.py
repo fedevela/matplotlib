@@ -1299,6 +1299,13 @@ class Axes3D(Axes):
         # M3D-004 -- valid-input pseudocode:
         #   Scalar or one-dimensional coordinates follow the existing create,
         #   convert, autoscale, and return flow with no observable behavior change.
+        # M3D-001, M3D-003, M3D-005 -- architecture boundary:
+        #   Axes.plot owns 2D candidate creation and attachment; this method owns
+        #   the candidate set as one promotion transaction and is the sole rollback
+        #   boundary before autoscaling or returning complete Line3D artists.
+        # M3D-002, M3D-004, M3D-006 -- dependency contract:
+        #   art3d promotion must establish the attached-Line3D invariant declared
+        #   by Line3D; drawing depends only on committed artists satisfying it.
         lines = super().plot(xs, ys, *args, **kwargs)
         for line in lines:
             art3d.line_2d_to_3d(line, zs=zs, zdir=zdir)
