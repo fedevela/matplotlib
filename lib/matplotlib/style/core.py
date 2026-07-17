@@ -296,6 +296,53 @@ def reload_library():
     # OUTPUT:
     #   library[compatibility_key] is a bundled, valid, directly applicable
     #   style mapping after every reload, independent of seaborn installation.
+    #
+    # SCBLIND-006 -- unrelated-style preservation pseudocode:
+    #
+    # INPUT:
+    #   ordinary_library := the library produced by the existing bundled- and
+    #                       user-style loading flow
+    #   unrelated_entries := every ordinary_library entry whose key is not
+    #                        "seaborn-colorblind"
+    #
+    # FLOW:
+    #   1. Complete the ordinary loading flow before publishing the legacy
+    #      entry; retain every unrelated key and its parsed style mapping.
+    #   2. Add or replace only ordinary_library["seaborn-colorblind"]; do not
+    #      remove, reparse, replace, or mutate any unrelated entry.
+    #   3. Preserve the invariant that each unrelated key remains directly
+    #      retrievable and yields the same usable style definition it held
+    #      immediately before legacy-entry publication.
+    #   4. If ordinary style loading fails, follow its existing failure path
+    #      before publication; never repair that failure by altering an
+    #      unrelated style.
+    #
+    # OUTPUT:
+    #   ordinary_library plus exactly the compatibility-key publication, with
+    #   all unrelated definitions preserved.
+    #
+    # SCBLIND-007 -- environment-independent lookup pseudocode:
+    #
+    # INPUT:
+    #   compatibility_key := "seaborn-colorblind"
+    #   bundled_colorblind := ordinary_library["seaborn-v0_8-colorblind"]
+    #
+    # FLOW:
+    #   1. Resolve bundled_colorblind without consulting the operating system,
+    #      active plotting backend, or backend-specific state.
+    #   2. Require the resolved value to have passed the ordinary Matplotlib
+    #      rc-parameter parsing and validation flow.
+    #   3. If resolution or validation fails, propagate the existing
+    #      style-loading failure and do not publish an invalid legacy entry.
+    #   4. Otherwise publish the validated mapping under compatibility_key;
+    #      supported environments take this same branch because no OS or
+    #      backend discriminator participates in the decision.
+    #   5. Hand direct lookup consumers the mapping through the existing
+    #      library interface, with no environment-specific adapter.
+    #
+    # OUTPUT:
+    #   library[compatibility_key] directly retrieves a valid Matplotlib style
+    #   mapping on every supported operating system and plotting backend.
     global library
     library = update_user_library(_base_library)
     library["seaborn-colorblind"] = library["seaborn-v0_8-colorblind"]
