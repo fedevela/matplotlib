@@ -107,7 +107,9 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
 
-        axes_class : subclass of `matplotlib.axes.Axes`, default: None
+        axes_class : type or (type, dict), default: None
+            The `.Axes` subclass to construct, optionally paired with its
+            constructor keyword arguments.
         aspect : bool, default: False
             Whether the axes aspect ratio follows the aspect ratio of the data
             limits.
@@ -143,6 +145,10 @@ class Grid:
         # ``axis`` method as a subscriptable mapping during construction.
         # OUTPUT: each cell contains an instance of the supplied axes class,
         # including a one-cell projected axes configured by its projection.
+        # ARCHITECTURE [AXGRID-002, AXGRID-007]: This is the normalization
+        # boundary for the axes-construction dependency.  Downstream grid
+        # topology receives one callable; ownership of tuple-provided
+        # constructor arguments remains here rather than in the cell loop.
         if axes_class is None:
             axes_class = self._defaultAxesClass
         elif isinstance(axes_class, (list, tuple)):
@@ -169,6 +175,9 @@ class Grid:
             else:
                 sharex = axes_array[0, col] if share_x else None
                 sharey = axes_array[row, 0] if share_y else None
+            # ARCHITECTURE [AXGRID-002, AXGRID-007]: Sole integration seam for
+            # constructing a cell.  The normalized dependency must receive
+            # the common figure/rectangle/sharing contract unchanged.
             axes_array[row, col] = axes_class(
                 fig, rect, sharex=sharex, sharey=sharey)
         self.axes_all = axes_array.ravel(
@@ -394,7 +403,9 @@ class ImageGrid(Grid):
         cbar_set_cax : bool, default: True
             If True, each axes in the grid has a *cax* attribute that is bound
             to associated *cbar_axes*.
-        axes_class : subclass of `matplotlib.axes.Axes`, default: None
+        axes_class : type or (type, dict), default: None
+            The `.Axes` subclass to construct, optionally paired with its
+            constructor keyword arguments.
         """
         _api.check_in_list(["each", "single", "edge", None],
                            cbar_mode=cbar_mode)
