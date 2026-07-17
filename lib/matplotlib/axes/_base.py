@@ -3017,6 +3017,23 @@ class _AxesBase(martist.Artist):
     @martist.allow_rasterization
     def draw(self, renderer):
         # docstring inherited
+        # M3DVIS-009 non-3D visibility-preservation logic:
+        # - Input this non-3D Axes, its retained plotted children, and the
+        #   renderer selected by the figure's existing draw traversal.
+        # - Validate the renderer through the established error path; if it is
+        #   absent, raise the existing failure before making a visibility
+        #   decision or advancing draw state.
+        # - Read the visibility state previously stored by Artist.set_visible.
+        # - If visibility is false, return without updating limits, opening a
+        #   renderer group, or drawing the axes patch, children, and
+        #   decorations; leave every plotted child and its data unchanged.
+        # - If visibility is true, continue through the existing non-3D draw
+        #   sequence: update limits, resolve layout and aspect, select and
+        #   order children, draw the patch, then render retained content.
+        # - Close the renderer group and clear stale state on successful
+        #   completion; propagate failures from the ordinary visible path.
+        # - Return control to the figure traversal without projection-specific
+        #   branching or changes to neighboring axes visibility behavior.
         if renderer is None:
             raise RuntimeError('No renderer defined')
         if not self.get_visible():
