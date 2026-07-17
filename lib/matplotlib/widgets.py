@@ -788,6 +788,10 @@ class RangeSlider(SliderBase):
         # for construction and later updates.  It owns synchronization of the
         # value, text, and selection polygon; Polygon owns ring closure, so this
         # boundary supplies only its four explicit selection vertices.
+        # RANGE-006..RANGE-010: construction joins the same compatibility
+        # boundary used by direct updates.  RangeSlider owns the effective pair;
+        # its polygon, text, canvas, and observer collaborators remain downstream
+        # consumers of that owned state rather than alternate value processors.
         self.set_val(valinit)
 
     def _min_in_bounds(self, min):
@@ -814,6 +818,9 @@ class RangeSlider(SliderBase):
 
     def _value_in_bounds(self, vals):
         """Clip min, max values to the bounds."""
+        # RANGE-007: This aggregate validation seam and set_val's corresponding
+        # update path both depend inward on the existing endpoint validators;
+        # construction and updates must not acquire separate bound policies.
         return (self._min_in_bounds(vals[0]), self._max_in_bounds(vals[1]))
 
     def _update_val_from_pos(self, pos):
@@ -906,6 +913,11 @@ class RangeSlider(SliderBase):
         ----------
         val : tuple or array-like of float
         """
+        # RANGE-006..RANGE-010: RangeSlider owns this compatibility boundary.
+        # Shape/order/bound handling is its input contract; polygon and text are
+        # presentation ports, while canvas drawing and observer dispatch are
+        # conditional output ports.  All outputs depend on one effective pair,
+        # and invalid input has no downstream integration path.
         # RANGE-001, RANGE-002, RANGE-004 -- logic obligation and pseudocode:
         # - Accept the construction-delegated or directly supplied endpoint pair.
         # - Order and validate exactly two endpoints before mutating visible state;
