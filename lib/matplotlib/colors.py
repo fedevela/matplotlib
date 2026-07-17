@@ -1909,21 +1909,6 @@ class BoundaryNorm(Normalize):
             BoundaryNorm is not invertible, so calling this method will always
             raise an error
         """
-        # GUID: BNF-007
-        # LOGIC OBLIGATION: Retain BoundaryNorm's non-invertible contract after
-        # any number of cursor-data formatting operations.
-        #
-        # PSEUDOCODE:
-        #   INPUT requested_inverse_value = value
-        #   PERFORM no inverse approximation and no state transition
-        #   RAISE ValueError for every requested_inverse_value, independent of
-        #       whether an artist previously attempted cursor formatting
-        #
-        # ARCHITECTURE (GUID: BNF-007): BoundaryNorm owns both its discrete
-        # mapping state and this inverse-capability contract.  Cursor-formatting
-        # callers may depend on the public Normalize inverse seam and contain
-        # its ValueError, but no adapter or caller may add inverse state or move
-        # this non-invertible boundary out of BoundaryNorm.
         raise ValueError("BoundaryNorm is not invertible")
 
 

@@ -12,6 +12,7 @@ import numpy as np
 
 import matplotlib as mpl
 from . import _api, cbook
+from .colors import BoundaryNorm
 from .cm import ScalarMappable
 from .path import Path
 from .transforms import (Bbox, IdentityTransform, Transform, TransformedBbox,
@@ -1293,57 +1294,30 @@ class Artist:
         get_cursor_data
         """
         if np.ndim(data) == 0 and isinstance(self, ScalarMappable):
-            # GUID: BNF-005, BNF-006
-            # LOGIC OBLIGATION: Preserve inverse-based scalar formatting while
-            # cursor formatting remains observationally pure for the artist.
-            #
-            # PSEUDOCODE:
-            #   INPUT supplied_scalar = data
-            #   READ the artist's norm and colormap without replacing or
-            #       mutating its data, normalization state, or colormap
-            #   IF supplied_scalar is masked:
-            #       RETURN the empty cursor representation
-            #   COMPUTE normalized_scalar in a local value
-            #   IF normalized_scalar is finite:
-            #       TRY to invert the neighboring normalized color boundaries
-            #       IF inversion succeeds:
-            #           derive precision from supplied_scalar and the inverse
-            #               neighbors, preserving the existing inverse path
-            #       IF inversion raises ValueError:
-            #           select the finite-scalar fallback precision
-            #   ELSE:
-            #       select the non-finite fallback precision
-            #   FORMAT supplied_scalar using the selected precision
-            #   RETURN only the formatted string; leave artist data, norm
-            #       boundaries and mapping, colormap, and rendered image
-            #       unchanged across this and subsequent invocations
             # This block logically belongs to ScalarMappable, but can't be
             # implemented in it because most ScalarMappable subclasses inherit
             # from Artist first and from ScalarMappable second, so
             # Artist.format_cursor_data would always have precedence over
             # ScalarMappable.format_cursor_data.
-            #
-            # ARCHITECTURE (GUID: BNF-005, BNF-006, BNF-007): Artist owns this
-            # cursor-formatting entry point, while ScalarMappable supplies the
-            # norm and cmap as read-only dependencies.  Normalize.inverse is
-            # the capability boundary: invertible norms retain the established
-            # precision path, and a norm's ValueError is contained at this
-            # integration seam.  Formatting must not acquire ownership of, or
-            # write through to, the artist data, norm, cmap, or render state.
             n = self.cmap.N
             if np.ma.getmask(data):
                 return "[]"
             normed = self.norm(data)
             if np.isfinite(normed):
-                # Midpoints of neighboring color intervals.
-                try:
-                    neighbors = self.norm.inverse(
-                        (int(self.norm(data) * n) + np.array([0, 1])) / n)
-                except ValueError:  # BoundaryNorm is not invertible.
-                    g_sig_digits = 3
+                if isinstance(self.norm, BoundaryNorm):
+                    cur_idx = np.argmin(
+                        np.abs(self.norm.boundaries - data))
+                    neigh_idx = max(0, cur_idx - 1)
+                    # Use max diff to prevent delta == 0.
+                    delta = np.diff(
+                        self.norm.boundaries[neigh_idx:cur_idx + 2]
+                    ).max()
                 else:
+                    # Midpoints of neighboring color intervals.
+                    neighbors = self.norm.inverse(
+                        (int(normed * n) + np.array([0, 1])) / n)
                     delta = abs(neighbors - data).max()
-                    g_sig_digits = cbook._g_sig_digits(data, delta)
+                g_sig_digits = cbook._g_sig_digits(data, delta)
             else:
                 g_sig_digits = 3  # Consistent with default below.
             return "[{:-#.{}g}]".format(data, g_sig_digits)
