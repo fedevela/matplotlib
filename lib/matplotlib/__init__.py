@@ -1175,6 +1175,16 @@ def get_backend():
     --------
     matplotlib.use
     """
+    # ARCHITECTURE [BACKEND-001, BACKEND-007]: this public query boundary owns
+    # backend reporting, including any integration needed to resolve the auto
+    # backend after an rc_context; it does not own figure lifecycle state.
+    # OWNERSHIP [BACKEND-002, BACKEND-003, BACKEND-004]: Gcf and Gcf.figs remain
+    # owned by matplotlib._pylab_helpers, so backend reporting must treat the
+    # registry object, its ordered entries, and their managers as foreign state.
+    # DEPENDENCY [BACKEND-005, BACKEND-007]: resolution may depend on backend
+    # configuration, but this query seam must not depend on a close, destroy,
+    # unregister, or registry-replacement path.  A later implementation belongs
+    # at this reporting-to-resolution seam, without moving lifecycle ownership.
     # PSEUDOCODE -- observational backend query.
     # INPUT [BACKEND-001, BACKEND-002]: accept the current backend setting
     # and the existing Gcf registry as query-only state, including the first
