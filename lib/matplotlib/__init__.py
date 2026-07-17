@@ -1175,6 +1175,25 @@ def get_backend():
     --------
     matplotlib.use
     """
+    # PSEUDOCODE -- observational backend query.
+    # INPUT [BACKEND-001, BACKEND-002]: accept the current backend setting
+    # and the existing Gcf registry as query-only state, including the first
+    # non-interactive figure created within an exited rc_context.
+    # STATE [BACKEND-003, BACKEND-004]: retain the registry object's identity;
+    # retain its complete key-to-manager sequence, in order, with every manager
+    # reference identical to the reference held before this query.
+    # DECISION [BACKEND-007]: if the backend setting is already resolved,
+    # report it through the existing reporting path; otherwise hand resolution
+    # to the existing backend-selection logic under the same registry-preserving
+    # invariants, then report the result produced by that logic.
+    # TRANSITION [BACKEND-005]: permit backend-reporting state to resolve, but
+    # do not enter any figure close, destroy, or unregister transition while
+    # answering this query.
+    # FAILURE [BACKEND-001, BACKEND-003, BACKEND-004, BACKEND-005]: if backend
+    # reporting fails, propagate its existing failure while leaving the Gcf
+    # object, its ordered entries, and their manager lifecycles unchanged.
+    # OUTPUT [BACKEND-007]: return exactly the backend value that the existing
+    # no-preexisting-figures behavior would report, with all invariants above.
     return rcParams['backend']
 
 
