@@ -775,6 +775,10 @@ class RangeSlider(SliderBase):
             )
 
         self._active_handle = None
+        # RANGE-001..RANGE-005: set_val is the single range-application seam
+        # for construction and later updates.  It owns synchronization of the
+        # value, text, and selection polygon; Polygon owns ring closure, so this
+        # boundary supplies only its four explicit selection vertices.
         self.set_val(valinit)
 
     def _min_in_bounds(self, min):
