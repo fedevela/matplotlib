@@ -276,6 +276,11 @@ def test_no_duplicate_definition():
     assert max(Counter(wds).values()) == 1
 
 
+# MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 architecture:
+# These existing backend-test loci own the artist-to-EPS integration contract.
+# Their fixture boundary starts at Figure (not pyplot), crosses Figure.savefig,
+# and observes the generated EPS stream; renderer run assembly remains private
+# to backend_ps and therefore needs no test-facing adapter or public contract.
 def test_mplps_001_direct_figure_annotation_leading_blank_eps_retains_label():
     """MPLPS-001: EPS saves without TypeError and retains ``Lower label``."""
     # MPLPS-001 pseudocode:

@@ -652,6 +652,12 @@ grestore
         else:
             font = self._get_font_ttf(prop)
             self._character_tracker.track(font, s)
+            # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 architecture:
+            # RendererPS owns the layout-to-PostScript boundary.  ``stream``
+            # is its private handoff from text layout to command emission and
+            # contains only concrete font/glyph runs; an empty layout line has
+            # no run to hand off.  Text artists remain upstream callers, so
+            # annotation/title semantics and backend dependencies stay intact.
             stream = []
             prev_font = curr_stream = None
             # MPLPS-001, MPLPS-002, MPLPS-008, MPLPS-009 pseudocode:
