@@ -783,6 +783,170 @@ def test_get_set_draggable():
     assert not legend.get_draggable()
 
 
+def test_legend_001_initialization_without_draggable_defaults_to_false():
+    """GUID: LEGEND-001 -- default creation state is non-draggable."""
+    legend = plt.legend()
+    assert not legend.get_draggable()
+
+
+def test_legend_002_initialization_with_draggable_true_is_immediately_draggable():
+    """GUID: LEGEND-002 -- enabled creation state needs no follow-up call."""
+    legend = plt.legend(draggable=True)
+    assert legend.get_draggable()
+
+
+def test_legend_003_initialization_with_draggable_false_is_non_draggable():
+    """GUID: LEGEND-003 -- disabled creation state remains non-draggable."""
+    legend = plt.legend(draggable=False)
+    assert not legend.get_draggable()
+
+
+def test_legend_004_draggable_true_uses_existing_drag_interaction_behavior():
+    """GUID: LEGEND-004 -- enabled creation reuses the existing interaction."""
+    fig, ax = plt.subplots()
+    ax.plot([], label="label")
+    legend = ax.legend(draggable=True)
+    draggable = legend._draggable
+    assert isinstance(draggable, mlegend.DraggableLegend)
+
+    fig.canvas.draw()
+    draggable.save_offset()
+    draggable.update_offset(10, 10)
+    draggable.finalize_offset()
+    assert isinstance(legend._loc, tuple)
+
+
+def test_legend_005_axes_legend_propagates_explicit_draggable_true():
+    """GUID: LEGEND-005 -- Axes.legend preserves enabled creation state."""
+    fig, ax = plt.subplots()
+    legend = ax.legend([], [], draggable=True)
+    assert legend.get_draggable()
+
+
+def test_legend_005_axes_legend_propagates_explicit_draggable_false():
+    """GUID: LEGEND-005 -- Axes.legend preserves disabled creation state."""
+    fig, ax = plt.subplots()
+    legend = ax.legend([], [], draggable=False)
+    assert not legend.get_draggable()
+
+
+def test_legend_005_figure_legend_propagates_explicit_draggable_true():
+    """GUID: LEGEND-005 -- Figure.legend preserves enabled creation state."""
+    fig = plt.figure()
+    legend = fig.legend([], [], draggable=True)
+    assert legend.get_draggable()
+
+
+def test_legend_005_figure_legend_propagates_explicit_draggable_false():
+    """GUID: LEGEND-005 -- Figure.legend preserves disabled creation state."""
+    fig = plt.figure()
+    legend = fig.legend([], [], draggable=False)
+    assert not legend.get_draggable()
+
+
+def test_legend_005_subfigure_legend_propagates_explicit_draggable_true():
+    """GUID: LEGEND-005 -- SubFigure.legend preserves enabled creation state."""
+    subfig = plt.figure().subfigures()
+    legend = subfig.legend([], [], draggable=True)
+    assert legend.get_draggable()
+
+
+def test_legend_005_subfigure_legend_propagates_explicit_draggable_false():
+    """GUID: LEGEND-005 -- SubFigure.legend preserves disabled creation state."""
+    subfig = plt.figure().subfigures()
+    legend = subfig.legend([], [], draggable=False)
+    assert not legend.get_draggable()
+
+
+def test_legend_005_pyplot_legend_propagates_explicit_draggable_true():
+    """GUID: LEGEND-005 -- pyplot.legend preserves enabled creation state."""
+    legend = plt.legend([], [], draggable=True)
+    assert legend.get_draggable()
+
+
+def test_legend_005_pyplot_legend_propagates_explicit_draggable_false():
+    """GUID: LEGEND-005 -- pyplot.legend preserves disabled creation state."""
+    legend = plt.legend([], [], draggable=False)
+    assert not legend.get_draggable()
+
+
+def test_legend_005_pyplot_figlegend_propagates_explicit_draggable_true():
+    """GUID: LEGEND-005 -- pyplot.figlegend preserves enabled creation state."""
+    legend = plt.figlegend([], [], draggable=True)
+    assert legend.get_draggable()
+
+
+def test_legend_005_pyplot_figlegend_propagates_explicit_draggable_false():
+    """GUID: LEGEND-005 -- pyplot.figlegend preserves disabled creation state."""
+    legend = plt.figlegend([], [], draggable=False)
+    assert not legend.get_draggable()
+
+
+def test_legend_006_post_creation_configuration_enables_draggability():
+    """GUID: LEGEND-006 -- post-creation enabling makes a legend draggable."""
+    legend = plt.legend()
+
+    assert not legend.get_draggable()
+    draggable = legend.set_draggable(True)
+
+    assert legend.get_draggable()
+    assert isinstance(draggable, mlegend.DraggableLegend)
+
+
+def test_legend_006_post_creation_configuration_disables_draggability():
+    """GUID: LEGEND-006 -- post-creation disabling makes a legend non-draggable."""
+    legend = plt.legend(draggable=True)
+    draggable = legend._draggable
+
+    assert legend.get_draggable()
+    with mock.patch.object(draggable, "disconnect",
+                           wraps=draggable.disconnect) as disconnect:
+        assert legend.set_draggable(False) is None
+
+    assert not legend.get_draggable()
+    disconnect.assert_called_once_with()
+
+
+@pytest.mark.parametrize("draggable", [False, True])
+@check_figures_equal()
+def test_legend_007_creation_option_preserves_legend_appearance(
+        fig_test, fig_ref, draggable):
+    """GUID: LEGEND-007 -- creation-time state does not change appearance."""
+    ax_test = fig_test.subplots()
+    ax_ref = fig_ref.subplots()
+    for ax in [ax_test, ax_ref]:
+        ax.plot([0, 1], [1, 0], marker="o", label="data")
+
+    ax_test.legend(title="Legend", draggable=draggable)
+    ax_ref.legend(title="Legend")
+
+
+@pytest.mark.parametrize("draggable", [False, True])
+def test_legend_007_creation_option_preserves_non_drag_behavior(draggable):
+    """GUID: LEGEND-007 -- creation-time state does not change other behavior."""
+    fig, (ax_test, ax_ref) = plt.subplots(ncols=2)
+    for ax in [ax_test, ax_ref]:
+        ax.plot([], label="data")
+
+    legend = ax_test.legend(draggable=draggable)
+    reference = ax_ref.legend()
+    for current in [legend, reference]:
+        current.set_title("Updated title")
+        current.set_frame_on(False)
+        current.set_visible(False)
+
+    assert legend.get_title().get_text() == reference.get_title().get_text()
+    assert legend.get_frame_on() == reference.get_frame_on()
+    assert legend.get_visible() == reference.get_visible()
+    assert [text.get_text() for text in legend.get_texts()] == [
+        text.get_text() for text in reference.get_texts()]
+
+    legend.remove()
+    reference.remove()
+    assert ax_test.get_legend() is None
+    assert ax_ref.get_legend() is None
+
+
 def test_alpha_handles():
     x, n, hh = plt.hist([1, 2, 3], alpha=0.25, label='data', color='red')
     legend = plt.legend()
