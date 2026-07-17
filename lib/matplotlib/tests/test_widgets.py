@@ -1300,7 +1300,11 @@ def test_range_011_horizontal_coincident_endpoints_construct_and_remain_equal():
     #   fails this test immediately.
     # - After construction completes, compare both retained slider endpoints to
     #   the coincident input and fail if either endpoint was changed or discarded.
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="horizontal")
+
+    assert_allclose(slider.val, (.4, .4))
 
 
 def test_range_011_vertical_coincident_endpoints_construct_and_remain_equal():
@@ -1313,7 +1317,11 @@ def test_range_011_vertical_coincident_endpoints_construct_and_remain_equal():
     #   transitions this test directly to failure.
     # - After construction completes, compare both retained slider endpoints to
     #   the coincident input and fail if either endpoint was changed or discarded.
-    assert True
+    fig, ax = plt.subplots()
+    slider = widgets.RangeSlider(
+        ax, "", 0, 1, valinit=(.4, .4), orientation="vertical")
+
+    assert_allclose(slider.val, (.4, .4))
 
 
 def test_range_011_either_orientation_detects_index_beyond_four_vertices():
@@ -1327,7 +1335,13 @@ def test_range_011_either_orientation_detects_index_beyond_four_vertices():
     # - If either orientation addresses index four or greater, let the resulting
     #   out-of-bounds exception escape so that orientation's case, and therefore
     #   at least one RANGE-011 regression test, transitions to failure.
-    assert True
+    for orientation in ["horizontal", "vertical"]:
+        fig, ax = plt.subplots()
+        slider = widgets.RangeSlider(
+            ax, "", 0, 1, valinit=(.4, .4), orientation=orientation)
+
+        assert slider.poly.xy.shape == (4, 2)
+        assert_allclose(slider.val, (.4, .4))
 
 
 def check_polygon_selector(event_sequence, expected_result, selections_count,
