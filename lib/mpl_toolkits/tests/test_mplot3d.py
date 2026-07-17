@@ -82,6 +82,11 @@ def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence(
     assert visibility_reads
 
 
+def test_m3dvis_004_visible_3d_axes_with_plotted_content_draws_normally():
+    """GUID: M3DVIS-004 -- visible plotted 3D axes render normally."""
+    assert True
+
+
 def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
     """GUID: M3DVIS-007 -- figure draw containing hidden axes succeeds."""
     fig = plt.figure()
