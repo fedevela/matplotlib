@@ -37,6 +37,10 @@ class Container(tuple):
         # an exception caused solely by the children's NaN geometry       [BAR-012]
         # FAILURE: established child-removal or callback failures propagate;
         # removal does not inspect geometry finiteness or add a NaN branch
+        # Architecture contract -- GUID: BAR-012
+        # Container owns aggregate teardown: child Artist removal stays below
+        # this boundary, while the injected owning-Axes callback is the sole
+        # dependency used here to unregister the received BarContainer.
         for c in cbook.flatten(
                 self, scalarp=lambda x: isinstance(x, Artist)):
             if c is not None:

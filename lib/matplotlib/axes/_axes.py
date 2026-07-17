@@ -2610,11 +2610,12 @@ class Axes(_AxesBase):
         # FAILURE: established conversion, validation, construction, or
         # bookkeeping failures propagate; all-NaN input alone does not create
         # an additional failure path                                    [BAR-012]
-        # Architecture contract -- GUID: BAR-009, BAR-014
+        # Architecture contract -- GUID: BAR-009, BAR-012, BAR-014
         # BarContainer assembly remains in Axes.bar so exceptional coordinate
         # classes cannot introduce an alternate return boundary.  The same
         # assembly and Axes registration seam owns the established container
-        # contract for ordinary finite numeric bars [BAR-009].
+        # contract for ordinary finite numeric bars [BAR-009] and all-NaN
+        # phantom bars [BAR-012].
         bar_container = BarContainer(patches, errorbar, datavalues=datavalues,
                                      orientation=orientation,
                                      label=bar_container_label)
