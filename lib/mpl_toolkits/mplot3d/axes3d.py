@@ -3208,6 +3208,9 @@ pivot='tail', normalize=False, **kwargs)
                                     call_axes_locator=call_axes_locator,
                                     bbox_extra_artists=bbox_extra_artists,
                                     for_layout_only=for_layout_only)
+        if ret is None:
+            return None
+
         batch = [ret]
         if self._axis3don:
             for axis in self._axis_map.values():

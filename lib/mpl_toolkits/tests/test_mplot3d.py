@@ -171,7 +171,14 @@ def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
 
 def test_m3dvis_008_hidden_3d_axes_layout_succeeds_figure_stays_drawable():
     """GUID: M3DVIS-008 -- layout succeeds and the figure remains drawable."""
-    assert True
+    fig = plt.figure(layout="constrained")
+    ax = fig.add_subplot(121, projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1])
+    ax.set_visible(False)
+    fig.add_subplot(122).plot([0, 1], [1, 0])
+
+    fig.get_layout_engine().execute(fig)
+    fig.canvas.draw()
 
 
 @pytest.mark.parametrize("extension", ["png", "pdf", "svg"])
