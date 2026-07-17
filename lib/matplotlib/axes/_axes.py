@@ -2449,26 +2449,37 @@ class Axes(_AxesBase):
             left = x
             bottom = y
 
-        # Pseudocode -- GUID: BAR-001, BAR-002, BAR-003, BAR-004, BAR-008
+        # Pseudocode -- GUID: BAR-001, BAR-002, BAR-003, BAR-004, BAR-005,
+        # BAR-006, BAR-007, BAR-008
         # expected_rectangle_count := length(x) after broadcasting
+        # ordered_bar_tuples := aligned, broadcast tuples in input-x order
         # patches := empty sequence
-        # FOR EACH aligned, broadcast bar tuple (left, bottom, width, height):
+        # FOR EACH ordinal and bar tuple IN ordered_bar_tuples:
         #     do not discard the tuple based on coordinate or height finiteness
+        #                                                               [BAR-005]
+        #     do not sort or otherwise change its ordinal position       [BAR-006]
         #     IF input x is nan AND input height is nan:                 [BAR-003]
         #         preserve nan left and nan height in the Rectangle geometry
         #     ELSE IF input x is nan AND input height is zero:          [BAR-004]
         #         preserve nan left and zero height in the geometry
         #     ELSE IF input x is finite AND input height is non-finite: [BAR-008]
         #         preserve the aligned finite left and non-finite height
-        #     rectangle := construct one Rectangle from the preserved tuple
+        #     rectangle := construct one Rectangle from this ordinal's tuple
+        #     preserve this tuple's aligned finite or non-finite left geometry
+        #                                                               [BAR-007]
         #     register rectangle with the Axes
         #     IF registration finds no finite position for data-limit updates:
         #         treat the rectangle as contributing no position limit
         #         continue registration without exposing StopIteration
-        #     append rectangle to patches exactly once
+        #     append rectangle to patches exactly once at the same ordinal
+        #     STATE: patches[ordinal] corresponds to input x[ordinal]
         # END FOR
-        # RESULT: length(patches) == expected_rectangle_count
-        # FAILURE: non-finiteness alone neither raises nor suppresses a rectangle
+        # RESULT: length(patches) == expected_rectangle_count            [BAR-005]
+        # RESULT: patch order equals the supplied x-position order       [BAR-006]
+        # RESULT: each patch keeps its corresponding aligned x geometry [BAR-007]
+        # FAILURE: conversion, broadcasting, or alignment errors propagate before
+        # rectangle construction; non-finiteness alone neither raises, suppresses,
+        # nor reorders a rectangle, and does not substitute another x geometry.
         # Architecture contract -- GUID: BAR-002, BAR-003, BAR-004, BAR-008
         # Conversion, broadcasting, and alignment own the geometry supplied
         # here; this loop owns its one-to-one mapping to Rectangle instances,
