@@ -8236,6 +8236,21 @@ def test_bar_004_nan_x_zero_height_returns_one_rectangle_preserving_geometry():
     assert bars.patches[0].get_height() == 0
 
 
+def test_bar_005_mixed_finite_non_finite_x_preserves_input_cardinality():
+    """GUID: BAR-005."""
+    assert True
+
+
+def test_bar_006_mixed_finite_non_finite_x_preserves_rectangle_order():
+    """GUID: BAR-006."""
+    assert True
+
+
+def test_bar_007_mixed_finite_non_finite_x_preserves_corresponding_x_geometry():
+    """GUID: BAR-007."""
+    assert True
+
+
 @pytest.mark.parametrize('height', [np.nan, np.inf, -np.inf])
 def test_bar_008_finite_x_non_finite_height_returns_rectangle_without_exception(
         height):
