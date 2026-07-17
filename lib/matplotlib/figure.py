@@ -3040,6 +3040,22 @@ class Figure(FigureBase):
         #       configured pre-serialization DPI; serialization failures keep
         #       the existing pickle error path unchanged.
 
+        # GUID: DPI-008 -- unaffected serialization non-regression obligation.
+        # PSEUDOCODE:
+        #   INPUT a figure using any supported platform and backend.
+        #   COPY the figure's state through the existing serialization path.
+        #   NORMALIZE only the persisted DPI field to its logical-DPI source;
+        #       RETAIN every other serialized field, version marker, and
+        #       pyplot-restoration marker under the existing pickle contract.
+        #   DO NOT branch on platform or backend and DO NOT introduce a new
+        #       state shape for unaffected configurations.
+        #   SERIALIZE and DESERIALIZE through the existing pickle handoff.
+        #   IF either operation fails:
+        #       PROPAGATE the existing serialization failure path.
+        #   OUTPUT on an unaffected configuration: the round-tripped figure
+        #       retains the same observable serialization behavior as before
+        #       the logical-DPI correction.
+
         # GUID: DPI-002, DPI-004 -- bounded repeated-round-trip contract.
         # PSEUDOCODE:
         #   INPUT a MacOSX-backed figure on Apple M1, its initial logical DPI
@@ -3090,6 +3106,24 @@ class Figure(FigureBase):
         return state
 
     def __setstate__(self, state):
+        # GUID: DPI-009 -- existing supported-pickle compatibility obligation.
+        # PSEUDOCODE:
+        #   INPUT a supported figure state produced before the logical-DPI
+        #       correction, using the existing serialization format.
+        #   READ the existing version marker and optional pyplot-restoration
+        #       marker; DO NOT require a new schema key, format version, or
+        #       migration step.
+        #   RESTORE the retained state through the existing figure-state and
+        #       base-canvas reconstruction sequence.
+        #   IF the recorded Matplotlib version differs:
+        #       EMIT the existing compatibility warning and continue.
+        #   IF the pickle is malformed or otherwise unsupported:
+        #       PROPAGATE the existing deserialization failure path.
+        #   HAND OFF optional pyplot restoration through the existing manager
+        #       path, then mark the restored figure stale.
+        #   OUTPUT a deserialized figure without rewriting or migrating the
+        #       source pickle to a new serialization format.
+
         # GUID: DPI-005 -- restored MacOSX-backend usability obligation.
         # PSEUDOCODE:
         #   INPUT serialized figure state and its preserved logical DPI.
