@@ -114,7 +114,7 @@ def test_XLIM_008_direct_change_with_emit_false_suppresses_callback():
     assert events == []
 
 
-def test_shared_y_axis_callback_behavior_is_unchanged():
+def test_shared_y_axis_callback_notifies_each_affected_axis():
     _, axes = plt.subplots(2, sharey=True)
     events = []
     for ax in axes:
@@ -122,4 +122,4 @@ def test_shared_y_axis_callback_behavior_is_unchanged():
 
     axes[0].set_ylim(2, 5)
 
-    assert events == [axes[0]]
+    assert events == [axes[0], axes[1]]

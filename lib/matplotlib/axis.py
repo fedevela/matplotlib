@@ -1245,8 +1245,7 @@ class Axis(martist.Artist):
                 if other is not self.axes:
                     other._axis_map[name]._set_lim(
                         v0, v1, emit=False, auto=auto)
-                    if name == "x":
-                        other.callbacks.process("xlim_changed", other)
+                    other.callbacks.process(f"{name}lim_changed", other)
                     if other.figure != self.figure:
                         other.figure.canvas.draw_idle()
 
