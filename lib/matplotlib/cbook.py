@@ -788,6 +788,12 @@ class Grouper:
     def __init__(self, init=()):
         self._mapping = {weakref.ref(x): [weakref.ref(x)] for x in init}
 
+    # MPLAL-001 through MPLAL-004 architecture boundary: Grouper owns the
+    # pickle contract for its weak-reference-backed disjoint sets.  Its
+    # serialized form must contain live members and group membership only;
+    # reconstruction must restore _mapping before Figure/Axis consumers use
+    # get_siblings().  Figure must not need knowledge of this representation.
+    #
     # MPLAL-001, MPLAL-002 -- serialization logic obligation:
     #
     # def __getstate__(self):

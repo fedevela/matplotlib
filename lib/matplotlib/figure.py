@@ -183,9 +183,14 @@ class FigureBase(Artist):
         self._supxlabel = None
         self._supylabel = None
 
-        # groupers to keep track of x and y labels we want to align.
-        # see self.align_xlabels and self.align_ylabels and
-        # axis._get_tick_boxes_siblings
+        # MPLAL-003 through MPLAL-005 integration seam: FigureBase owns the
+        # x/y Grouper instances and the Axes/Artist object graph.  Figure
+        # pickling carries these groupers transitively, while Grouper owns the
+        # weak-reference serialization boundary; the restored group members
+        # therefore reconnect to the Axes restored by existing Figure/Artist
+        # state rather than to copied or replacement Axes.  See
+        # self.align_xlabels, self.align_ylabels, and
+        # axis._get_tick_boxes_siblings.
         self._align_label_groups = {"x": cbook.Grouper(), "y": cbook.Grouper()}
 
         self.figure = self
