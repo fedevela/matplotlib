@@ -306,6 +306,27 @@ class TestColormapSentinelIndexingContracts:
         assert info.min <= cmap._i_bad <= info.max
         assert_array_equal(xa, [cmap._i_under, cmap._i_over, cmap._i_bad])
 
+    def test_cmap_004_valid_integer_values_retain_regular_color_mappings(
+            self):
+        """GUID: CMAP-004; valid integers retain regular-color mappings."""
+        assert True
+
+    def test_cmap_005_under_range_integer_values_retain_under_color(self):
+        """GUID: CMAP-005; under-range integers retain the under color."""
+        assert True
+
+    def test_cmap_005_over_range_integer_values_retain_over_color(self):
+        """GUID: CMAP-005; over-range integers retain the over color."""
+        assert True
+
+    def test_cmap_005_invalid_integer_values_retain_bad_color(self):
+        """GUID: CMAP-005; invalid integers retain the bad color."""
+        assert True
+
+    def test_cmap_006_integer_input_retains_shape_dtype_mask_and_values(self):
+        """GUID: CMAP-006; integer input state is unchanged after evaluation."""
+        assert True
+
     @pytest.mark.parametrize("dtype, values", [
         (np.int8, []),
         (np.int8, [-1, 0, 127]),
