@@ -1373,6 +1373,28 @@ def _click_button(button):
     _process_widget_mouse_event("button_release_event", button, (.5, .5))
 
 
+def _button_rebuild_test_setup():
+    fig = plt.figure()
+    state = {"clicks": [], "rebuilds": 0, "widgets": []}
+
+    def rebuild():
+        fig.clear()
+        button = widgets.Button(
+            fig.add_axes([.4, .4, .2, .2]), "Rebuild")
+        button.on_clicked(clicked)
+        state["button"] = button
+        state["widgets"].append(button)
+        fig.canvas.draw()
+        state["rebuilds"] += 1
+
+    def clicked(event):
+        state["clicks"].append(event)
+        rebuild()
+
+    rebuild()
+    return fig, state
+
+
 def test_input_001_callback_clear_rebuild_redraw_releases_canvas_state():
     """GUID: INPUT-001 - callback completion releases interaction state."""
     fig, state = _range_slider_rebuild_test_setup()
@@ -1430,12 +1452,29 @@ def test_input_004_range_slider_callback_receives_interaction_values():
 
 def test_input_005_button_click_clear_rebuild_redraw_completes():
     """GUID: INPUT-005 - button callback completes clear/rebuild/redraw."""
-    assert True
+    fig, state = _button_rebuild_test_setup()
+    original_button = state["button"]
+
+    _click_button(original_button)
+
+    assert len(state["clicks"]) == 1
+    assert state["rebuilds"] == 2
+    assert original_button.ax not in fig.axes
+    assert fig.canvas.mouse_grabber is None
 
 
 def test_input_005_recreated_widget_next_interaction_invokes_callback():
     """GUID: INPUT-005 - recreated widget remains interactive immediately."""
-    assert True
+    fig, state = _button_rebuild_test_setup()
+
+    _click_button(state["button"])
+    recreated_button = state["button"]
+    _click_button(recreated_button)
+
+    assert len(state["clicks"]) == 2
+    assert state["rebuilds"] == 3
+    assert recreated_button.ax not in fig.axes
+    assert fig.canvas.mouse_grabber is None
 
 
 def test_input_007_repeated_rebuilds_leave_later_widget_interactive():
