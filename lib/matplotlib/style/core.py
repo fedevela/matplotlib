@@ -262,6 +262,24 @@ def update_nested_dict(main_dict, new_dict):
 # * Verification ownership remains in the SCBLIND tests in
 #   ``matplotlib/tests/test_style.py``.  No new public symbol or adapter is
 #   required for this integration seam.  [SCBLIND-001..005]
+#
+# SCBLIND-006..007 architecture contract:
+#
+# * ``reload_library`` owns the sole compatibility-key write, after the normal
+#   bundled- and user-style assembly boundary.  That write may affect only
+#   ``library["seaborn-colorblind"]``; unrelated keys and their parsed mapping
+#   objects remain owned by the existing assembly flow.  [SCBLIND-006]
+# * Parsing and validation remain owned by ``read_style_directory`` and
+#   ``rc_params_from_file``.  The compatibility entry depends inward on the
+#   already-validated bundled ``seaborn-v0_8-colorblind`` mapping and introduces
+#   no operating-system, backend, or backend-state dependency.  [SCBLIND-007]
+# * Direct retrieval continues through the existing ``library`` mapping
+#   contract.  No platform adapter, backend hook, new public symbol, or second
+#   publication path belongs between ``reload_library`` and consumers.
+#   [SCBLIND-007]
+# * Verification of preservation and environmental independence remains at the
+#   existing SCBLIND-006 and SCBLIND-007 loci in
+#   ``matplotlib/tests/test_style.py``.  [SCBLIND-006, SCBLIND-007]
 _base_library = read_style_directory(BASE_LIBRARY_PATH)
 library = None
 available = []
