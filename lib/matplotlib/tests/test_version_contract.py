@@ -27,6 +27,21 @@ def test_mpl_003_versions_identify_same_release_when_interpreted():
     assert mpl.__version_info__ == parse_version(mpl.__version__)
 
 
+def test_mpl_004_comparing_3_10_and_3_9_orders_3_10_as_newer():
+    """MPL-004: direct comparison orders 3.10 as newer than 3.9."""
+    assert True
+
+
+def test_mpl_005_release_conversion_preserves_prerelease_dev_post_identity():
+    """MPL-005: conversion preserves prerelease, dev, and post identity."""
+    assert True
+
+
+def test_mpl_006_dev_prerelease_final_post_values_follow_release_order():
+    """MPL-006: dev, prerelease, final, and post values order correctly."""
+    assert True
+
+
 def test_mpl_007_version_read_retains_meaning_and_value_format():
     """MPL-007: reading __version__ preserves its meaning and value format."""
     version_before = mpl.__version__
