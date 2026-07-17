@@ -342,6 +342,7 @@ class Legend(Artist):
         title_fontproperties=None,  # properties for the legend title
         alignment="center",       # control the alignment within the legend box
         *,
+        # PSEUDOCODE [LEGEND-001]: draggable=False,
         ncol=1  # synonym for ncols (backward compatibility)
     ):
         """
@@ -537,6 +538,18 @@ class Legend(Artist):
             title_prop_fp.set_size(title_fontsize)
 
         self.set_title(title, prop=title_prop_fp)
+        # PSEUDOCODE [LEGEND-001, LEGEND-002, LEGEND-003, LEGEND-004]:
+        # 1. Establish the disabled drag state before applying the creation
+        #    option, so omission and an explicit false value share a known
+        #    initial transition point.
+        # 2. Hand `draggable` to `set_draggable` before initialization returns.
+        # 3. IF true, let `set_draggable` create the existing `DraggableLegend`
+        #    helper; the legend is therefore immediately draggable and uses
+        #    the established interaction behavior.
+        # 4. ELSE, let `set_draggable` retain the null helper state; the legend
+        #    is non-draggable.
+        # 5. PROPAGATE any failure from the existing handoff; do not introduce
+        #    a second interaction path or a partially initialized helper.
         self._draggable = None
 
         # set the text color
