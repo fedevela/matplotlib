@@ -1298,41 +1298,20 @@ class Artist:
             # from Artist first and from ScalarMappable second, so
             # Artist.format_cursor_data would always have precedence over
             # ScalarMappable.format_cursor_data.
-            #
-            # ARCHITECTURE (GUID: BNF-001, BNF-002, BNF-003, BNF-004): Artist
-            # owns the cursor-formatting entry point; ScalarMappable supplies
-            # the norm and cmap dependencies.  Norm inversion is a fallible
-            # dependency boundary, so its failure-containment seam stays in
-            # this scalar-formatting block and feeds the existing terminal
-            # formatter.  The seam must remain local and stateless so repeated
-            # formatting cannot alter Artist mouse-over registration.
             n = self.cmap.N
             if np.ma.getmask(data):
                 return "[]"
             normed = self.norm(data)
             if np.isfinite(normed):
-                # GUID: BNF-001, BNF-002, BNF-003, BNF-004
-                # LOGIC OBLIGATION: Preserve cursor formatting when the norm
-                # cannot invert a finite, supplied scalar.
-                #
-                # PSEUDOCODE:
-                #   INPUT supplied_scalar = data
-                #   TRY:
-                #       derive neighboring scalar values by inverting the
-                #       normalized color interval containing supplied_scalar
-                #       derive display precision from those neighbors
-                #   CATCH ValueError from norm inversion:
-                #       select finite-scalar fallback display precision
-                #       retain supplied_scalar as the value to format
-                #   FORMAT supplied_scalar as a non-empty numeric string
-                #   RETURN the formatted string without changing mouse-over
-                #       state, so the same flow remains available to every
-                #       subsequent cursor-data formatting invocation
                 # Midpoints of neighboring color intervals.
-                neighbors = self.norm.inverse(
-                    (int(self.norm(data) * n) + np.array([0, 1])) / n)
-                delta = abs(neighbors - data).max()
-                g_sig_digits = cbook._g_sig_digits(data, delta)
+                try:
+                    neighbors = self.norm.inverse(
+                        (int(self.norm(data) * n) + np.array([0, 1])) / n)
+                except ValueError:  # BoundaryNorm is not invertible.
+                    g_sig_digits = 3
+                else:
+                    delta = abs(neighbors - data).max()
+                    g_sig_digits = cbook._g_sig_digits(data, delta)
             else:
                 g_sig_digits = 3  # Consistent with default below.
             return "[{:-#.{}g}]".format(data, g_sig_digits)

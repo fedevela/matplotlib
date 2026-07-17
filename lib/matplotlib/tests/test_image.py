@@ -356,22 +356,55 @@ def test_format_cursor_data(data, text):
 
 def test_bnf_001_boundarynorm_finite_scalar_formats_as_nonempty_numeric():
     """GUID: BNF-001 -- A finite scalar produces a numeric representation."""
-    assert True
+    fig, ax = plt.subplots()
+    im = ax.imshow([[1.25]], cmap="viridis",
+                   norm=colors.BoundaryNorm([0, 1, 2], 256))
+
+    formatted = im.format_cursor_data(1.25)
+
+    assert formatted
+    assert float(formatted.strip("[]")) == 1.25
 
 
 def test_bnf_002_boundarynorm_inverse_error_does_not_escape_formatting():
     """GUID: BNF-002 -- BoundaryNorm.inverse ValueError is contained."""
-    assert True
+    fig, ax = plt.subplots()
+    im = ax.imshow([[1.25]], cmap="viridis",
+                   norm=colors.BoundaryNorm([0, 1, 2], 256))
+
+    assert im.format_cursor_data(1.25) == "[1.25]"
 
 
 def test_bnf_003_repeated_boundarynorm_formatting_keeps_mouseover_working():
     """GUID: BNF-003 -- Repeated formatting leaves mouse-over operational."""
-    assert True
+    from matplotlib.backend_bases import MouseEvent
+
+    fig, ax = plt.subplots()
+    im = ax.imshow([[1.25]], cmap="viridis",
+                   norm=colors.BoundaryNorm([0, 1, 2], 256))
+
+    for data in [0.25, 1.25, 1.75]:
+        assert im.format_cursor_data(data)
+        assert im.get_mouseover()
+        assert im in ax._mouseover_set
+
+    x, y = ax.transData.transform([0, 0])
+    event = MouseEvent("motion_notify_event", fig.canvas, x, y)
+    assert im.get_cursor_data(event) == 1.25
+    assert im.format_cursor_data(im.get_cursor_data(event)) == "[1.25]"
 
 
 def test_bnf_004_boundarynorm_fallback_represents_supplied_scalar():
     """GUID: BNF-004 -- Fallback preserves the scalar, not a surrogate."""
-    assert True
+    fig, ax = plt.subplots()
+    norm = colors.BoundaryNorm([0, 1, 2], 256)
+    im = ax.imshow([[1.25]], cmap="viridis", norm=norm)
+
+    represented = float(im.format_cursor_data(1.25).strip("[]"))
+
+    assert represented == 1.25
+    assert represented != np.digitize(1.25, norm.boundaries) - 1
+    assert represented != norm(1.25)
 
 
 @image_comparison(['image_clip'], style='mpl20')
