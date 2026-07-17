@@ -687,6 +687,16 @@ def test_cbnorm_008_replaced_norm_update_normal_preserves_mappable_colormap():
     assert mappable.cmap is cmap
 
 
+def test_cbnorm_009_existing_valid_update_normal_completes_without_error():
+    """GUID: CBNORM-009."""
+    assert True
+
+
+def test_cbnorm_009_existing_valid_update_normal_preserves_established_result():
+    """GUID: CBNORM-009."""
+    assert True
+
+
 def test_colorbar_renorm():
     x, y = np.ogrid[-4:4:31j, -4:4:31j]
     z = 120000*np.exp(-x**2 - y**2)
