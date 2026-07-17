@@ -490,6 +490,16 @@ class Colorbar:
 
     filled = _api.deprecate_privatize_attribute("3.6")
 
+    # Normalization-update architecture boundary:
+    # - CBNORM-006: Colorbar owns the supplied-mappable association; this
+    #   callback/direct-call seam is the single synchronization entry point.
+    # - CBNORM-007: the mappable owns its plotted data; Colorbar has a
+    #   read-only dependency on that data while deriving normalization state.
+    # - CBNORM-008: the mappable owns its colormap; Colorbar may mirror the
+    #   reference for rendering but must not write through to that owner.
+    # - CBNORM-009: Colorbar owns the established valid-update orchestration;
+    #   normalization reset, redraw, contour-line restoration, and stale-state
+    #   transitions remain internal dependencies of this compatibility seam.
     def update_normal(self, mappable):
         """
         Update solid patches, lines, etc.
@@ -503,12 +513,59 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
+        # Pseudocode obligations for a supplied mappable whose norm changed:
+        #
+        # CBNORM-006 (preserve the mappable association):
+        #   INPUT supplied_mappable
+        #   SELECT supplied_mappable as the colorbar's current mappable
+        #   READ all normalization-update inputs from supplied_mappable
+        #   NEVER substitute a derived or previously associated mappable
+        #   OUTPUT colorbar.mappable is supplied_mappable
+        #
+        # CBNORM-007 (preserve plotted data):
+        #   CAPTURE plotted_data as read-only normalization input
+        #   IF the replacement norm requires limits AND plotted_data exists
+        #       DERIVE only missing limits on the replacement norm
+        #       DO NOT assign, replace, or transform plotted_data
+        #   END IF
+        #   OUTPUT supplied_mappable plotted data is unchanged
+        #
+        # CBNORM-008 (preserve the colormap):
+        #   READ supplied_mappable's colormap for colorbar rendering
+        #   DO NOT invoke a colormap setter or assign a colormap on the mappable
+        #   OUTPUT supplied_mappable colormap is unchanged
+        #
+        # CBNORM-009 (preserve valid update behavior and result):
+        #   INPUT supplied_mappable valid for the established update workflow
+        #   SYNCHRONIZE the association, alpha, and colormap from that mappable
+        #   IF supplied_mappable's norm is not the current colorbar norm
+        #       TRANSITION the colorbar to the supplied norm
+        #       IF the mappable has plotted data
+        #           DERIVE only normalization limits that remain unset
+        #       END IF
+        #       RESET the locator, formatter, and scale for the new norm
+        #   ELSE
+        #       PRESERVE the established locator, formatter, and scale
+        #   END IF
+        #   REDRAW the colorbar using the synchronized state
+        #   IF the mappable is an unfilled contour set
+        #       RESTORE its colorbar lines
+        #   END IF
+        #   TRANSITION the colorbar to stale and RETURN normally
+        #   OUTPUT the same observable colorbar result as the valid workflow
+        #
+        #   ON downstream failure, propagate the failure without compensating
+        #       through plotted-data or mappable-colormap mutation; retain the
+        #       supplied mappable as the selected association
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
         self.cmap = mappable.cmap
-        if mappable.norm != self.norm:
+        if mappable.norm is not self.norm:
             self.norm = mappable.norm
+            if self.mappable.get_array() is not None:
+                with self.norm.callbacks.blocked():
+                    self.mappable.autoscale_None()
             self._reset_locator_formatter_scale()
 
         self._draw_all()

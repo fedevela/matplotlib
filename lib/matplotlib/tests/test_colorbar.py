@@ -585,6 +585,142 @@ def test_colorbar_log_minortick_labels():
             assert exp in lb
 
 
+def test_cbnorm_001_update_normal_replaced_lognorm_sets_existing_colorbar_log_scale():
+    """GUID: CBNORM-001."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.ax.get_yscale() == "log"
+
+
+def test_cbnorm_002_update_normal_uses_exact_current_mappable_norm_instance():
+    """GUID: CBNORM-002."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm()
+
+    mappable.norm = norm
+    colorbar.update_normal(mappable)
+
+    assert colorbar.norm is norm
+    assert colorbar.norm is mappable.norm
+
+
+def test_cbnorm_003_positive_lognorm_recalculation_uses_positive_lower_bound():
+    """GUID: CBNORM-003."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.norm.vmin > 0
+    assert colorbar._boundaries.min() > 0
+
+
+def test_cbnorm_004_positive_lognorm_update_normal_completes_without_exception():
+    """GUID: CBNORM-004."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.stale
+
+
+def test_cbnorm_005_updated_colorbar_observably_represents_logarithmic_scale():
+    """GUID: CBNORM-005."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    ratios = colorbar._boundaries[1:] / colorbar._boundaries[:-1]
+    np.testing.assert_allclose(ratios, ratios[0])
+
+
+def test_cbnorm_006_replaced_norm_update_normal_preserves_mappable_association():
+    """GUID: CBNORM-006."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert colorbar.mappable is mappable
+
+
+def test_cbnorm_007_replaced_norm_update_normal_preserves_mappable_plotted_data():
+    """GUID: CBNORM-007."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]])
+    colorbar = fig.colorbar(mappable)
+    plotted_data = mappable.get_array().copy()
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    np.testing.assert_array_equal(mappable.get_array(), plotted_data)
+
+
+def test_cbnorm_008_replaced_norm_update_normal_preserves_mappable_colormap():
+    """GUID: CBNORM-008."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 10], [100, 1000]], cmap="plasma")
+    colorbar = fig.colorbar(mappable)
+    cmap = mappable.cmap
+
+    mappable.norm = LogNorm()
+    colorbar.update_normal(mappable)
+
+    assert mappable.cmap is cmap
+
+
+def test_cbnorm_009_existing_valid_update_normal_completes_without_error():
+    """GUID: CBNORM-009."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[0, 1], [2, 3]])
+    colorbar = fig.colorbar(mappable)
+
+    result = colorbar.update_normal(mappable)
+
+    assert result is None
+    assert colorbar.stale
+
+
+def test_cbnorm_009_existing_valid_update_normal_preserves_established_result():
+    """GUID: CBNORM-009."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[0, 1], [2, 3]])
+    colorbar = fig.colorbar(mappable)
+    boundaries = colorbar._boundaries.copy()
+    locator = colorbar.locator
+    formatter = colorbar.formatter
+    scale = colorbar.ax.get_yscale()
+
+    colorbar.update_normal(mappable)
+
+    assert colorbar.mappable is mappable
+    assert colorbar.norm is mappable.norm
+    assert colorbar.vmin == 0
+    assert colorbar.vmax == 3
+    np.testing.assert_array_equal(colorbar._boundaries, boundaries)
+    assert colorbar.locator is locator
+    assert colorbar.formatter is formatter
+    assert colorbar.ax.get_yscale() == scale
+
+
 def test_colorbar_renorm():
     x, y = np.ogrid[-4:4:31j, -4:4:31j]
     z = 120000*np.exp(-x**2 - y**2)
