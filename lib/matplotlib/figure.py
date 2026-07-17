@@ -3090,6 +3090,51 @@ class Figure(FigureBase):
         return state
 
     def __setstate__(self, state):
+        # GUID: DPI-005 -- restored MacOSX-backend usability obligation.
+        # PSEUDOCODE:
+        #   INPUT serialized figure state and its preserved logical DPI.
+        #   RESTORE the retained figure state onto this figure.
+        #   ATTACH a base canvas so the restored figure has a valid canvas
+        #       before any backend-specific association is requested.
+        #   IF restoration requests pyplot/backend-manager association:
+        #       HAND OFF this restored figure to the active backend manager;
+        #       request the backend's normal interactive draw path.
+        #   WHEN the selected backend is MacOSX:
+        #       PERFORM supported canvas and figure operations through that
+        #       association without a restoration-only branch.
+        #   IF state restoration, backend association, or an operation fails:
+        #       PROPAGATE the existing failure path to the caller.
+        #   OUTPUT an operational restored figure associated through the
+        #       backend's normal figure-manager boundary.
+
+        # GUID: DPI-006 -- restored logical-DPI dimension obligation.
+        # PSEUDOCODE:
+        #   INPUT preserved logical DPI D and preserved figure dimensions S.
+        #   RESTORE D, S, the DPI scale transform, and the figure bounds from
+        #       the same serialized state before backend association.
+        #   DO NOT apply a device-pixel ratio to D or rewrite S as part of
+        #       restoration.
+        #   REPORT the restored dimensions from S under logical DPI D.
+        #   IF the reported dimensions differ from the pre-serialization S:
+        #       FAIL the dimension-preservation obligation through the
+        #       caller's existing verification/error path.
+        #   OUTPUT restored dimensions equal to S and logical DPI equal to D.
+
+        # GUID: DPI-007 -- restored rendering-state draw obligation.
+        # PSEUDOCODE:
+        #   INPUT retained rendering state R and preserved logical DPI D.
+        #   RESTORE R and D together; DISCARD any non-serializable cached
+        #       renderer rather than treating it as retained rendering state.
+        #   MARK the restored figure stale so its next backend draw rebuilds
+        #       renderer-dependent state through the normal draw path.
+        #   HAND OFF the figure to the MacOSX canvas and REQUEST a draw.
+        #   IF association or drawing raises an error:
+        #       PROPAGATE the existing backend failure path to the caller.
+        #   AFTER drawing, REQUIRE the corresponding R to remain present and
+        #       D to remain the logical-DPI baseline; do not mutate R merely
+        #       because backend device scaling is applied.
+        #   OUTPUT a completed backend draw with R consistent under D.
+
         version = state.pop('__mpl_version__')
         restore_to_pylab = state.pop('_restore_to_pylab', False)
 
