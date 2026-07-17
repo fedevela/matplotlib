@@ -116,12 +116,29 @@ def test_backend_005_get_backend_does_not_close_destroy_or_unregister_figs(
 
 def test_backend_006_close_unregisters_figure_retained_by_get_backend():
     """GUID: BACKEND-006; close unregisters a get_backend-retained figure."""
-    assert True
+    figures, _ = _create_figures_with_unresolved_backend(2)
+    figure = figures[-1]
+    number = figure.number
+
+    mpl.get_backend()
+    assert Gcf.figs[number].canvas.figure is figure
+
+    plt.close(figure)
+
+    assert number not in Gcf.figs
+    assert figures[0].number in Gcf.figs
 
 
 def test_backend_006_first_noninteractive_rc_figure_closes_after_get_backend():
     """GUID: BACKEND-006; close unregisters the first rc-context figure."""
-    assert True
+    figures, _ = _create_figures_with_unresolved_backend()
+    figure, = figures
+    number = figure.number
+
+    mpl.get_backend()
+    plt.close(figure)
+
+    assert number not in Gcf.figs
 
 
 def test_backend_007_get_backend_reports_backend_and_preserves_figures():

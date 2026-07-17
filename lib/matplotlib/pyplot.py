@@ -951,23 +951,7 @@ def close(fig=None):
             num = get_fignums()[all_labels.index(fig)]
             _pylab_helpers.Gcf.destroy(num)
     elif isinstance(fig, Figure):
-        # PSEUDOCODE -- close a figure retained across a backend query.
-        # INPUT [BACKEND-006]: accept the Figure passed to close, including the
-        # first non-interactive figure created in an exited rc_context and
-        # retained in Gcf.figs after matplotlib.get_backend() reports.
-        # DECISION [BACKEND-006]: search the current Gcf managers for the one
-        # whose canvas owns this identical Figure; do not infer registration
-        # from backend state or create a replacement manager.
-        # HANDOFF [BACKEND-006]: if a matching manager exists, pass its figure
-        # number through the existing destruction path.
-        # TRANSITION [BACKEND-006]: remove that number-to-manager registration,
-        # disconnect its pyplot lifecycle callback, and destroy the manager.
-        # NO MATCH [BACKEND-006]: if no manager owns the Figure, leave Gcf.figs
-        # unchanged and complete the existing no-op close path.
-        # FAILURE [BACKEND-006]: propagate any destruction failure according to
-        # the existing destruction path; do not initiate backend resolution.
-        # OUTPUT [BACKEND-006]: on successful close, the Figure's number is
-        # absent from Gcf.figs.
+        # BACKEND-006: Delegate identity lookup and unregistration to Gcf.
         _pylab_helpers.Gcf.destroy_fig(fig)
     else:
         raise TypeError("close() argument must be a Figure, an int, a string, "

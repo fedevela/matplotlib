@@ -79,7 +79,7 @@ class Gcf:
     def destroy_fig(cls, fig):
         """Destroy figure *fig*."""
         num = next((manager.num for manager in cls.figs.values()
-                    if manager.canvas.figure == fig), None)
+                    if manager.canvas.figure is fig), None)
         if num is not None:
             cls.destroy(num)
 
