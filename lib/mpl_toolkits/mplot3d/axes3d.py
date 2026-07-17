@@ -387,12 +387,12 @@ class Axes3D(Axes):
 
     @martist.allow_rasterization
     def draw(self, renderer):
-        # Architecture boundary (M3DVIS-001, M3DVIS-003, M3DVIS-007,
-        # M3DVIS-010): Axes3D owns the visibility gate because its projection,
-        # pane, and axis drawing precede the delegation to _AxesBase.draw,
-        # whose visibility guard therefore cannot protect this 3D prelude.
-        # Keep the gate at this override's entry, dependent only on the
-        # inherited Artist visibility contract; the renderer and all
+        # Architecture boundary (M3DVIS-001, M3DVIS-002, M3DVIS-003,
+        # M3DVIS-007, M3DVIS-010): Axes3D owns the visibility gate because its
+        # projection, pane, and axis drawing precede the delegation to
+        # _AxesBase.draw, whose visibility guard therefore cannot protect this
+        # 3D prelude.  Keep the gate at this override's entry, dependent only
+        # on the inherited Artist visibility contract; the renderer and all
         # axes-owned visual components remain downstream of that single,
         # backend-neutral integration seam.
         # Draw-time visibility contract:
@@ -403,6 +403,17 @@ class Axes3D(Axes):
         #   limits or drawing the patch, projected data, panes, axes, ticks,
         #   labels, and decorations owned by this Axes3D.
         # - If it is true, continue through the existing 3D draw sequence.
+        #
+        # M3DVIS-002:
+        # - Input the selected Axes3D, its visibility state, and the renderer;
+        #   treat every other axes in the figure as state owned by the caller.
+        # - If the selected Axes3D is hidden, perform no renderer operation and
+        #   do not read, mutate, or draw any other axes; return control to the
+        #   figure's draw traversal so it can process the remaining axes.
+        # - If the selected Axes3D is visible, draw only its owned visuals via
+        #   the existing sequence, then return control to the same traversal.
+        # - On either branch, preserve neighboring axes state and propagate no
+        #   new failure; their later draw calls determine their output.
         #
         # M3DVIS-007:
         # - Treat the hidden branch as a successful no-op: return normally
