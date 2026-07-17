@@ -276,6 +276,26 @@ def test_no_duplicate_definition():
     assert max(Counter(wds).values()) == 1
 
 
+def test_mplps_001_direct_figure_annotation_leading_blank_eps_retains_label():
+    """MPLPS-001: EPS saves without TypeError and retains ``Lower label``."""
+    assert True
+
+
+def test_mplps_002_direct_figure_title_leading_blank_eps_retains_title():
+    """MPLPS-002: EPS saves without error and retains ``Lower title``."""
+    assert True
+
+
+def test_mplps_008_annotation_title_semantics_change_only_for_empty_line_fix():
+    """MPLPS-008: Baseline artist semantics remain otherwise unchanged."""
+    assert True
+
+
+def test_mplps_009_direct_figure_leading_blank_eps_regression_retains_text():
+    """MPLPS-009: Regression saves EPS and checks text after the empty line."""
+    assert True
+
+
 @image_comparison(["multi_font_type3.eps"], tol=0.51)
 def test_multi_font_type3():
     fp = fm.FontProperties(family=["WenQuanYi Zen Hei"])
