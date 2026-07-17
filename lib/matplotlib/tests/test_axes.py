@@ -8333,12 +8333,25 @@ def test_bar_011_unit_aware_non_finite_x_returns_one_rectangle_per_position():
 
 def test_bar_012_dependent_caller_creates_all_nan_phantom_bar_and_receives_result_without_exception():
     """GUID: BAR-012."""
-    assert True
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([np.nan], [np.nan])
+
+    assert isinstance(bars, BarContainer)
+    assert len(bars.patches) == 1
+    assert bars in ax.containers
 
 
 def test_bar_012_dependent_caller_removes_received_all_nan_phantom_bar_without_exception():
     """GUID: BAR-012."""
-    assert True
+    fig, ax = plt.subplots()
+    bars = ax.bar([np.nan], [np.nan])
+    patch, = bars.patches
+
+    bars.remove()
+
+    assert patch not in ax.patches
+    assert bars not in ax.containers
 
 
 def test_bar_013_established_invalid_inputs_including_generators_remain_rejected():
