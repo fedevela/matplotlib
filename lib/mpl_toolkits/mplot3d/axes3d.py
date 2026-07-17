@@ -1279,6 +1279,26 @@ class Axes3D(Axes):
         # Match length
         zs = np.broadcast_to(zs, np.shape(xs))
 
+        # M3D-001, M3D-005 -- transactional Line3D creation pseudocode:
+        #   BEGIN with the identities and drawable state of existing artists.
+        #   PREPARE every candidate's coordinates for 3D conversion.
+        #   IF preparation reports invalid multidimensional coordinates:
+        #       attach no candidate; propagate that dimensionality exception.
+        #   OTHERWISE create and attach candidates, and initialize each candidate's
+        #       complete 3D vertex state before considering the operation committed.
+        #   IF dimensionality failure occurs after any candidate is attached:
+        #       remove every candidate created by this call, whether unconverted or
+        #       partly converted; preserve existing artists; re-raise the original
+        #       dimensionality exception rather than an artist-state exception.
+        # M3D-002, M3D-006 -- post-failure state pseudocode:
+        #   A draw traverses only the pre-existing, still-valid artist set and cannot
+        #   encounter a candidate lacking initialized 3D vertices.
+        # M3D-003 -- recovery pseudocode:
+        #   A later valid call starts a new transaction on these same axes, commits a
+        #   complete Line3D, and draws it together with the pre-existing artists.
+        # M3D-004 -- valid-input pseudocode:
+        #   Scalar or one-dimensional coordinates follow the existing create,
+        #   convert, autoscale, and return flow with no observable behavior change.
         lines = super().plot(xs, ys, *args, **kwargs)
         for line in lines:
             art3d.line_2d_to_3d(line, zs=zs, zdir=zdir)

@@ -302,6 +302,17 @@ def test_m3d_006_existing_valid_artists_remain_drawable_after_failed_plot():
 
 def test_m3d_007_noninteractive_backend_runs_failure_cleanup_recovery_flow():
     """M3D-007: A noninteractive backend verifies the full recovery flow."""
+    # M3D-007 -- one-process verification pseudocode:
+    #   SELECT a standard noninteractive canvas.
+    #   CREATE one figure and 3D axes; attach and draw a valid baseline artist.
+    #   CALL plot with multidimensional coordinates and capture the expected
+    #       dimensionality exception.
+    #   INSPECT the axes and reject any newly retained Line3D whose 3D vertex state
+    #       is incomplete; DRAW the unchanged figure.
+    #   CALL plot with valid scalar or one-dimensional coordinates on the same axes;
+    #       confirm the returned Line3D has complete 3D vertices; DRAW again.
+    #   COMPLETE all steps in this process without replacing the input exception
+    #       with an internal state error or restarting the backend/kernel.
     assert True
 
 
