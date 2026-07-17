@@ -180,10 +180,15 @@ __bibtex__ = r"""@Article{Hunter:2007,
 # both ``__version__`` and the one new ``__version_info__`` attribute.  The new
 # attribute is a sibling branch of ``__version__`` here, not a second resolver
 # or a declaration in ``_version``.                              [MPL-001, MPL-002]
+# Import boundary: package initialization remains outside both lazy version
+# branches, so consumers that only import Matplotlib introduce no comparable-
+# version resolution dependency.                                  [MPL-008]
 # Dependency direction: ``__version_info__`` depends on the release string
 # returned by the existing ``__version__`` branch and on the already imported
 # packaging version parser; ``__version__`` must not depend on, or be reshaped
-# by, the comparable representation.                              [MPL-003, MPL-007]
+# by, the comparable representation.  Established version reporting therefore
+# terminates in the existing branch without crossing the new sibling seam.
+#                                              [MPL-003, MPL-007, MPL-008]
 # Comparable-value contract: the packaging version object owns numeric release
 # ordering and the identity and ordering of prerelease, development, final, and
 # post-release states.  This boundary must retain that object intact rather than
