@@ -323,6 +323,14 @@ class Colorbar:
             alpha = mappable.get_alpha()
 
         mappable.colorbar = self
+        # ARCHITECTURE (MPLNORM-003, MPLNORM-004, MPLNORM-005, MPLNORM-006,
+        # MPLNORM-008):
+        # the mappable's ``changed`` signal is the synchronous integration seam
+        # from completed normalization state into this already-associated
+        # Colorbar.  The bound callback retains both endpoint identities across
+        # redraws without requiring backend event processing.  Ordinary updates
+        # use this same dependency direction: Normalize -> ScalarMappable ->
+        # Colorbar.
         mappable.colorbar_cid = mappable.callbacks.connect(
             'changed', self.update_normal)
 
@@ -503,6 +511,56 @@ class Colorbar:
         changes values of *vmin*, *vmax* or *cmap* then the old formatter
         and locator will be preserved.
         """
+        # ARCHITECTURE (MPLNORM-003, MPLNORM-004, MPLNORM-005, MPLNORM-006,
+        # MPLNORM-008):
+        # Colorbar is a consumer of normalization state, not an owner of its
+        # limits.  This in-place adapter seam synchronously adopts the callback
+        # mappable's exact norm identity before redraw-dependent presentation
+        # state is refreshed; neither endpoint is replaced here.  The same seam
+        # owns both replacement and ordinary-update synchronization, keeping
+        # those workflows structurally aligned rather than adding a parallel
+        # update path.
+        # PSEUDOCODE (MPLNORM-003, MPLNORM-004):
+        # INPUT: a completed mappable change notification carrying a coherent
+        # norm identity and limit pair.
+        # COPY presentation inputs from the mappable without modifying its
+        # norm bounds.
+        # IF the norm identity changed: adopt that exact norm object and reset
+        # norm-dependent locator, formatter, and scale state.
+        # ELSE preserve the existing locator and formatter while consuming the
+        # completed limit update.
+        # DRAW only after the shared norm has valid, coherent bounds; valid
+        # positive logarithmic bounds must not enter an error path.
+        # POSTCONDITION: the mappable and colorbar reference the same norm and
+        # therefore expose identical logarithmic limits on this update and on
+        # the next figure redraw.
+        # PSEUDOCODE (MPLNORM-005):
+        # CAPTURE the identities of this already-created colorbar and the
+        # callback-supplied, already-created mappable.
+        # REQUIRE that the callback refers to the associated mappable; update
+        # this colorbar in place rather than creating either replacement artist.
+        # ADOPT the mappable's valid positive LogNorm, refresh this colorbar's
+        # norm-dependent presentation state, and mark this same colorbar stale.
+        # ON the next figure redraw, render the retained mappable and retained
+        # colorbar from their shared LogNorm; do not repeat norm replacement.
+        # IF the shared LogNorm is invalid, follow the existing normalization
+        # error path; otherwise redraw completes without a normalization error.
+        # POSTCONDITION: both artist identities match their captured identities
+        # and both retained artists reflect the same logarithmic normalization.
+        # PSEUDOCODE (MPLNORM-008):
+        # INPUT: an ordinary change notification from the associated mappable,
+        # outside the colorbar-before-LogNorm replacement workflow.
+        # RETAIN the notifying mappable and copy its alpha and colormap.
+        # IF its norm differs from the colorbar's norm: adopt that norm and
+        # reset only the presentation state that depends on norm identity.
+        # ELSE retain the shared norm identity and existing locator/formatter
+        # while consuming its updated limits or colormap.
+        # REDRAW the colorbar from the resulting mappable normalization state;
+        # IF contour lines apply, refresh them through the existing path.
+        # ON any existing validation or drawing failure: propagate that failure
+        # without inventing a divergent colorbar normalization state.
+        # POSTCONDITION: mappable.norm and colorbar.norm denote the same
+        # resulting normalization state after every successful ordinary update.
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())

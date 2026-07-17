@@ -1362,8 +1362,29 @@ class Normalize:
 
     def autoscale(self, A):
         """Set *vmin*, *vmax* to min, max of *A*."""
-        self.vmin = self.vmax = None
-        self.autoscale_None(A)
+        # ARCHITECTURE (MPLNORM-002, MPLNORM-003): Normalize is the ownership
+        # boundary for a paired-limit transaction.  autoscale_None is the
+        # subclass domain-selection hook, and callbacks is the sole outward
+        # notification port for the completed pair.
+        # PSEUDOCODE (MPLNORM-002, MPLNORM-003):
+        # INPUT: mappable data A and a norm that may have callback listeners.
+        # BEGIN one atomic limit transition that prevents listeners from
+        # observing either limit while only one side has been cleared or set.
+        # CLEAR both limits internally, then derive both replacement limits
+        # from A through the norm-specific autoscale_None domain filtering.
+        # IF A is valid positive nonzero data for a logarithmic norm: require
+        # both derived limits to be positive and ordered.
+        # IF A is outside the norm's valid domain: retain the norm's existing
+        # validation/error behavior; do not relax logarithmic validation and
+        # do not publish a partially updated limit pair.
+        # END the atomic transition, then emit one completed-change handoff so
+        # colorbar listeners receive only the coherent final pair.
+        # OUTPUT: valid autoscaled limits and no ValueError for valid positive
+        # logarithmic input.
+        with self.callbacks.blocked():
+            self.vmin = self.vmax = None
+            self.autoscale_None(A)
+        self._changed()
 
     def autoscale_None(self, A):
         """If vmin or vmax are not set, use the min/max of *A* to set them."""
@@ -1680,6 +1701,24 @@ def _make_norm_from_scale(
             *bound_init_signature.parameters.values()])
 
         def __call__(self, value, clip=None):
+            # ARCHITECTURE (MPLNORM-007): Scale-derived Normalize owns the
+            # transformed-limit validation contract.  The scale transform is
+            # an inward computation dependency; mappables and colorbars must
+            # consume the result or propagated error without revalidating or
+            # repairing limits at their synchronization boundaries.
+            # PSEUDOCODE (MPLNORM-007):
+            # INPUT: values to normalize and the norm's current limits.
+            # IF either limit is absent: derive only the absent limit from
+            # values in the scale transform's valid domain.
+            # IF the resulting lower limit exceeds the upper limit: raise the
+            # established ordering error and stop evaluation.
+            # IF the limits are equal: return the established constant result.
+            # OTHERWISE transform both limits through the scale.
+            # IF either transformed limit is non-finite (including a zero or
+            # negative LogNorm limit): raise "Invalid vmin or vmax" and stop;
+            # do not mask, repair, or accept the invalid limit.
+            # OTHERWISE transform and normalize the input values, mask invalid
+            # transformed values, and preserve scalar-versus-array output.
             value, is_scalar = self.process_value(value)
             if self.vmin is None or self.vmax is None:
                 self.autoscale_None(value)

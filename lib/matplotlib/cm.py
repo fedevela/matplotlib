@@ -592,6 +592,37 @@ class ScalarMappable:
 
     @norm.setter
     def norm(self, norm):
+        # ARCHITECTURE (MPLNORM-001, MPLNORM-003, MPLNORM-005, MPLNORM-006):
+        # ScalarMappable owns norm identity and callback rewiring at this
+        # public replacement boundary.  The existing instance is the unit of
+        # mutation; replacement must not be delegated to an artist factory.
+        # Limit mutation remains owned by Normalize; listeners receive the
+        # installed norm only through ScalarMappable.changed.
+        # PSEUDOCODE (MPLNORM-001, MPLNORM-003):
+        # INPUT: a public norm replacement and any listeners, including an
+        #        already-associated colorbar.
+        # VALIDATE/RESOLVE the candidate norm using the existing accepted
+        # types; invalid candidates follow the existing error path.
+        # IF the resolved candidate is the current norm: RETURN with no state
+        # transition and no notification.
+        # OTHERWISE preserve the candidate's explicit limits, detach the old
+        # norm callback, install the candidate, and attach its callback.
+        # AFTER the replacement is coherent, notify listeners exactly as a
+        # completed norm-identity transition; listeners must observe the valid
+        # candidate bounds, never a partially replaced normalization state.
+        # POSTCONDITION: assigning a positive, bounded LogNorm cannot fail due
+        # to a transient normalization state exposed during synchronization.
+        # PSEUDOCODE (MPLNORM-005):
+        # CAPTURE the existing mappable identity before an interactive norm
+        # replacement; perform the transition on this same mappable instance.
+        # WHEN the candidate is a valid positive LogNorm, install that exact
+        # norm and rewire its callback without constructing another mappable.
+        # NOTIFY the already-connected listeners only after installation is
+        # complete, handing off this same mappable with its new LogNorm.
+        # IF validation or resolution fails, propagate the existing norm error
+        # path without replacing either interactive artist.
+        # POSTCONDITION: the mappable identity is unchanged and its active norm
+        # is the installed LogNorm before any requested figure redraw begins.
         _api.check_isinstance((colors.Normalize, str, None), norm=norm)
         if norm is None:
             norm = colors.Normalize()
@@ -642,6 +673,9 @@ class ScalarMappable:
         """
         if self._A is None:
             raise TypeError('You must first set_array for mappable')
+        # ARCHITECTURE (MPLNORM-002, MPLNORM-006): ScalarMappable owns the
+        # data-to-norm delegation seam, while Normalize owns the synchronous
+        # limit transaction; neither boundary depends on a canvas event loop.
         # If the norm's limits are updated self.changed() will be called
         # through the callbacks attached to the norm
         self.norm.autoscale(self._A)

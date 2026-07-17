@@ -10,6 +10,8 @@ import matplotlib as mpl
 
 
 from matplotlib import rc_context
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 from matplotlib.testing.decorators import image_comparison
 import matplotlib.pyplot as plt
 from matplotlib.colors import (
@@ -613,6 +615,219 @@ def test_colorbar_renorm():
     im.set_norm(norm)
     assert np.isclose(cbar.vmin, z.min() * 1000)
     assert np.isclose(cbar.vmax, z.max() * 1000)
+
+
+def test_MPLNORM_001_public_norm_assignment_with_colorbar_does_not_raise():
+    """MPLNORM-001: Assigning a valid positive LogNorm must not raise."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm(vmin=2, vmax=16)
+
+    mappable.norm = norm
+
+    assert mappable.norm is norm
+    assert colorbar.norm is norm
+    assert (norm.vmin, norm.vmax) == (2, 16)
+
+
+def test_MPLNORM_002_autoscale_replacement_yields_positive_log_limits():
+    """MPLNORM-002: Autoscaling positive data yields valid log limits."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    fig.colorbar(mappable)
+    mappable.norm = LogNorm(vmin=2, vmax=16)
+
+    mappable.autoscale()
+
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (1, 8)
+    assert 0 < mappable.norm.vmin <= mappable.norm.vmax
+
+
+def test_MPLNORM_003_colorbar_sync_preserves_explicit_valid_positive_lognorm_bounds():
+    """MPLNORM-003: Colorbar sync cannot corrupt valid replacement bounds."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    observed = []
+    mappable.callbacks.connect(
+        'changed', lambda changed: observed.append(
+            (changed.norm, changed.norm.vmin, changed.norm.vmax)))
+    norm = LogNorm(vmin=2, vmax=16)
+    norm_observed = []
+    norm.callbacks.connect(
+        'changed', lambda: norm_observed.append((norm.vmin, norm.vmax)))
+
+    mappable.norm = norm
+
+    assert colorbar.norm is norm
+    assert (norm.vmin, norm.vmax) == (2, 16)
+    assert observed == [(norm, 2, 16)]
+    assert norm_observed == []
+
+    observed.clear()
+    mappable.autoscale()
+    assert norm_observed == [(1, 8)]
+    assert observed == [(norm, 1, 8)]
+
+
+def test_MPLNORM_004_redraw_syncs_mappable_and_colorbar_log_limits():
+    """MPLNORM-004: Redraw preserves their shared LogNorm and limits."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm(vmin=2, vmax=16)
+    mappable.norm = norm
+    mappable.autoscale()
+
+    fig.canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (1, 8)
+    assert (colorbar.vmin, colorbar.vmax) == (1, 8)
+
+
+def test_MPLNORM_005_norm_replacement_redraw_has_no_normalization_error():
+    """MPLNORM-005: Replacement and redraw must not cause a norm error."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    fig.colorbar(mappable)
+    fig.canvas.draw()
+
+    mappable.norm = LogNorm(vmin=1, vmax=8)
+    fig.canvas.draw()
+
+
+def test_MPLNORM_005_replacement_redraw_retains_existing_mappable():
+    """MPLNORM-005: Redraw must retain the originally created mappable."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    original_mappable = mappable
+    fig.canvas.draw()
+
+    mappable.norm = LogNorm(vmin=1, vmax=8)
+    fig.canvas.draw()
+
+    assert ax.images[0] is original_mappable
+    assert colorbar.mappable is original_mappable
+
+
+def test_MPLNORM_005_replacement_redraw_retains_existing_colorbar():
+    """MPLNORM-005: Redraw must retain the originally created colorbar."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    original_colorbar = colorbar
+    fig.canvas.draw()
+
+    mappable.norm = LogNorm(vmin=1, vmax=8)
+    fig.canvas.draw()
+
+    assert mappable.colorbar is original_colorbar
+    assert colorbar.ax._colorbar is original_colorbar
+
+
+def test_MPLNORM_005_replacement_redraw_updates_retained_artists_to_lognorm():
+    """MPLNORM-005: Redraw makes both retained artists reflect LogNorm."""
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+    fig.canvas.draw()
+    norm = LogNorm(vmin=1, vmax=8)
+
+    mappable.norm = norm
+    fig.canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert isinstance(mappable.norm, LogNorm)
+    assert colorbar.ax.get_yscale() == 'log'
+
+
+def test_MPLNORM_006_noninteractive_colorbar_then_public_lognorm_draw_does_not_raise(
+        monkeypatch):
+    """MPLNORM-006: The workflow completes without a GUI event loop."""
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+
+    def fail_if_event_loop_started(*args, **kwargs):
+        pytest.fail("Agg drawing must not start a GUI event loop")
+
+    monkeypatch.setattr(canvas, "start_event_loop", fail_if_event_loop_started)
+    norm = LogNorm(vmin=1, vmax=8)
+    mappable.norm = norm
+    mappable.autoscale()
+
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+
+
+def test_MPLNORM_006_noninteractive_autoscale_draw_keeps_shared_valid_log_limits():
+    """MPLNORM-006: Mappable and colorbar retain shared valid log limits."""
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    mappable = ax.imshow([[2, 3], [5, 11]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm(vmin=1, vmax=100)
+
+    mappable.norm = norm
+    mappable.autoscale()
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (2, 11)
+    assert (colorbar.norm.vmin, colorbar.norm.vmax) == (2, 11)
+    assert 0 < colorbar.norm.vmin < colorbar.norm.vmax
+
+
+@pytest.mark.parametrize("vmin", [0, -1])
+def test_MPLNORM_007_invalid_lognorm_evaluation_retains_limit_error(vmin):
+    """MPLNORM-007: Invalid LogNorm evaluation retains its error contract."""
+    norm = LogNorm(vmin=vmin, vmax=1)
+
+    with pytest.raises(ValueError, match="Invalid vmin or vmax"):
+        norm([1])
+
+
+def test_MPLNORM_008_ordinary_norm_update_retains_mappable_colorbar_sync():
+    """MPLNORM-008: Ordinary updates keep mappable and colorbar synchronized."""
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    norm = Normalize(vmin=0, vmax=3)
+    mappable = ax.imshow([[0, 1], [2, 3]], norm=norm)
+    colorbar = fig.colorbar(mappable)
+
+    mappable.set_clim(-1, 4)
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (-1, 4)
+    assert (colorbar.vmin, colorbar.vmax) == (-1, 4)
+
+
+def test_MPLNORM_009_colorbar_public_lognorm_autoscale_draw_stays_positive_synced():
+    """MPLNORM-009: Preserve the ordered LogNorm replacement contract."""
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    mappable = ax.imshow([[2, 3], [5, 11]])
+    colorbar = fig.colorbar(mappable)
+
+    norm = LogNorm(vmin=1, vmax=100)
+    mappable.norm = norm
+    mappable.autoscale()
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert 0 < norm.vmin < norm.vmax
+    assert (norm.vmin, norm.vmax) == (2, 11)
+    assert (colorbar.vmin, colorbar.vmax) == (norm.vmin, norm.vmax)
 
 
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
