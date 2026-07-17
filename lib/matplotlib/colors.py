@@ -711,6 +711,22 @@ class Colormap:
         mask_bad = X.mask if np.ma.is_masked(X) else None
         xa = np.array(X, copy=True)
 
+        # Integer-mapping and input-preservation contract:
+        # - GUID: CMAP-006: Treat X and its mask as caller-owned state.  Make
+        #   xa the private working copy; perform every dtype transition,
+        #   classification write, and lookup preparation on xa, never X.  If
+        #   evaluation fails, propagate the failure with X's shape, dtype,
+        #   mask, and element values unchanged.
+        # - GUID: CMAP-004: For each unmasked integer already in [0, N), keep
+        #   its value as the regular LUT index through classification, then
+        #   return the color at that established index.
+        # - GUID: CMAP-005: Classify each unmasked integer above N - 1 as
+        #   _i_over and each below zero as _i_under, then override every
+        #   invalid/masked position with _i_bad.  Resolve those indices through
+        #   the existing LUT so under-, over-, and bad-color mappings remain
+        #   established.  If classification or lookup cannot complete,
+        #   propagate the error without committing working state back to X.
+
         if mask_bad is None:
             mask_bad = np.isnan(xa)
         if not xa.dtype.isnative:
