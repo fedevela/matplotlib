@@ -304,6 +304,14 @@ def test_mplal_006_deserialized_unaligned_figure_axes_data_labels_remain_usable(
     restored.canvas.draw()
 
 
+def test_mplal_007_aligned_multi_subplot_pickle_round_trip_returns_usable_figure():
+    pass
+
+
+def test_mplal_008_aligned_multi_subplot_pickle_round_trip_with_other_values_succeeds():
+    pass
+
+
 class TransformBlob:
     def __init__(self):
         self.identity = mtransforms.IdentityTransform()
