@@ -3040,6 +3040,26 @@ class Figure(FigureBase):
         #       configured pre-serialization DPI; serialization failures keep
         #       the existing pickle error path unchanged.
 
+        # GUID: DPI-002, DPI-004 -- bounded repeated-round-trip contract.
+        # PSEUDOCODE:
+        #   INPUT a MacOSX-backed figure on Apple M1, its initial logical DPI
+        #       D, and a required round-trip count N where N >= 32.
+        #   SET current figure to the input figure and completed cycles to 0.
+        #   WHILE completed cycles < N:
+        #       SERIALIZE current figure through this logical-DPI boundary.
+        #       DESERIALIZE that state as the next current figure.
+        #       IF serialization or deserialization raises OverflowError:
+        #           FAIL DPI-004 and terminate the repeated sequence.
+        #       IF the next current figure's logical DPI differs from D:
+        #           FAIL DPI-002 and terminate the repeated sequence.
+        #       INCREMENT completed cycles exactly once.
+        #   OUTPUT after N consecutive cycles: every restored figure reports
+        #       D, completed cycles is at least 32, and no OverflowError has
+        #       escaped or interrupted the sequence.
+        #   HAND OFF each restored figure as the sole input to the following
+        #       cycle so stability is cumulative rather than independently
+        #       sampled from the original figure.
+
         # ARCHITECTURE (GUID: DPI-001, DPI-003, DPI-010): Figure.__getstate__
         # owns the logical-DPI serialization boundary.  In the state handed to
         # pickle, ``_dpi`` is the logical-DPI contract; ``_original_dpi`` is
