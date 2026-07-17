@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 from packaging.version import Version, parse as parse_version
 
 import matplotlib as mpl
@@ -81,9 +84,17 @@ def test_mpl_007_version_read_retains_meaning_and_value_format():
 
 def test_mpl_008_existing_import_without_new_value_still_succeeds():
     """MPL-008: an existing import remains successful without the new value."""
-    assert True
+    subprocess.run(
+        [sys.executable, "-c", "import matplotlib as mpl; "
+         "assert '__version_info__' not in vars(mpl)"],
+        check=True)
 
 
 def test_mpl_008_version_reporting_without_new_value_still_succeeds():
     """MPL-008: established version reporting remains successful unchanged."""
-    assert True
+    subprocess.run(
+        [sys.executable, "-c", "import matplotlib as mpl; "
+         "assert isinstance(mpl.__version__, str); "
+         "assert mpl.__version__; "
+         "assert '__version_info__' not in vars(mpl)"],
+        check=True)
