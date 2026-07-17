@@ -951,6 +951,7 @@ def close(fig=None):
             num = get_fignums()[all_labels.index(fig)]
             _pylab_helpers.Gcf.destroy(num)
     elif isinstance(fig, Figure):
+        # BACKEND-006: Delegate identity lookup and unregistration to Gcf.
         _pylab_helpers.Gcf.destroy_fig(fig)
     else:
         raise TypeError("close() argument must be a Figure, an int, a string, "
