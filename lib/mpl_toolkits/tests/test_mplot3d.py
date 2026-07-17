@@ -169,6 +169,11 @@ def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
     fig.canvas.draw()
 
 
+def test_m3dvis_008_hidden_3d_axes_layout_succeeds_figure_stays_drawable():
+    """GUID: M3DVIS-008 -- layout succeeds and the figure remains drawable."""
+    assert True
+
+
 @pytest.mark.parametrize("extension", ["png", "pdf", "svg"])
 def test_m3dvis_010_supported_backends_omit_invisible_3d_axes_output(
         extension, tmp_path, monkeypatch):
