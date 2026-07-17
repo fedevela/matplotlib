@@ -498,7 +498,11 @@ class Axes3D(Axes):
             for axis in self._axis_map.values():
                 axis.draw(renderer)
 
-        # Then rest
+        # Visible-path integration boundary (M3DVIS-004): Axes3D owns the 3D
+        # projection, pane, and axis prelude above; _AxesBase continues to own
+        # the established draw pipeline for the remaining plotted content and
+        # decorations.  Keep this delegation as the terminal handoff so the
+        # visibility gate does not fork or replace normal rendering behavior.
         super().draw(renderer)
 
     def get_axis_position(self):
