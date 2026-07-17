@@ -3017,6 +3017,15 @@ class _AxesBase(martist.Artist):
     @martist.allow_rasterization
     def draw(self, renderer):
         # docstring inherited
+        # Architecture boundary (M3DVIS-009): _AxesBase owns the established
+        # draw-time visibility contract for ordinary, non-3D Axes.  Figure
+        # composition remains a caller of the polymorphic Artist.draw seam,
+        # while visibility state remains owned by the inherited Artist
+        # contract and retained plotted content remains owned by this Axes.
+        # Keep dependencies directed from figure traversal into this generic
+        # boundary: no non-3D preservation branch belongs in Figure or in the
+        # Axes3D override, whose projection-specific prelude is a separate
+        # specialization of the same seam.
         # M3DVIS-009 non-3D visibility-preservation logic:
         # - Input this non-3D Axes, its retained plotted children, and the
         #   renderer selected by the figure's existing draw traversal.
