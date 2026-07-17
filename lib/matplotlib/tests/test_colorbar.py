@@ -813,6 +813,13 @@ def test_MPLNORM_008_ordinary_norm_update_retains_mappable_colorbar_sync():
 
 def test_MPLNORM_009_colorbar_public_lognorm_autoscale_draw_stays_positive_synced():
     """MPLNORM-009: Preserve the ordered LogNorm replacement contract."""
+    # MPLNORM-009 architecture:
+    # Ownership remains in the colorbar regression suite because the contract
+    # crosses the mappable-to-existing-colorbar synchronization boundary.
+    # Keep the fixture local: Figure/FigureCanvasAgg owns the draw seam, while
+    # the image mappable's public norm property owns replacement and autoscaling.
+    # Observe synchronization through public objects after drawing; the test
+    # must not depend on Colorbar or ScalarMappable implementation internals.
     # MPLNORM-009 pseudocode:
     # GIVEN a figure, axes, and mappable whose data values are all positive
     # AND an associated colorbar created from that mappable before norm replacement
