@@ -532,7 +532,25 @@ class Colorbar:
         #   DO NOT invoke a colormap setter or assign a colormap on the mappable
         #   OUTPUT supplied_mappable colormap is unchanged
         #
-        #   CONTINUE with colorbar scale reset (when required) and redraw
+        # CBNORM-009 (preserve valid update behavior and result):
+        #   INPUT supplied_mappable valid for the established update workflow
+        #   SYNCHRONIZE the association, alpha, and colormap from that mappable
+        #   IF supplied_mappable's norm is not the current colorbar norm
+        #       TRANSITION the colorbar to the supplied norm
+        #       IF the mappable has plotted data
+        #           DERIVE only normalization limits that remain unset
+        #       END IF
+        #       RESET the locator, formatter, and scale for the new norm
+        #   ELSE
+        #       PRESERVE the established locator, formatter, and scale
+        #   END IF
+        #   REDRAW the colorbar using the synchronized state
+        #   IF the mappable is an unfilled contour set
+        #       RESTORE its colorbar lines
+        #   END IF
+        #   TRANSITION the colorbar to stale and RETURN normally
+        #   OUTPUT the same observable colorbar result as the valid workflow
+        #
         #   ON downstream failure, propagate the failure without compensating
         #       through plotted-data or mappable-colormap mutation; retain the
         #       supplied mappable as the selected association
