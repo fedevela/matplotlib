@@ -302,7 +302,15 @@ def test_mpldrag_008_enabled_draggable_legend_complete_figure_pickle_succeeds():
     #     FAIL this regression case as a retained-live-canvas defect
     # ELSE:
     #     OUTPUT the serialized complete-figure payload as success evidence
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    draggable = ax.legend().set_draggable(True)
+    fig.canvas._mpldrag_unpicklable = lambda: None
+
+    payload = pickle.dumps(fig)
+
+    assert payload
+    assert "canvas" not in draggable.__dict__
 
 
 def test_mpldrag_008_draggable_annotation_complete_figure_pickle_succeeds():
@@ -317,7 +325,15 @@ def test_mpldrag_008_draggable_annotation_complete_figure_pickle_succeeds():
     #     FAIL this regression case as a retained-live-canvas defect
     # ELSE:
     #     OUTPUT the serialized complete-figure payload as success evidence
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("label", (.5, .5))
+    draggable = annotation.draggable(True)
+    fig.canvas._mpldrag_unpicklable = lambda: None
+
+    payload = pickle.dumps(fig)
+
+    assert payload
+    assert "canvas" not in draggable.__dict__
 
 
 def test_mpldrag_008_legend_live_canvas_pickle_failure_is_detected():
@@ -333,7 +349,14 @@ def test_mpldrag_008_legend_live_canvas_pickle_failure_is_detected():
     #     OUTPUT detection success
     # ELSE:
     #     FAIL because the regression case did not expose the legend defect
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    draggable = ax.legend().set_draggable(True)
+    fig.canvas._mpldrag_unpicklable = lambda: None
+    draggable.__dict__["canvas"] = fig.canvas
+
+    with pytest.raises(AttributeError):
+        pickle.dumps(fig)
 
 
 def test_mpldrag_008_annotation_live_canvas_pickle_failure_is_detected():
@@ -349,7 +372,14 @@ def test_mpldrag_008_annotation_live_canvas_pickle_failure_is_detected():
     #     OUTPUT detection success
     # ELSE:
     #     FAIL because the regression case did not expose the annotation defect
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("label", (.5, .5))
+    draggable = annotation.draggable(True)
+    fig.canvas._mpldrag_unpicklable = lambda: None
+    draggable.__dict__["canvas"] = fig.canvas
+
+    with pytest.raises(AttributeError):
+        pickle.dumps(fig)
 
 
 def test_mpldrag_009_restored_draggable_remains_usable_after_canvas_attachment():
