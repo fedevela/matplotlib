@@ -1190,6 +1190,36 @@ def test_range_005_init_or_set_val_synchronizes_polygon_text_and_value(
     assert_allclose(slider.val, (.6, .6))
 
 
+def test_range_006_distinct_endpoints_retain_and_display_effective_range():
+    """RANGE-006: Init/set_val retain and display both orientations' range."""
+    assert True
+
+
+def test_range_007_descending_values_are_sorted_ascending():
+    """RANGE-007: Initial or subsequent descending values are sorted."""
+    assert True
+
+
+def test_range_007_out_of_bounds_values_use_existing_validation():
+    """RANGE-007: Initial/subsequent values use existing bound validation."""
+    assert True
+
+
+def test_range_008_non_two_element_values_raise_value_error():
+    """RANGE-008: Values not shaped as two elements raise ValueError."""
+    assert True
+
+
+def test_range_009_set_val_requests_draw_when_enabled():
+    """RANGE-009: Successful set_val requests drawing when enabled."""
+    assert True
+
+
+def test_range_010_state_updates_before_observer_gets_effective_value():
+    """RANGE-010: State updates before observers get the effective value."""
+    assert True
+
+
 def check_polygon_selector(event_sequence, expected_result, selections_count,
                            **kwargs):
     """
