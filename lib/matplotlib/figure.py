@@ -3040,6 +3040,14 @@ class Figure(FigureBase):
         #       configured pre-serialization DPI; serialization failures keep
         #       the existing pickle error path unchanged.
 
+        # ARCHITECTURE (GUID: DPI-001, DPI-003, DPI-010): Figure.__getstate__
+        # owns the logical-DPI serialization boundary.  In the state handed to
+        # pickle, ``_dpi`` is the logical-DPI contract; ``_original_dpi`` is
+        # the canvas-owned source when device scaling has changed live figure
+        # DPI.  Backends remain downstream consumers of that state and may
+        # derive physical DPI after restoration, but serialization must not
+        # depend on a backend type or a particular valid logical-DPI value.
+
         # add version information to the state
         state['__mpl_version__'] = mpl.__version__
 
