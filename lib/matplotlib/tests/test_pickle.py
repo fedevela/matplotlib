@@ -305,10 +305,25 @@ def test_mplal_006_deserialized_unaligned_figure_axes_data_labels_remain_usable(
 
 
 def test_mplal_007_aligned_multi_subplot_pickle_round_trip_returns_usable_figure():
+    # MPLAL-007 logic obligation:
+    # GIVEN a Figure containing multiple labeled subplots,
+    # WHEN align_labels() establishes the shared-label groups,
+    # THEN serialize the Figure with pickle.dumps() and deserialize that payload
+    # with pickle.loads(); allow either operation's exception to fail the test.
+    # VERIFY the restored object is a Figure with the expected subplot count,
+    # and draw its canvas to prove that the returned Figure remains usable.
     pass
 
 
 def test_mplal_008_aligned_multi_subplot_pickle_round_trip_with_other_values_succeeds():
+    # MPLAL-008 logic obligation:
+    # GIVEN deterministic x and y values distinct from the reported reproduction,
+    # create multiple labeled subplots and plot those alternate values on each.
+    # WHEN align_labels() is called, pickle.dumps() serializes the Figure, and
+    # pickle.loads() restores it, allow any round-trip exception to fail the test.
+    # VERIFY the restored Figure is usable and retains the expected axes and
+    # alternate plotted values, demonstrating success is independent of the
+    # reproduction's particular numeric values.
     pass
 
 
