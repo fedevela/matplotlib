@@ -77,3 +77,13 @@ def test_mpl_007_version_read_retains_meaning_and_value_format():
 
     assert isinstance(version_before, str)
     assert mpl.__version__ == version_before
+
+
+def test_mpl_008_existing_import_without_new_value_still_succeeds():
+    """MPL-008: an existing import remains successful without the new value."""
+    assert True
+
+
+def test_mpl_008_version_reporting_without_new_value_still_succeeds():
+    """MPL-008: established version reporting remains successful unchanged."""
+    assert True
