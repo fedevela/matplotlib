@@ -8283,27 +8283,60 @@ def test_bar_008_finite_x_non_finite_height_returns_rectangle_without_exception(
 
 def test_bar_009_finite_numeric_x_and_supported_widths_preserve_geometry():
     """GUID: BAR-009."""
-    pass
+    fig, ax = plt.subplots()
+    x = [1, 4]
+    height = [2, 3]
+    width = [.5, 1]
+    bottom = [-1, 2]
+
+    bars = ax.bar(x, height, width=width, bottom=bottom)
+
+    np.testing.assert_allclose(
+        [(bar.get_x(), bar.get_y(), bar.get_width(), bar.get_height())
+         for bar in bars],
+        [[.75, -1, .5, 2], [3.5, 2, 1, 3]])
 
 
 def test_bar_009_finite_numeric_x_and_supported_widths_preserve_container():
     """GUID: BAR-009."""
-    pass
+    fig, ax = plt.subplots()
+
+    bars = ax.bar([1, 2], [3, 4], label="bars")
+
+    assert isinstance(bars, BarContainer)
+    assert list(bars) == bars.patches
+    np.testing.assert_array_equal(bars.datavalues, [3, 4])
+    assert bars.orientation == "vertical"
+    assert bars.get_label() == "bars"
 
 
 def test_bar_010_unit_aware_x_and_width_conversion_does_not_expose_stop_iteration():
     """GUID: BAR-010."""
-    pass
+    fig, ax = plt.subplots()
+    x = np.array(["NaT", "NaT"], dtype="datetime64[D]")
+    width = np.array([1, 2], dtype="timedelta64[D]")
+
+    bars = ax.bar(x, [1, 2], width=width)
+
+    assert len(bars) == len(x)
 
 
 def test_bar_011_unit_aware_non_finite_x_returns_one_rectangle_per_position():
     """GUID: BAR-011."""
-    pass
+    fig, ax = plt.subplots()
+    x = np.array(["NaT", "2022-08-01", "NaT"], dtype="datetime64[D]")
+
+    bars = ax.bar(x, [1, 2, 3], width=np.timedelta64(1, "D"))
+
+    assert len(bars.patches) == len(x)
 
 
 def test_bar_013_established_invalid_inputs_including_generators_remain_rejected():
     """GUID: BAR-013."""
-    pass
+    fig, ax = plt.subplots()
+
+    with pytest.raises(RuntimeError, match="does not support generators"):
+        ax.bar((value for value in [1, 2]), [3, 4])
 
 
 def test_bar_014_all_non_finite_x_positions_return_bar_container():

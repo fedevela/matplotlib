@@ -2210,9 +2210,9 @@ class Axes(_AxesBase):
             except (TypeError, IndexError, KeyError):
                 pass
             except StopIteration:
-                # GUID: BAR-001, BAR-003, BAR-004 -- No finite element is
-                # available, so use the first element unconditionally for the
-                # conversion attempt.
+                # GUID: BAR-001, BAR-003, BAR-004, BAR-010, BAR-011 -- No
+                # finite element is available, so use the first element
+                # unconditionally for the conversion attempt.
                 x0 = cbook.safe_first_element(x0)
 
             try:
@@ -2220,9 +2220,9 @@ class Axes(_AxesBase):
             except (TypeError, IndexError, KeyError):
                 x = xconv
             except StopIteration:
-                # GUID: BAR-001, BAR-003, BAR-004 -- Preserve normal width
-                # conversion and bar construction for wholly non-finite
-                # position arrays.
+                # GUID: BAR-001, BAR-003, BAR-004, BAR-010, BAR-011 --
+                # Preserve normal width conversion and bar construction for
+                # wholly non-finite position arrays.
                 x = cbook.safe_first_element(xconv)
 
             delist = False
