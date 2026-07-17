@@ -391,6 +391,11 @@ class FigureCanvasAgg(FigureCanvasBase):
 
     def draw(self):
         # docstring inherited
+        # ARCHITECTURE (MPLNORM-006): FigureCanvasAgg.draw is the terminal
+        # noninteractive integration seam.  It consumes the already-coherent
+        # ScalarMappable/Colorbar normalization state synchronously; ownership
+        # of norm identity and limits remains in the backend-independent core,
+        # and no dependency points from that core toward a GUI event loop.
         # PSEUDOCODE (MPLNORM-006):
         # INPUT: a figure on this noninteractive canvas whose positive-data
         # mappable already has an associated colorbar.
