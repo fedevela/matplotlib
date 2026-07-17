@@ -584,11 +584,24 @@ class TestConstrainedLayoutFalseContracts:
 
     def test_clf_004_constrained_layout_false_tight_bbox_emits_no_warning(self):
         """GUID: CLF-004; tight-bbox save emits no incompatibility warning."""
-        assert True
+        with mpl.rc_context({"figure.constrained_layout.use": True}):
+            fig = Figure(constrained_layout=False)
+            fig.subplots()
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", UserWarning)
+                fig.savefig(io.BytesIO(), format="png", bbox_inches="tight")
 
     def test_clf_004_constrained_layout_false_tight_bbox_save_completes(self):
         """GUID: CLF-004; tight-bbox save completes without refusal."""
-        assert True
+        with mpl.rc_context({"figure.constrained_layout.use": True}):
+            fig = Figure(constrained_layout=False)
+            fig.subplots()
+            output = io.BytesIO()
+
+            fig.savefig(output, format="png", bbox_inches="tight")
+
+        assert output.getbuffer().nbytes > 0
 
 
 def test_invalid_layouts():
