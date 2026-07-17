@@ -497,6 +497,9 @@ class Colorbar:
     #   read-only dependency on that data while deriving normalization state.
     # - CBNORM-008: the mappable owns its colormap; Colorbar may mirror the
     #   reference for rendering but must not write through to that owner.
+    # - CBNORM-009: Colorbar owns the established valid-update orchestration;
+    #   normalization reset, redraw, contour-line restoration, and stale-state
+    #   transitions remain internal dependencies of this compatibility seam.
     def update_normal(self, mappable):
         """
         Update solid patches, lines, etc.
