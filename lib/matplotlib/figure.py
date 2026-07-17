@@ -3056,6 +3056,15 @@ class Figure(FigureBase):
         #       retains the same observable serialization behavior as before
         #       the logical-DPI correction.
 
+        # ARCHITECTURE (GUID: DPI-008): Figure.__getstate__ remains the sole
+        # owner of the backend-neutral figure serialization contract.  The
+        # existing state dictionary is the integration seam into pickle;
+        # logical-DPI normalization may replace only its existing ``_dpi``
+        # value and must not introduce platform/backend dependencies or a
+        # second state shape.  Version and pyplot-restoration metadata retain
+        # their existing ownership here.  The GUID-tagged locus in
+        # tests/test_pickle.py owns unaffected-backend verification.
+
         # GUID: DPI-002, DPI-004 -- bounded repeated-round-trip contract.
         # PSEUDOCODE:
         #   INPUT a MacOSX-backed figure on Apple M1, its initial logical DPI
@@ -3123,6 +3132,16 @@ class Figure(FigureBase):
         #       path, then mark the restored figure stale.
         #   OUTPUT a deserialized figure without rewriting or migrating the
         #       source pickle to a new serialization format.
+
+        # ARCHITECTURE (GUID: DPI-009): Figure.__setstate__ remains the
+        # compatibility boundary for supported figure pickles.  Its input
+        # contract is the existing state dictionary, including the established
+        # version marker and optional pyplot-restoration marker; no schema
+        # adapter, migration layer, or newly required key belongs between
+        # pickle and this method.  Restored state flows downstream to
+        # FigureCanvasBase and, when requested, the existing manager factory.
+        # The GUID-tagged locus in tests/test_pickle.py owns legacy-pickle
+        # deserialization verification.
 
         # GUID: DPI-005 -- restored MacOSX-backend usability obligation.
         # PSEUDOCODE:
