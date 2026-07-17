@@ -5756,37 +5756,74 @@ def test_set_ticks_with_labels(fig_test, fig_ref):
 
 def test_TICKS_001_set_xticks_without_labels_rejects_invalid_text_property():
     """TICKS-001: set_xticks rejects invalid Text kwargs without labels."""
-    assert True
+    fig, ax = plt.subplots()
+    with pytest.raises(AttributeError, match="unexpected keyword argument"):
+        ax.set_xticks([1, 2], not_a_text_property=True)
 
 
 def test_TICKS_001_set_xticks_without_labels_rejects_xticklabels_kwarg():
     """TICKS-001: set_xticks rejects xticklabels without labels."""
-    assert True
+    fig, ax = plt.subplots()
+    with pytest.raises(AttributeError, match="unexpected keyword argument"):
+        ax.set_xticks([1, 2], xticklabels=["a", "b"])
 
 
 def test_TICKS_001_set_yticks_without_labels_rejects_invalid_text_property():
     """TICKS-001: set_yticks rejects invalid Text kwargs without labels."""
-    assert True
+    fig, ax = plt.subplots()
+    with pytest.raises(AttributeError, match="unexpected keyword argument"):
+        ax.set_yticks([1, 2], not_a_text_property=True)
 
 
 def test_TICKS_001_axis_set_ticks_no_labels_rejects_invalid_text_property():
     """TICKS-001: Axis.set_ticks rejects invalid Text kwargs without labels."""
-    assert True
+    fig, ax = plt.subplots()
+    with pytest.raises(AttributeError, match="unexpected keyword argument"):
+        ax.xaxis.set_ticks([1, 2], not_a_text_property=True)
 
 
-def test_TICKS_001_tick_setters_with_labels_reject_invalid_text_property():
+@pytest.mark.parametrize("axis_name", ["x", "y"])
+def test_TICKS_001_tick_setters_with_labels_reject_invalid_text_property(
+        axis_name):
     """TICKS-001: tick setters reject invalid Text kwargs with labels."""
-    assert True
+    fig, ax = plt.subplots()
+    ticks = getattr(ax, f"{axis_name}axis")
+    setters = [getattr(ax, f"set_{axis_name}ticks"), ticks.set_ticks]
+    for setter in setters:
+        with pytest.raises(AttributeError, match="unexpected keyword argument"):
+            setter([1, 2], ["a", "b"], not_a_text_property=True)
 
 
-def test_TICKS_002_tick_setters_without_labels_accept_valid_text_properties():
+@pytest.mark.parametrize("axis_name", ["x", "y"])
+def test_TICKS_002_tick_setters_without_labels_accept_valid_text_properties(
+        axis_name):
     """TICKS-002: tick setters accept valid Text kwargs without labels."""
-    assert True
+    fig, ax = plt.subplots()
+    ticks = getattr(ax, f"{axis_name}axis")
+    getattr(ax, f"set_{axis_name}ticks")(
+        [1, 2], color="red", rotation=45)
+    ticks.set_ticks([1, 2], color="red", rotation=45)
 
 
-def test_TICKS_003_valid_text_kwargs_no_labels_leave_tick_labels_unchanged():
+@pytest.mark.parametrize("axis_name,use_axes_api",
+                         [("x", True), ("y", True),
+                          ("x", False), ("y", False)])
+def test_TICKS_003_valid_text_kwargs_no_labels_leave_tick_labels_unchanged(
+        axis_name, use_axes_api):
     """TICKS-003: valid Text kwargs without labels do not alter tick labels."""
-    assert True
+    fig, ax = plt.subplots()
+    axes_set_ticks = getattr(ax, f"set_{axis_name}ticks")
+    axis = getattr(ax, f"{axis_name}axis")
+    axes_set_ticks([1, 2], ["a", "b"], color="blue", rotation=10)
+
+    labels = axis.get_ticklabels()
+    original_properties = [(label.get_color(), label.get_rotation())
+                           for label in labels]
+    setter = axes_set_ticks if use_axes_api else axis.set_ticks
+    setter([1, 2], color="red", rotation=45)
+
+    assert [(label.get_color(), label.get_rotation())
+            for label in axis.get_ticklabels()] == original_properties
 
 
 def test_set_noniterable_ticklabels():
