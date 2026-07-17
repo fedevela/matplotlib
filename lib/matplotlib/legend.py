@@ -264,6 +264,9 @@ alignment : {'center', 'left', 'right'}, default: 'center'
     The alignment of the legend title and the box of entries. The entries
     are aligned as a single block, so that markers always lined up.
 
+draggable : bool, default: False
+    Whether the legend can be dragged with the mouse.
+
 borderpad : float, default: :rc:`legend.borderpad`
     The fractional whitespace inside the legend border, in font-size units.
 
@@ -349,7 +352,7 @@ class Legend(Artist):
         # owns the keyword-only creation contract.  Axes.legend and
         # Figure.legend already forward their keyword arguments to this
         # boundary, so the default and creation-time option belong here.
-        # PSEUDOCODE [LEGEND-001]: draggable=False,
+        draggable=False,
         ncol=1  # synonym for ncols (backward compatibility)
     ):
         """
@@ -564,6 +567,7 @@ class Legend(Artist):
         # 5. PROPAGATE any failure from the existing handoff; do not introduce
         #    a second interaction path or a partially initialized helper.
         self._draggable = None
+        self.set_draggable(draggable)
 
         # set the text color
 

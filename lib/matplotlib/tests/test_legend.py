@@ -785,22 +785,35 @@ def test_get_set_draggable():
 
 def test_legend_001_initialization_without_draggable_defaults_to_false():
     """GUID: LEGEND-001 -- default creation state is non-draggable."""
-    assert True
+    legend = plt.legend()
+    assert not legend.get_draggable()
 
 
 def test_legend_002_initialization_with_draggable_true_is_immediately_draggable():
     """GUID: LEGEND-002 -- enabled creation state needs no follow-up call."""
-    assert True
+    legend = plt.legend(draggable=True)
+    assert legend.get_draggable()
 
 
 def test_legend_003_initialization_with_draggable_false_is_non_draggable():
     """GUID: LEGEND-003 -- disabled creation state remains non-draggable."""
-    assert True
+    legend = plt.legend(draggable=False)
+    assert not legend.get_draggable()
 
 
 def test_legend_004_draggable_true_uses_existing_drag_interaction_behavior():
     """GUID: LEGEND-004 -- enabled creation reuses the existing interaction."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([], label="label")
+    legend = ax.legend(draggable=True)
+    draggable = legend._draggable
+    assert isinstance(draggable, mlegend.DraggableLegend)
+
+    fig.canvas.draw()
+    draggable.save_offset()
+    draggable.update_offset(10, 10)
+    draggable.finalize_offset()
+    assert isinstance(legend._loc, tuple)
 
 
 def test_alpha_handles():
