@@ -893,6 +893,27 @@ class RangeSlider(SliderBase):
         ----------
         val : tuple or array-like of float
         """
+        # RANGE-001, RANGE-002, RANGE-004 -- logic obligation and pseudocode:
+        # - Accept the construction-delegated or directly supplied endpoint pair.
+        # - Order and validate exactly two endpoints before mutating visible state;
+        #   on validation failure, propagate the existing error without a partial
+        #   polygon, text, or value transition.
+        # - Derive both effective endpoints with the existing bound and step rules.
+        # - If the effective endpoints are equal and in bounds, preserve both
+        #   copies so horizontal init, vertical init, and later set_val calls all
+        #   complete with the requested zero-width range.
+        # RANGE-003 -- polygon transition pseudocode:
+        # - Read the selection polygon's four coordinate slots (indices 0..3).
+        # - For vertical orientation, map the lower endpoint to the two lower
+        #   corners and the upper endpoint to the two upper corners; otherwise,
+        #   map them to the corresponding left and right corners.
+        # - Write only those four slots; leave polygon closure to the polygon
+        #   representation and never address a fifth coordinate.
+        # RANGE-005 -- synchronized state and handoff pseudocode:
+        # - From the same effective endpoint pair, update the polygon, format and
+        #   update the displayed text, and commit self.val.
+        # - Once all three representations agree, request a redraw when enabled,
+        #   then notify observers when enabled with that effective pair.
         val = np.sort(val)
         _api.check_shape((2,), val=val)
         val[0] = self._min_in_bounds(val[0])
