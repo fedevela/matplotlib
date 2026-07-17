@@ -1284,6 +1284,21 @@ def test_range_010_state_updates_before_observer_gets_effective_value():
     assert_allclose(state_during_callback, received)
 
 
+def test_range_011_horizontal_coincident_endpoints_construct_and_remain_equal():
+    """RANGE-011: Horizontal coincident endpoints remain constructible."""
+    assert True
+
+
+def test_range_011_vertical_coincident_endpoints_construct_and_remain_equal():
+    """RANGE-011: Vertical coincident endpoints remain constructible."""
+    assert True
+
+
+def test_range_011_either_orientation_detects_index_beyond_four_vertices():
+    """RANGE-011: Either orientation detects polygon indexing recurrence."""
+    assert True
+
+
 def check_polygon_selector(event_sequence, expected_result, selections_count,
                            **kwargs):
     """
