@@ -1309,6 +1309,19 @@ default: %(va)s
             The height of the padding between subplots,
             as a fraction of the average Axes height.
         """
+        # GUID: CLF-002, CLF-003 -- manual adjustment decision and effects.
+        # PSEUDOCODE:
+        #   inspect the figure's effective layout engine;
+        #   IF an active engine is incompatible with manual adjustment:
+        #       emit the constrained-layout incompatibility warning;
+        #       stop without changing subplot geometry;
+        #   ELSE:
+        #       emit no constrained-layout incompatibility warning;
+        #       merge every supplied adjustment, including wspace = 0, into
+        #       the subplot parameters without treating zero as absent;
+        #       FOR EACH axes associated with a subplot specification:
+        #           recompute and apply its position from the updated parameters;
+        #       mark the figure stale so the requested geometry is rendered.
         if (self.get_layout_engine() is not None and
                 not self.get_layout_engine().adjust_compatible):
             _api.warn_external(
@@ -2426,6 +2439,16 @@ class Figure(FigureBase):
             if isinstance(tight_layout, dict):
                 self.get_layout_engine().set(**tight_layout)
         elif constrained_layout is not None:
+            # GUID: CLF-001 -- explicit constrained-layout state selection.
+            # PSEUDOCODE:
+            #   IF constrained_layout is false:
+            #       retain an effectively disabled constrained-layout state;
+            #       do not install a constrained-layout engine, including when
+            #       later layout operations inspect the effective state.
+            #   ELSE:
+            #       install the constrained-layout engine;
+            #       IF options were supplied as a mapping:
+            #           apply those options to the installed engine.
             self.set_layout_engine(layout='constrained')
             if isinstance(constrained_layout, dict):
                 self.get_layout_engine().set(**constrained_layout)
