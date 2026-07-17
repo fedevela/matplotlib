@@ -1701,6 +1701,19 @@ def _make_norm_from_scale(
             *bound_init_signature.parameters.values()])
 
         def __call__(self, value, clip=None):
+            # PSEUDOCODE (MPLNORM-007):
+            # INPUT: values to normalize and the norm's current limits.
+            # IF either limit is absent: derive only the absent limit from
+            # values in the scale transform's valid domain.
+            # IF the resulting lower limit exceeds the upper limit: raise the
+            # established ordering error and stop evaluation.
+            # IF the limits are equal: return the established constant result.
+            # OTHERWISE transform both limits through the scale.
+            # IF either transformed limit is non-finite (including a zero or
+            # negative LogNorm limit): raise "Invalid vmin or vmax" and stop;
+            # do not mask, repair, or accept the invalid limit.
+            # OTHERWISE transform and normalize the input values, mask invalid
+            # transformed values, and preserve scalar-versus-array output.
             value, is_scalar = self.process_value(value)
             if self.vmin is None or self.vmax is None:
                 self.autoscale_None(value)

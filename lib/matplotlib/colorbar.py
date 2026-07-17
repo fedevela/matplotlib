@@ -540,6 +540,20 @@ class Colorbar:
         # error path; otherwise redraw completes without a normalization error.
         # POSTCONDITION: both artist identities match their captured identities
         # and both retained artists reflect the same logarithmic normalization.
+        # PSEUDOCODE (MPLNORM-008):
+        # INPUT: an ordinary change notification from the associated mappable,
+        # outside the colorbar-before-LogNorm replacement workflow.
+        # RETAIN the notifying mappable and copy its alpha and colormap.
+        # IF its norm differs from the colorbar's norm: adopt that norm and
+        # reset only the presentation state that depends on norm identity.
+        # ELSE retain the shared norm identity and existing locator/formatter
+        # while consuming its updated limits or colormap.
+        # REDRAW the colorbar from the resulting mappable normalization state;
+        # IF contour lines apply, refresh them through the existing path.
+        # ON any existing validation or drawing failure: propagate that failure
+        # without inventing a divergent colorbar normalization state.
+        # POSTCONDITION: mappable.norm and colorbar.norm denote the same
+        # resulting normalization state after every successful ordinary update.
         _log.debug('colorbar update normal %r %r', mappable.norm, self.norm)
         self.mappable = mappable
         self.set_alpha(mappable.get_alpha())
