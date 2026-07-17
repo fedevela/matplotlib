@@ -569,21 +569,74 @@ def test_p3dfc_003_predraw_accessors_return_established_color_array_form():
 
 def test_p3dfc_004_predraw_retrieval_preserves_projection_sorting_and_rendering():
     """GUID: P3DFC-004 -- pre-draw retrieval preserves later rendering."""
+    # Logic obligation (P3DFC-004): pre-draw face-color retrieval is an
+    # observational operation and must not perturb the later 3D lifecycle.
+    #
+    # Pseudocode:
+    #   ARRANGE a fresh surface with distinct face colors and depths, plus an
+    #       otherwise identical reference surface that receives no pre-draw
+    #       face-color access
+    #   REQUIRE neither surface has been explicitly projected or drawn
+    #   CALL the public face-color accessor on only the subject surface
+    #   IF retrieval raises or does not yield valid RGBA color data: FAIL
+    #   PROJECT both surfaces through the established 3D projection path
+    #   IF subject projection or depth sorting raises, or its observable
+    #       result differs from the untouched reference: FAIL
+    #   DRAW both surfaces through the established rendering path
+    #   IF drawing raises or the rendered subject differs from the reference:
+    #       FAIL
+    #   OTHERWISE PASS without requiring pre- and post-sort arrays to retain
+    #       identical element order
     assert True
 
 
 def test_p3dfc_004_predraw_facecolor_retrieval_allows_valid_postprojection_access():
     """GUID: P3DFC-004 -- post-projection color access remains valid."""
+    # Logic obligation (P3DFC-004): access before projection must not leave the
+    # collection in a state that makes later public color access uninitialized.
+    #
+    # Pseudocode:
+    #   ARRANGE a fresh surface and REQUIRE no explicit draw or projection yet
+    #   CALL a public face-color accessor and validate the returned RGBA data
+    #   TRANSITION the collection through projection, depth sorting, and draw
+    #   CALL the public face-color accessor again after that transition
+    #   IF either lifecycle transition or post-projection access raises an
+    #       initialization error: FAIL
+    #   IF the post-projection value is not valid RGBA color data: FAIL
+    #   OTHERWISE PASS; permit projection to reorder the returned colors
     assert True
 
 
 def test_p3dfc_005_get_facecolors_predraw_preprojection_returns_valid_data():
     """GUID: P3DFC-005 -- independently cover plural pre-draw access."""
+    # Logic obligation (P3DFC-005): independently exercise get_facecolors()
+    # while the surface remains in its pre-projection state.
+    #
+    # Pseudocode:
+    #   ARRANGE a fresh surface with known face-color input
+    #   REQUIRE no explicit projection or draw has occurred
+    #   CALL surface.get_facecolors() as this scenario's sole pre-draw accessor
+    #   IF the call raises or triggers projection/drawing state: FAIL
+    #   IF the result is not a nonempty, finite, two-dimensional RGBA array
+    #       representing the current surface colors: FAIL
+    #   OTHERWISE PASS
     assert True
 
 
 def test_p3dfc_005_get_facecolor_predraw_preprojection_returns_valid_data():
     """GUID: P3DFC-005 -- independently cover singular pre-draw access."""
+    # Logic obligation (P3DFC-005): independently exercise get_facecolor()
+    # while the surface remains in its pre-projection state.
+    #
+    # Pseudocode:
+    #   ARRANGE a new surface, separate from the plural-accessor scenario,
+    #       with known face-color input
+    #   REQUIRE no explicit projection or draw has occurred
+    #   CALL surface.get_facecolor() as this scenario's sole pre-draw accessor
+    #   IF the call raises or triggers projection/drawing state: FAIL
+    #   IF the result is not a nonempty, finite, two-dimensional RGBA array
+    #       representing the current surface colors: FAIL
+    #   OTHERWISE PASS
     assert True
 
 
