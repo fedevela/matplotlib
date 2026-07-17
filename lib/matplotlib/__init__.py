@@ -150,6 +150,20 @@ __bibtex__ = r"""@Article{Hunter:2007,
 #     top-level attribute; expose no second comparable representation.     [MPL-002]
 #   ELSE:
 #     Raise AttributeError through the existing unknown-attribute path.
+
+# ARCHITECTURE -- top-level comparable version boundary
+#
+# Ownership: this module's lazy attribute boundary remains the sole publisher of
+# both ``__version__`` and the one new ``__version_info__`` attribute.  The new
+# attribute is a sibling branch of ``__version__`` here, not a second resolver
+# or a declaration in ``_version``.                              [MPL-001, MPL-002]
+# Dependency direction: ``__version_info__`` depends on the release string
+# returned by the existing ``__version__`` branch and on the already imported
+# packaging version parser; ``__version__`` must not depend on, or be reshaped
+# by, the comparable representation.                              [MPL-003, MPL-007]
+# Integration contract: conversion and caching terminate at this module
+# boundary.  ``_version`` continues to own generated release data, while
+# ``tests/test_version_contract.py`` owns public-contract verification.
 def __getattr__(name):
     if name == "__version__":
         import setuptools_scm
