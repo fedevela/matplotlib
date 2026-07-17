@@ -899,17 +899,22 @@ class RangeSlider(SliderBase):
             else:
                 self._active_handle.set_xdata([val])
 
-    # INPUT-001, INPUT-002, INPUT-003, INPUT-004, INPUT-007 -- ownership and
-    # integration boundary: RangeSlider._update owns the complete drag
-    # lifecycle because it owns ``drag_active`` and ``_active_handle``.  It
+    # INPUT-001, INPUT-002, INPUT-003, INPUT-004, INPUT-006, INPUT-007 --
+    # ownership and integration boundary: RangeSlider._update owns the complete
+    # drag lifecycle because it owns ``drag_active`` and ``_active_handle``.  It
     # depends on FigureCanvasBase's existing grab_mouse/release_mouse contract
     # for routing, and on set_val's synchronous observer dispatch for value
     # delivery.  Callback return is therefore the seam at which _update can
     # detect that its Axes left the Figure and retire both widget-local state
-    # and that Axes' canvas grab.  FigureCanvasBase, Figure.clear, Button, and
-    # CallbackRegistry remain downstream-neutral: they acquire no knowledge of
-    # RangeSlider recreation, and rebuilt widgets consume their existing event
-    # and callback contracts without an adapter or new public API.
+    # and that Axes' canvas grab.  For INPUT-006, FigureCanvasTk.button_press_event
+    # and FigureCanvasQT.mousePressEvent remain native-input adapters into the
+    # shared MouseEvent dispatch contract; dependency points from each backend
+    # through MouseEvent to this owner, never from this widget to a backend.
+    # Backend availability and event-loop integration remain owned by
+    # test_backend_tk.py and test_backend_qt.py.  FigureCanvasBase, Figure.clear,
+    # Button, and CallbackRegistry remain downstream-neutral: they acquire no
+    # knowledge of RangeSlider recreation, and rebuilt widgets consume their
+    # existing event and callback contracts without an adapter or new public API.
     def _update(self, event):
         """Update the slider position."""
         # INPUT-001, INPUT-003, INPUT-007 -- range interaction lifecycle:
