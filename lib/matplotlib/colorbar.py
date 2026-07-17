@@ -490,6 +490,13 @@ class Colorbar:
 
     filled = _api.deprecate_privatize_attribute("3.6")
 
+    # Normalization-update architecture boundary:
+    # - CBNORM-006: Colorbar owns the supplied-mappable association; this
+    #   callback/direct-call seam is the single synchronization entry point.
+    # - CBNORM-007: the mappable owns its plotted data; Colorbar has a
+    #   read-only dependency on that data while deriving normalization state.
+    # - CBNORM-008: the mappable owns its colormap; Colorbar may mirror the
+    #   reference for rendering but must not write through to that owner.
     def update_normal(self, mappable):
         """
         Update solid patches, lines, etc.
