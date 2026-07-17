@@ -18,17 +18,82 @@ from matplotlib.offsetbox import (
 
 def test_mpl_003_repeated_qtagg_selections_work_without_attribute_error():
     """MPL-003: Repeated QtAgg selections remain functional without traceback."""
-    assert True
+    fig, ax = plt.subplots()
+    removed_annotation = ax.annotate("first", (.25, .25))
+    removed_draggable = removed_annotation.draggable(True)
+    removed_callback_ids = [
+        disconnector.args[0]
+        for disconnector in removed_draggable._disconnectors]
+
+    removed_annotation.remove()
+
+    current_annotation = ax.annotate("second", (.75, .75))
+    current_draggable = current_annotation.draggable(True)
+    finalized = []
+    current_draggable.finalize_offset = lambda: finalized.append(True)
+    current_draggable.got_artist = True
+
+    MouseEvent("button_release_event", fig.canvas, 1, 1)._process()
+
+    assert finalized == [True]
+    assert not current_draggable.got_artist
+    assert all(
+        callback_id not in callbacks
+        for callbacks in fig._canvas_callbacks.callbacks.values()
+        for callback_id in removed_callback_ids
+    )
 
 
 def test_mpl_004_attached_offsetbox_release_and_callback_cleanup_preserve_behavior():
     """MPL-004: Release and cleanup preserve attached-artist behavior."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([], label="entry")
+    legend = ax.legend()
+    draggable = legend.set_draggable(True)
+    callback_ids = [
+        disconnector.args[0] for disconnector in draggable._disconnectors]
+    finalized = []
+    draggable.finalize_offset = lambda: finalized.append(True)
+    draggable.got_artist = True
+
+    draggable.on_release(None)
+
+    assert finalized == [True]
+    assert not draggable.got_artist
+    assert legend.figure is fig
+    assert all(
+        any(callback_id in callbacks for callbacks in
+            fig._canvas_callbacks.callbacks.values())
+        for callback_id in callback_ids
+    )
+
+    assert legend.set_draggable(False) is None
+
+    assert legend._draggable is None
+    assert all(
+        callback_id not in callbacks
+        for callbacks in fig._canvas_callbacks.callbacks.values()
+        for callback_id in callback_ids
+    )
 
 
 def test_remove_draggable():
     """MPL-005: Removing a draggable passes with no offset-box regressions."""
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("foo", (.5, .5))
+    draggable = annotation.draggable(True)
+    callback_ids = [
+        disconnector.args[0] for disconnector in draggable._disconnectors]
+
+    annotation.remove()
+    assert annotation.draggable(False) is None
+
+    assert annotation._draggable is None
+    assert all(
+        callback_id not in callbacks
+        for callbacks in fig._canvas_callbacks.callbacks.values()
+        for callback_id in callback_ids
+    )
 
 
 def test_mpl_001_release_check_treats_detached_artist_as_unparented_without_canvas():
