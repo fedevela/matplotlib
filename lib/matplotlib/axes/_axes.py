@@ -304,6 +304,10 @@ class Axes(_AxesBase):
                 **kwargs)
         if len(extra_args):
             raise TypeError('legend only accepts two non-keyword arguments')
+        # ARCHITECTURE [LEGEND-005]: Axes.legend owns the Axes construction
+        # boundary.  Parsed Legend options cross this seam in `kwargs`; the
+        # dependency points directly to Legend without an Axes-owned drag
+        # adapter or a second configuration path.
         # PSEUDOCODE [LEGEND-005]:
         # Verification loci:
         # - test_legend_005_axes_legend_propagates_explicit_draggable_true

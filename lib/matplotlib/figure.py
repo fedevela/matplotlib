@@ -1116,6 +1116,11 @@ default: %(va)s
             pass
         transform = kwargs.pop('bbox_transform', self.transSubfigure)
         # explicitly set the bbox transform if the user hasn't.
+        # ARCHITECTURE [LEGEND-005]: Figure.legend owns the figure-like
+        # construction boundary, shared by SubFigure through inheritance.
+        # Figure-specific transform extraction stays outside the Legend option
+        # contract; all remaining options cross the direct dependency seam to
+        # Legend, with publication retained by the invoking Figure/SubFigure.
         # PSEUDOCODE [LEGEND-005]:
         # Verification loci:
         # - test_legend_005_figure_legend_propagates_explicit_draggable_true
