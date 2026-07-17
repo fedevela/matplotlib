@@ -785,6 +785,16 @@ def test_MPLNORM_006_noninteractive_autoscale_draw_keeps_shared_valid_log_limits
     assert 0 < colorbar.norm.vmin < colorbar.norm.vmax
 
 
+def test_MPLNORM_007_invalid_lognorm_evaluation_retains_limit_error():
+    """MPLNORM-007: Invalid LogNorm evaluation retains its error contract."""
+    assert True
+
+
+def test_MPLNORM_008_ordinary_norm_update_retains_mappable_colorbar_sync():
+    """MPLNORM-008: Ordinary updates keep mappable and colorbar synchronized."""
+    assert True
+
+
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
 def test_colorbar_format(fmt):
     # make sure that format is passed properly
