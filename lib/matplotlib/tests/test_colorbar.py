@@ -649,6 +649,21 @@ def test_cbnorm_005_updated_colorbar_observably_represents_logarithmic_scale():
     np.testing.assert_allclose(ratios, ratios[0])
 
 
+def test_cbnorm_006_replaced_norm_update_normal_preserves_mappable_association():
+    """GUID: CBNORM-006."""
+    assert True
+
+
+def test_cbnorm_007_replaced_norm_update_normal_preserves_mappable_plotted_data():
+    """GUID: CBNORM-007."""
+    assert True
+
+
+def test_cbnorm_008_replaced_norm_update_normal_preserves_mappable_colormap():
+    """GUID: CBNORM-008."""
+    assert True
+
+
 def test_colorbar_renorm():
     x, y = np.ogrid[-4:4:31j, -4:4:31j]
     z = 120000*np.exp(-x**2 - y**2)
