@@ -813,23 +813,21 @@ def test_MPLNORM_008_ordinary_norm_update_retains_mappable_colorbar_sync():
 
 def test_MPLNORM_009_colorbar_public_lognorm_autoscale_draw_stays_positive_synced():
     """MPLNORM-009: Preserve the ordered LogNorm replacement contract."""
-    # MPLNORM-009 architecture:
-    # Ownership remains in the colorbar regression suite because the contract
-    # crosses the mappable-to-existing-colorbar synchronization boundary.
-    # Keep the fixture local: Figure/FigureCanvasAgg owns the draw seam, while
-    # the image mappable's public norm property owns replacement and autoscaling.
-    # Observe synchronization through public objects after drawing; the test
-    # must not depend on Colorbar or ScalarMappable implementation internals.
-    # MPLNORM-009 pseudocode:
-    # GIVEN a figure, axes, and mappable whose data values are all positive
-    # AND an associated colorbar created from that mappable before norm replacement
-    # WHEN a LogNorm with valid positive bounds is assigned through mappable.norm
-    # AND mappable.autoscale() is called after the public norm assignment
-    # AND the figure canvas is drawn after autoscaling
-    # THEN fail the regression test if any ordered operation raises ValueError
-    # AND verify the mappable and existing colorbar reference the replacement norm
-    # AND verify the autoscaled mappable norm limits are positive and ordered
-    # AND verify the colorbar limits equal the mappable norm limits after drawing
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    mappable = ax.imshow([[2, 3], [5, 11]])
+    colorbar = fig.colorbar(mappable)
+
+    norm = LogNorm(vmin=1, vmax=100)
+    mappable.norm = norm
+    mappable.autoscale()
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert 0 < norm.vmin < norm.vmax
+    assert (norm.vmin, norm.vmax) == (2, 11)
+    assert (colorbar.vmin, colorbar.vmax) == (norm.vmin, norm.vmax)
 
 
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
