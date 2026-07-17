@@ -11,10 +11,21 @@ from .mpl_axes import Axes
 
 
 def _tick_only(ax, bottom_on, left_on):
+    # ARCHITECTURE [AXGRID-006]: This private adapter owns visibility mutation.
+    # The default mpl_axes.Axes dependency remains on the established mapping
+    # branch below; Grid and its label-mode policy must not specialize it.
+    # AXGRID-001, AXGRID-004, AXGRID-008: The axes-grid Axes exposes ``axis``
+    # as a mapping, but a regular Matplotlib Axes exposes it as a method.
     bottom_off = not bottom_on
     left_off = not left_on
-    ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
-    ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
+    if callable(ax.axis) and not hasattr(ax.axis, "__getitem__"):
+        ax.tick_params(axis="x", labelbottom=bottom_off)
+        ax.xaxis.label.set_visible(bottom_off)
+        ax.tick_params(axis="y", labelleft=left_off)
+        ax.yaxis.label.set_visible(left_off)
+    else:
+        ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
+        ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
 
 
 class CbarAxesBase:
@@ -46,6 +57,8 @@ class Grid:
     them.  AxesGrid can be used in such case.
     """
 
+    # ARCHITECTURE [AXGRID-006]: Grid owns the default axes dependency.  The
+    # omitted-axes_class boundary resolves directly to this existing class.
     _defaultAxesClass = Axes
 
     def __init__(self, fig,
@@ -99,7 +112,9 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
 
-        axes_class : subclass of `matplotlib.axes.Axes`, default: None
+        axes_class : type or (type, dict), default: None
+            The `.Axes` subclass to construct, optionally paired with its
+            constructor keyword arguments.
         aspect : bool, default: False
             Whether the axes aspect ratio follows the aspect ratio of the data
             limits.
@@ -121,6 +136,38 @@ class Grid:
         _api.check_in_list(["column", "row"], direction=direction)
         self._direction = direction
 
+        # PSEUDOCODE [AXGRID-002, AXGRID-007]:
+        # INPUT: axes_class in its existing class form or (class, kwargs) form.
+        # IF no axes_class is supplied, select the default axes class.
+        # ELSE IF axes_class is a list or tuple:
+        #     unpack exactly the supplied class and constructor arguments;
+        #     bind those arguments to the class without invoking it yet.
+        # FOR each requested cell, derive its sharex and sharey references;
+        # invoke the selected or bound class with figure, rectangle, sharing
+        # references, and every supplied constructor argument.
+        # IF unpacking, argument binding, or axes construction fails, propagate
+        # that originating failure; do not reinterpret the axes' callable
+        # ``axis`` method as a subscriptable mapping during construction.
+        # OUTPUT: each cell contains an instance of the supplied axes class,
+        # including a one-cell projected axes configured by its projection.
+        # ARCHITECTURE [AXGRID-002, AXGRID-007]: This is the normalization
+        # boundary for the axes-construction dependency.  Downstream grid
+        # topology receives one callable; ownership of tuple-provided
+        # constructor arguments remains here rather than in the cell loop.
+        # PSEUDOCODE [AXGRID-006 — default Axes construction]:
+        # INPUT: axes_class is omitted and label_mode is supported.
+        # SELECT the existing _defaultAxesClass without wrapping or replacing
+        # its constructor contract.
+        # CONSTRUCT every requested cell through the ordinary grid sequence;
+        # preserve sharing references, register all cells with the figure,
+        # then hand off the completed grid to label-mode processing.
+        # IF ordinary default-Axes construction fails, propagate that failure;
+        # do not introduce a default-class-specific recovery or alternate path.
+        # OUTPUT: a successfully initialized grid of the existing default Axes
+        # instances whose visibility state is determined by set_label_mode.
+        # ARCHITECTURE [AXGRID-006]: Default selection joins the same normalized
+        # construction dependency as explicit classes; no parallel default
+        # construction path or wrapper belongs beyond this boundary.
         if axes_class is None:
             axes_class = self._defaultAxesClass
         elif isinstance(axes_class, (list, tuple)):
@@ -147,6 +194,9 @@ class Grid:
             else:
                 sharex = axes_array[0, col] if share_x else None
                 sharey = axes_array[row, 0] if share_y else None
+            # ARCHITECTURE [AXGRID-002, AXGRID-007]: Sole integration seam for
+            # constructing a cell.  The normalized dependency must receive
+            # the common figure/rectangle/sharing contract unchanged.
             axes_array[row, col] = axes_class(
                 fig, rect, sharex=sharex, sharey=sharey)
         self.axes_all = axes_array.ravel(
@@ -160,6 +210,10 @@ class Grid:
         for ax in self.axes_all:
             fig.add_axes(ax)
 
+        # ARCHITECTURE [AXGRID-006]: This is the construction-to-visibility
+        # integration seam.  Registration completes before the shared label
+        # policy receives the grid; the default class has no alternate handoff.
+        # AXGRID-003: Apply the mode after all axes have been registered.
         self.set_label_mode(label_mode)
 
     def _init_locators(self):
@@ -259,6 +313,24 @@ class Grid:
             - "all": All axes are labelled.
             - "keep": Do not do anything.
         """
+        # ARCHITECTURE [AXGRID-006]: Grid owns mode/topology decisions here and
+        # delegates every concrete visibility change to _tick_only.  This
+        # shared boundary must not branch on or replace the default Axes class.
+        # PSEUDOCODE [AXGRID-006 — default Axes label visibility]:
+        # INPUT: a fully registered grid of default Axes and a supported mode.
+        # IF mode is "all", make bottom tick labels, x-axis labels, left tick
+        # labels, and y-axis labels visible on every cell.
+        # ELSE IF mode is "L", expose left labels only in the left column and
+        # bottom labels only in the bottom row; expose both at lower left and
+        # hide both on interior cells.
+        # ELSE IF mode is "1", first hide bottom and left labels everywhere,
+        # then expose both kinds only on the lower-left cell.
+        # ELSE IF mode is "keep", leave every existing visibility state intact.
+        # ELSE preserve the established unsupported-mode warning path.
+        # FOR every visibility transition, route through _tick_only so tick
+        # labels and their corresponding axis label change together.
+        # OUTPUT: the same observable visibility matrix historically produced
+        # by the selected supported mode for the default Axes class.
         if mode == "all":
             for ax in self.axes_all:
                 _tick_only(ax, False, False)
@@ -371,7 +443,9 @@ class ImageGrid(Grid):
         cbar_set_cax : bool, default: True
             If True, each axes in the grid has a *cax* attribute that is bound
             to associated *cbar_axes*.
-        axes_class : subclass of `matplotlib.axes.Axes`, default: None
+        axes_class : type or (type, dict), default: None
+            The `.Axes` subclass to construct, optionally paired with its
+            constructor keyword arguments.
         """
         _api.check_in_list(["each", "single", "edge", None],
                            cbar_mode=cbar_mode)
