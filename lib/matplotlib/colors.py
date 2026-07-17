@@ -711,6 +711,17 @@ class Colormap:
         mask_bad = X.mask if np.ma.is_masked(X) else None
         xa = np.array(X, copy=True)
 
+        # Architecture boundary (GUID: CMAP-001, CMAP-002, CMAP-003,
+        # CMAP-007): Colormap.__call__ owns the lookup-index representation.
+        # Input normalization must hand a sentinel-capable, shape-preserving
+        # array across this boundary to the sentinel assignment and LUT lookup
+        # stages below.  The LUT and Colormap subclasses consume those indices;
+        # they do not select or repair the working index dtype.
+        #
+        # ``xa`` is the integration seam between input normalization and LUT
+        # lookup.  Any representation adjustment belongs before the sentinel
+        # assignments; RGBA shape expansion remains owned by the LUT lookup.
+
         # Sentinel-index preparation contract:
         # - GUID: CMAP-001 / CMAP-007: For every empty or non-empty integer
         #   input, determine whether xa's dtype can represent all colormap
