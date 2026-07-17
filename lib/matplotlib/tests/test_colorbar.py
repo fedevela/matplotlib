@@ -689,12 +689,36 @@ def test_cbnorm_008_replaced_norm_update_normal_preserves_mappable_colormap():
 
 def test_cbnorm_009_existing_valid_update_normal_completes_without_error():
     """GUID: CBNORM-009."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[0, 1], [2, 3]])
+    colorbar = fig.colorbar(mappable)
+
+    result = colorbar.update_normal(mappable)
+
+    assert result is None
+    assert colorbar.stale
 
 
 def test_cbnorm_009_existing_valid_update_normal_preserves_established_result():
     """GUID: CBNORM-009."""
-    assert True
+    fig, ax = plt.subplots()
+    mappable = ax.imshow([[0, 1], [2, 3]])
+    colorbar = fig.colorbar(mappable)
+    boundaries = colorbar._boundaries.copy()
+    locator = colorbar.locator
+    formatter = colorbar.formatter
+    scale = colorbar.ax.get_yscale()
+
+    colorbar.update_normal(mappable)
+
+    assert colorbar.mappable is mappable
+    assert colorbar.norm is mappable.norm
+    assert colorbar.vmin == 0
+    assert colorbar.vmax == 3
+    np.testing.assert_array_equal(colorbar._boundaries, boundaries)
+    assert colorbar.locator is locator
+    assert colorbar.formatter is formatter
+    assert colorbar.ax.get_yscale() == scale
 
 
 def test_colorbar_renorm():
