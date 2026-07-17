@@ -28,24 +28,63 @@ def test_aspect_equal_error():
         ax.set_aspect('equal')
 
 
-def test_m3dvis_001_drawing_invisible_3d_axes_omits_all_owned_visuals():
+@check_figures_equal(extensions=["png"])
+def test_m3dvis_001_drawing_invisible_3d_axes_omits_all_owned_visuals(
+        fig_test, fig_ref):
     """GUID: M3DVIS-001 -- hidden axes draw with no owned visuals."""
-    assert True
+    ax = fig_test.add_subplot(projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1], label="data")
+    ax.scatter([0.5], [0.5], [0.5])
+    ax.text(0.5, 0.5, 0.5, "decoration")
+    ax.set(xlabel="x label", ylabel="y label", zlabel="z label",
+           title="title")
+    ax.legend()
+    ax.set_visible(False)
 
 
-def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence():
+def test_m3dvis_003_false_get_visible_omits_3d_axes_rendered_presence(
+        monkeypatch):
     """GUID: M3DVIS-003 -- false visibility yields no rendered presence."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    visibility_reads = []
+
+    def get_visible():
+        visibility_reads.append(True)
+        return False
+
+    monkeypatch.setattr(ax, "get_visible", get_visible)
+    monkeypatch.setattr(
+        ax, "_unstale_viewLim",
+        lambda: pytest.fail("hidden Axes3D advanced past its visibility gate"))
+
+    fig.canvas.draw()
+    assert visibility_reads
 
 
 def test_m3dvis_007_drawing_figure_with_hidden_3d_axes_completes():
     """GUID: M3DVIS-007 -- figure draw containing hidden axes succeeds."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1])
+    ax.set_visible(False)
+
+    fig.canvas.draw()
 
 
-def test_m3dvis_010_supported_backends_omit_invisible_3d_axes_output():
+@pytest.mark.parametrize("extension", ["png", "pdf", "svg"])
+def test_m3dvis_010_supported_backends_omit_invisible_3d_axes_output(
+        extension, tmp_path, monkeypatch):
     """GUID: M3DVIS-010 -- supported backends omit hidden axes output."""
-    assert True
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot([0, 1], [0, 1], [0, 1])
+    ax.set_visible(False)
+    monkeypatch.setattr(
+        ax, "get_proj",
+        lambda: pytest.fail("backend projected an invisible Axes3D"))
+
+    fig.savefig(tmp_path / f"hidden_axes.{extension}")
 
 
 @mpl3d_image_comparison(['bar3d.png'])

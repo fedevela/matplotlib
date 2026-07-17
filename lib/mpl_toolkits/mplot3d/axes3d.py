@@ -412,6 +412,9 @@ class Axes3D(Axes):
         # M3DVIS-010:
         # - Make the visibility decision before backend-facing draw calls so
         #   every supported renderer receives the same omission behavior.
+        if not self.get_visible():
+            return
+
         self._unstale_viewLim()
 
         # draw the background patch
