@@ -703,6 +703,12 @@ class Colormap:
         Tuple of RGBA values if X is scalar, otherwise an array of
         RGBA values with a shape of ``X.shape + (4, )``.
         """
+        # Architecture boundary (GUID: CMAP-004, CMAP-005, CMAP-006):
+        # Colormap.__call__ owns integer-index preparation through LUT lookup.
+        # Caller-owned X is an input-only dependency; the private xa workspace
+        # is the sole input to sentinel classification and ``lut.take``.  Keep
+        # this seam local so regular and special-color index semantics cannot
+        # bypass the input-isolation boundary.
         if not self._isinit:
             self._init()
 
