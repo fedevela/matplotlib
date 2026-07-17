@@ -2467,9 +2467,13 @@ class Axes(_AxesBase):
         # END FOR
         # RESULT: length(patches) == expected_rectangle_count
         # FAILURE: non-finiteness alone neither raises nor suppresses a rectangle
-        # Architecture contract -- GUID: BAR-002
-        # This loop owns the input-to-Rectangle cardinality; add_patch owns
-        # artist registration and delegates limit extraction to _AxesBase.
+        # Architecture contract -- GUID: BAR-002, BAR-003, BAR-004, BAR-008
+        # Conversion, broadcasting, and alignment own the geometry supplied
+        # here; this loop owns its one-to-one mapping to Rectangle instances,
+        # including tuples containing non-finite coordinates or heights.
+        # Rectangle owns preservation of the supplied geometry, while
+        # add_patch owns registration and delegates limit extraction to
+        # _AxesBase without becoming a bar-cardinality boundary.
         patches = []
         args = zip(left, bottom, width, height, color, edgecolor, linewidth,
                    hatch, patch_labels)
