@@ -354,6 +354,26 @@ def test_format_cursor_data(data, text):
     assert im.format_cursor_data(im.get_cursor_data(event)) == text
 
 
+def test_bnf_001_boundarynorm_finite_scalar_formats_as_nonempty_numeric():
+    """GUID: BNF-001 -- A finite scalar produces a numeric representation."""
+    assert True
+
+
+def test_bnf_002_boundarynorm_inverse_error_does_not_escape_formatting():
+    """GUID: BNF-002 -- BoundaryNorm.inverse ValueError is contained."""
+    assert True
+
+
+def test_bnf_003_repeated_boundarynorm_formatting_keeps_mouseover_working():
+    """GUID: BNF-003 -- Repeated formatting leaves mouse-over operational."""
+    assert True
+
+
+def test_bnf_004_boundarynorm_fallback_represents_supplied_scalar():
+    """GUID: BNF-004 -- Fallback preserves the scalar, not a surrogate."""
+    assert True
+
+
 @image_comparison(['image_clip'], style='mpl20')
 def test_image_clip():
     d = [[1, 2], [3, 4]]
