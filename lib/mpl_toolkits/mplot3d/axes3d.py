@@ -442,6 +442,21 @@ class Axes3D(Axes):
         # M3DVIS-010:
         # - Make the visibility decision before backend-facing draw calls so
         #   every supported renderer receives the same omission behavior.
+        #
+        # M3DVIS-005 / M3DVIS-006 hidden-to-visible lifecycle:
+        # - Input the Axes3D visibility state, its existing attached plotted
+        #   artists, and the active renderer; treat those artists and their
+        #   data as persistent state owned by the axes.
+        # - If visibility is false, return before projection or rendering and
+        #   leave the attached-artist collection and each artist unchanged.
+        # - When visibility later becomes true, traverse the ordinary visible
+        #   draw path using those same attached artists: update limits, prepare
+        #   projection, draw 3D components, then hand the existing children to
+        #   the base draw pipeline.
+        # - Complete without a detach/recreate transition; the next successful
+        #   draw therefore renders the content already attached to the axes.
+        # - Propagate failures from the ordinary visible draw path without
+        #   substituting data recreation or destructive recovery.
         if not self.get_visible():
             return
 

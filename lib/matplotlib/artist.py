@@ -1013,6 +1013,19 @@ class Artist:
         ----------
         b : bool
         """
+        # Visibility-transition pseudocode (M3DVIS-005, M3DVIS-006):
+        # - Input the requested visibility and retain every attached child and
+        #   its plotted-data state as the transition's unchanged payload.
+        # - Set only this artist's visibility flag; do not remove, replace,
+        #   restyle, or otherwise mutate an attached plotted-data artist.
+        # - Notify observers, then mark the artist stale so a subsequent draw
+        #   consumes the new visibility state.
+        # - If the requested state is hidden, finish with the plotted-data
+        #   payload still attached and available for later restoration.
+        # - If the requested state is visible, likewise retain that payload;
+        #   the next draw must use it rather than require data recreation.
+        # - Propagate any existing notification failure without introducing a
+        #   data-removal, data-recreation, or rollback path.
         self._visible = b
         self.pchanged()
         self.stale = True
