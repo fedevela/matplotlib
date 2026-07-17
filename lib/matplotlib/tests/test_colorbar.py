@@ -10,6 +10,8 @@ import matplotlib as mpl
 
 
 from matplotlib import rc_context
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 from matplotlib.testing.decorators import image_comparison
 import matplotlib.pyplot as plt
 from matplotlib.colors import (
@@ -742,14 +744,45 @@ def test_MPLNORM_005_replacement_redraw_updates_retained_artists_to_lognorm():
     assert colorbar.ax.get_yscale() == 'log'
 
 
-def test_MPLNORM_006_noninteractive_colorbar_then_public_lognorm_draw_does_not_raise():
+def test_MPLNORM_006_noninteractive_colorbar_then_public_lognorm_draw_does_not_raise(
+        monkeypatch):
     """MPLNORM-006: The workflow completes without a GUI event loop."""
-    assert True
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    mappable = ax.imshow([[1, 2], [4, 8]])
+    colorbar = fig.colorbar(mappable)
+
+    def fail_if_event_loop_started(*args, **kwargs):
+        pytest.fail("Agg drawing must not start a GUI event loop")
+
+    monkeypatch.setattr(canvas, "start_event_loop", fail_if_event_loop_started)
+    norm = LogNorm(vmin=1, vmax=8)
+    mappable.norm = norm
+    mappable.autoscale()
+
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
 
 
 def test_MPLNORM_006_noninteractive_autoscale_draw_keeps_shared_valid_log_limits():
     """MPLNORM-006: Mappable and colorbar retain shared valid log limits."""
-    assert True
+    fig = Figure()
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    mappable = ax.imshow([[2, 3], [5, 11]])
+    colorbar = fig.colorbar(mappable)
+    norm = LogNorm(vmin=1, vmax=100)
+
+    mappable.norm = norm
+    mappable.autoscale()
+    canvas.draw()
+
+    assert mappable.norm is colorbar.norm is norm
+    assert (mappable.norm.vmin, mappable.norm.vmax) == (2, 11)
+    assert (colorbar.norm.vmin, colorbar.norm.vmax) == (2, 11)
+    assert 0 < colorbar.norm.vmin < colorbar.norm.vmax
 
 
 @pytest.mark.parametrize('fmt', ['%4.2e', '{x:.2e}'])
