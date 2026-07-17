@@ -2447,11 +2447,18 @@ class Axes(_AxesBase):
             left = x
             bottom = y
 
-        # Pseudocode -- GUID: BAR-001, BAR-002
+        # Pseudocode -- GUID: BAR-001, BAR-002, BAR-003, BAR-004, BAR-008
         # expected_rectangle_count := length(x) after broadcasting
         # patches := empty sequence
-        # FOR EACH broadcast bar tuple, including tuples whose x is non-finite:
-        #     rectangle := construct one Rectangle from the tuple
+        # FOR EACH aligned, broadcast bar tuple (left, bottom, width, height):
+        #     do not discard the tuple based on coordinate or height finiteness
+        #     IF input x is nan AND input height is nan:                 [BAR-003]
+        #         preserve nan left and nan height in the Rectangle geometry
+        #     ELSE IF input x is nan AND input height is zero:          [BAR-004]
+        #         preserve nan left and zero height in the geometry
+        #     ELSE IF input x is finite AND input height is non-finite: [BAR-008]
+        #         preserve the aligned finite left and non-finite height
+        #     rectangle := construct one Rectangle from the preserved tuple
         #     register rectangle with the Axes
         #     IF registration finds no finite position for data-limit updates:
         #         treat the rectangle as contributing no position limit
@@ -2459,6 +2466,7 @@ class Axes(_AxesBase):
         #     append rectangle to patches exactly once
         # END FOR
         # RESULT: length(patches) == expected_rectangle_count
+        # FAILURE: non-finiteness alone neither raises nor suppresses a rectangle
         # Architecture contract -- GUID: BAR-002
         # This loop owns the input-to-Rectangle cardinality; add_patch owns
         # artist registration and delegates limit extraction to _AxesBase.
