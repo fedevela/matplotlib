@@ -1298,6 +1298,14 @@ class Artist:
             # from Artist first and from ScalarMappable second, so
             # Artist.format_cursor_data would always have precedence over
             # ScalarMappable.format_cursor_data.
+            #
+            # ARCHITECTURE (GUID: BNF-001, BNF-002, BNF-003, BNF-004): Artist
+            # owns the cursor-formatting entry point; ScalarMappable supplies
+            # the norm and cmap dependencies.  Norm inversion is a fallible
+            # dependency boundary, so its failure-containment seam stays in
+            # this scalar-formatting block and feeds the existing terminal
+            # formatter.  The seam must remain local and stateless so repeated
+            # formatting cannot alter Artist mouse-over registration.
             n = self.cmap.N
             if np.ma.getmask(data):
                 return "[]"
