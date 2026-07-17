@@ -1,6 +1,7 @@
 from io import BytesIO
 import ast
 import pickle
+import weakref
 
 import numpy as np
 import pytest
@@ -194,28 +195,76 @@ def test_polar():
 
 
 def test_mplal_001_multiple_subplots_serialize_after_align_labels():
-    """MPLAL-001 verification placeholder."""
-    assert True
+    fig, axs = plt.subplots(2, 2)
+    for ax in axs.flat:
+        ax.set(xlabel="x", ylabel="y")
+    fig.align_labels()
+
+    pickle.dumps(fig)
 
 
 def test_mplal_002_aligned_label_state_serializes_without_weakref_failure():
-    """MPLAL-002 verification placeholder."""
-    assert True
+    fig, _ = plt.subplots(2, 1)
+    fig.align_labels()
+
+    state = fig._align_label_groups["x"].__getstate__()
+    assert all(not isinstance(member, weakref.ReferenceType)
+               for group in state for member in group)
+    pickle.dumps(fig)
 
 
 def test_mplal_003_serialized_aligned_label_figure_deserializes_usable():
-    """MPLAL-003 verification placeholder."""
-    assert True
+    fig, _ = plt.subplots(2, 1)
+    fig.align_labels()
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    restored.canvas.draw()
+    assert len(restored.axes) == 2
 
 
 def test_mplal_004_label_alignment_remains_effective_after_pickle_round_trip():
-    """MPLAL-004 verification placeholder."""
-    assert True
+    fig, axs = plt.subplots(2, 2)
+    for ax in axs.flat:
+        ax.set(xlabel="x", ylabel="y")
+    axs[0, 0].set_yticks([0], ["a long tick label"])
+    axs[1, 0].set_yticks([0], ["0"])
+    fig.align_labels()
+
+    restored = pickle.loads(pickle.dumps(fig))
+    restored_axs = restored.axes
+
+    x_grouper = restored._align_label_groups["x"]
+    y_grouper = restored._align_label_groups["y"]
+    assert x_grouper.joined(restored_axs[0], restored_axs[1])
+    assert y_grouper.joined(restored_axs[0], restored_axs[2])
+    assert x_grouper.get_siblings(restored_axs[0]) == restored_axs[:2]
+    assert y_grouper.get_siblings(restored_axs[0]) == restored_axs[::2]
+    restored.canvas.draw()
+    assert (restored_axs[0].yaxis.label.get_position()[0]
+            == pytest.approx(restored_axs[2].yaxis.label.get_position()[0]))
 
 
 def test_mplal_005_axes_data_and_label_text_remain_intact_after_round_trip():
-    """MPLAL-005 verification placeholder."""
-    assert True
+    fig, axs = plt.subplots(2, 1)
+    expected = []
+    for i, ax in enumerate(axs):
+        x = np.arange(3)
+        y = x + i
+        ax.plot(x, y)
+        ax.set(xlabel=f"x label {i}", ylabel=f"y label {i}")
+        expected.append((x, y, ax.get_xlabel(), ax.get_ylabel()))
+    fig.align_labels()
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert len(restored.axes) == len(expected)
+    for ax, (x, y, xlabel, ylabel) in zip(restored.axes, expected):
+        assert len(ax.lines) == 1
+        np.testing.assert_array_equal(ax.lines[0].get_xdata(), x)
+        np.testing.assert_array_equal(ax.lines[0].get_ydata(), y)
+        assert ax.get_xlabel() == xlabel
+        assert ax.get_ylabel() == ylabel
 
 
 class TransformBlob:

@@ -788,46 +788,16 @@ class Grouper:
     def __init__(self, init=()):
         self._mapping = {weakref.ref(x): [weakref.ref(x)] for x in init}
 
-    # MPLAL-001 through MPLAL-004 architecture boundary: Grouper owns the
-    # pickle contract for its weak-reference-backed disjoint sets.  Its
-    # serialized form must contain live members and group membership only;
-    # reconstruction must restore _mapping before Figure/Axis consumers use
-    # get_siblings().  Figure must not need knowledge of this representation.
-    #
-    # MPLAL-001, MPLAL-002 -- serialization logic obligation:
-    #
-    # def __getstate__(self):
-    #     CLEAN dead references from the disjoint-set mapping.
-    #     COLLECT each unique sibling group exactly once.
-    #     FOR each collected group:
-    #         DEREFERENCE every live member into a temporary strong-reference
-    #         sequence; never place a weakref.ReferenceType in pickle state.
-    #     RETURN only those member sequences as the serialized grouper state.
-    #     IF a member cannot be serialized, PROPAGATE pickle's member-specific
-    #     failure; the grouper itself must not introduce a weak-reference
-    #     failure.
-    #
-    # MPLAL-003, MPLAL-004 -- deserialization and alignment logic obligation:
-    #
-    # def __setstate__(self, state):
-    #     START with a temporary empty disjoint-set mapping.
-    #     FOR each serialized member sequence:
-    #         RECREATE one weak reference per restored member.
-    #         ASSIGN every recreated reference to the same sibling-group list,
-    #         preserving the group's identity and membership relationships in
-    #         the temporary mapping.
-    #     AFTER every group is rebuilt, REPLACE the grouper mapping atomically.
-    #     LEAVE the restored groups available to get_siblings(), so subsequent
-    #     label-position updates observe the same alignment as before dumping.
-    #     IF state is malformed or a member is not weak-referenceable, FAIL
-    #     before publishing the temporary mapping; do not expose partial groups.
-    #
-    # MPLAL-005 -- surrounding figure-state preservation logic obligation:
-    #
-    # SERIALIZE and RESTORE the original group members themselves; do not copy,
-    # replace, or filter their Axes.  DEFER plotted data and label text to the
-    # enclosing Figure/Artist pickle state, preserving object identity when the
-    # grouper reconnects the restored Axes.
+    def __getstate__(self):
+        return list(self)
+
+    def __setstate__(self, state):
+        mapping = {}
+        for group in state:
+            refs = [weakref.ref(x) for x in group]
+            for ref in refs:
+                mapping[ref] = refs
+        self._mapping = mapping
 
     def __contains__(self, item):
         return weakref.ref(item) in self._mapping
