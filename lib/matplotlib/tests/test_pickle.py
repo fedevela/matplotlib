@@ -322,7 +322,17 @@ def test_mplal_007_aligned_multi_subplot_pickle_round_trip_returns_usable_figure
     # with pickle.loads(); allow either operation's exception to fail the test.
     # VERIFY the restored object is a Figure with the expected subplot count,
     # and draw its canvas to prove that the returned Figure remains usable.
-    pass
+    fig, axs = plt.subplots(2, 1)
+    for i, ax in enumerate(axs):
+        ax.set(xlabel=f"x label {i}", ylabel=f"y label {i}")
+    fig.align_labels()
+
+    payload = pickle.dumps(fig)
+    restored = pickle.loads(payload)
+
+    assert isinstance(restored, mfigure.Figure)
+    assert len(restored.axes) == 2
+    restored.canvas.draw()
 
 
 def test_mplal_008_aligned_multi_subplot_pickle_round_trip_with_other_values_succeeds():
@@ -337,7 +347,26 @@ def test_mplal_008_aligned_multi_subplot_pickle_round_trip_with_other_values_suc
     # VERIFY the restored Figure is usable and retains the expected axes and
     # alternate plotted values, demonstrating success is independent of the
     # reproduction's particular numeric values.
-    pass
+    x = np.array([-3.5, -0.25, 2.75, 8.5])
+    ys = [
+        np.array([7.25, -1.5, 12.75, 4.625]),
+        np.array([-6.0, 3.125, 1.5, 9.75]),
+    ]
+    fig, axs = plt.subplots(2, 1)
+    for i, (ax, y) in enumerate(zip(axs, ys)):
+        ax.plot(x, y)
+        ax.set(xlabel=f"alternate x {i}", ylabel=f"alternate y {i}")
+    fig.align_labels()
+
+    restored = pickle.loads(pickle.dumps(fig))
+
+    assert isinstance(restored, mfigure.Figure)
+    assert len(restored.axes) == len(ys)
+    for ax, y in zip(restored.axes, ys):
+        assert len(ax.lines) == 1
+        np.testing.assert_array_equal(ax.lines[0].get_xdata(), x)
+        np.testing.assert_array_equal(ax.lines[0].get_ydata(), y)
+    restored.canvas.draw()
 
 
 class TransformBlob:
