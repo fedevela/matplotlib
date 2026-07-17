@@ -387,6 +387,23 @@ class Axes3D(Axes):
 
     @martist.allow_rasterization
     def draw(self, renderer):
+        # Draw-time visibility contract:
+        #
+        # M3DVIS-001 / M3DVIS-003:
+        # - Read the axes' public visibility state through get_visible().
+        # - If it is false, terminate this draw call before updating view
+        #   limits or drawing the patch, projected data, panes, axes, ticks,
+        #   labels, and decorations owned by this Axes3D.
+        # - If it is true, continue through the existing 3D draw sequence.
+        #
+        # M3DVIS-007:
+        # - Treat the hidden branch as a successful no-op: return normally
+        #   without requiring projection setup or invoking a renderer method.
+        # - Preserve the existing error flow of the visible branch.
+        #
+        # M3DVIS-010:
+        # - Make the visibility decision before backend-facing draw calls so
+        #   every supported renderer receives the same omission behavior.
         self._unstale_viewLim()
 
         # draw the background patch
