@@ -3162,6 +3162,20 @@ None}, default: None
         a.draw(self.canvas.get_renderer())
 
     def __getstate__(self):
+        # MPLAL-006 -- unaligned-figure serialization logic obligation
+        # (test_mplal_006_unaligned_figure_pickle_dumps_and_loads_without_exception):
+        #
+        # INPUT a Figure for which label alignment has never been requested
+        # and whose existing Figure/Artist state is pickleable.
+        # CAPTURE that state through the normal Figure serialization path,
+        # including its Axes, plotted data, labels, and empty alignment groups.
+        # DO NOT invoke alignment, synthesize group membership, or otherwise
+        # distinguish the Figure by changing its serialized visual state.
+        # REMOVE only the established non-pickleable/transient Figure state.
+        # RETURN the resulting state to pickle.dumps without introducing an
+        # alignment-specific exception.
+        # IF normal state capture or member serialization fails, PROPAGATE the
+        # existing failure; do not replace it with alignment-specific handling.
         state = super().__getstate__()
 
         # The canvas cannot currently be pickled, but this has the benefit
@@ -3182,6 +3196,19 @@ None}, default: None
         return state
 
     def __setstate__(self, state):
+        # MPLAL-006 -- unaligned-figure restoration logic obligation
+        # (test_mplal_006_deserialized_unaligned_figure_axes_data_labels_remain_usable):
+        #
+        # INPUT state emitted by the normal unaligned-Figure serialization
+        # path, with no synthesized label-alignment relationships.
+        # VALIDATE and consume the established Figure pickle metadata.
+        # RESTORE the complete Figure/Artist object graph, preserving existing
+        # Axes, plotted data, label text, and empty alignment groups.
+        # RECREATE only the established transient canvas/manager state.
+        # LEAVE the restored Figure usable for Axes, data, and label inspection
+        # without calling alignment or changing visual behavior.
+        # IF metadata or member restoration fails, PROPAGATE the existing
+        # deserialization failure before reporting a usable restored Figure.
         version = state.pop('__mpl_version__')
         restore_to_pylab = state.pop('_restore_to_pylab', False)
 
