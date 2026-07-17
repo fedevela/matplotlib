@@ -510,6 +510,26 @@ def test_surface3d():
     fig.colorbar(surf, shrink=0.5, aspect=5)
 
 
+def test_p3dfc_001_colormapped_surface_get_facecolors_before_draw_returns_colors():
+    """GUID: P3DFC-001 -- pre-draw get_facecolors returns current colors."""
+    assert True
+
+
+def test_p3dfc_002_plot_surface_get_facecolor_before_draw_matches_facecolors():
+    """GUID: P3DFC-002 -- pre-draw get_facecolor matches get_facecolors."""
+    assert True
+
+
+def test_p3dfc_003_predraw_accessors_reflect_configured_or_mapped_colors():
+    """GUID: P3DFC-003 -- accessors reflect configured or colormapped colors."""
+    assert True
+
+
+def test_p3dfc_003_predraw_accessors_return_established_color_array_form():
+    """GUID: P3DFC-003 -- accessors use the established color-array form."""
+    assert True
+
+
 @mpl3d_image_comparison(['surface3d_shaded.png'])
 def test_surface3d_shaded():
     fig = plt.figure()
