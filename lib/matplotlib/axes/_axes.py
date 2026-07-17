@@ -2183,6 +2183,13 @@ class Axes(_AxesBase):
         # x position, including a non-finite position                  [BAR-011]
         # FAILURE: established conversion failures other than exhausted finite
         # search retain the existing direct-conversion fallback behavior.
+        # Architecture contract -- GUID: BAR-010, BAR-011
+        # Axes.bar owns position conversion and passes both the original and
+        # converted position sequences into this private width-conversion seam.
+        # _convert_dx owns representative selection and contains exhausted
+        # finite searches; the supplied converter remains the unit-system
+        # boundary.  Neither this helper nor the converter owns filtering or
+        # changing the cardinality of the converted positions [BAR-010, BAR-011].
         if xconv.size == 0:
             # xconv has already been converted, but maybe empty...
             return convert(dx)
@@ -2424,6 +2431,14 @@ class Axes(_AxesBase):
         # and supported broadcast shape                                     [BAR-009]
         # RESULT: N supported unit-aware x positions, finite or non-finite,
         # produce N aligned bar tuples; non-finiteness is not a filter       [BAR-011]
+        # Architecture contract -- GUID: BAR-009, BAR-011, BAR-013
+        # Unit conversion feeds the established broadcast-and-alignment
+        # pipeline; broadcasting owns compatible shape expansion and remains
+        # the validation boundary for incompatible or invalid inputs.  No
+        # adapter may materialize, retry, or reinterpret rejected generators
+        # [BAR-013].  Its output must retain ordinary numeric geometry inputs
+        # [BAR-009] and one aligned tuple per supported unit-aware position
+        # [BAR-011] for the rectangle-construction seam below.
         x, height, width, y, linewidth, hatch = np.broadcast_arrays(
             # Make args iterable too.
             np.atleast_1d(x), height, width, y, linewidth, hatch)
@@ -2518,14 +2533,15 @@ class Axes(_AxesBase):
         # rectangle construction; non-finiteness alone neither raises, suppresses,
         # nor reorders a rectangle, and does not substitute another x geometry.
         # Architecture contract -- GUID: BAR-002, BAR-003, BAR-004, BAR-005,
-        # BAR-006, BAR-007, BAR-008
+        # BAR-006, BAR-007, BAR-008, BAR-009, BAR-011
         # Conversion and broadcasting own the aligned, input-ordered geometry
         # supplied here.  The zip/loop seam owns consuming each aligned tuple
         # once and appending its Rectangle at the same ordinal [BAR-005, BAR-006].
         # Rectangle owns preservation of each tuple's corresponding geometry,
-        # including finite and non-finite x positions [BAR-007].  add_patch owns
-        # registration and delegates limit extraction to _AxesBase without
-        # becoming a cardinality, ordering, or geometry-selection boundary.
+        # including ordinary numeric geometry and finite or non-finite x
+        # positions [BAR-007, BAR-009].  add_patch owns registration and
+        # delegates limit extraction to _AxesBase without becoming a
+        # cardinality, ordering, or geometry-selection boundary [BAR-011].
         patches = [None] * len(x)
         args = zip(left, bottom, width, height, color, edgecolor, linewidth,
                    hatch, patch_labels)
@@ -2581,9 +2597,11 @@ class Axes(_AxesBase):
         # for ordinary finite numeric bars                              [BAR-009]
         # return container after normal container and tick-label bookkeeping,
         # including when every supplied x position is non-finite
-        # Architecture contract -- GUID: BAR-014
+        # Architecture contract -- GUID: BAR-009, BAR-014
         # BarContainer assembly remains in Axes.bar so exceptional coordinate
-        # classes cannot introduce an alternate return boundary.
+        # classes cannot introduce an alternate return boundary.  The same
+        # assembly and Axes registration seam owns the established container
+        # contract for ordinary finite numeric bars [BAR-009].
         bar_container = BarContainer(patches, errorbar, datavalues=datavalues,
                                      orientation=orientation,
                                      label=bar_container_label)
