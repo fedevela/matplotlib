@@ -130,96 +130,62 @@ __bibtex__ = r"""@Article{Hunter:2007,
 }"""
 
 
-# PSEUDOCODE -- top-level version attribute contract
-#
-# PROCEDURE initialize_matplotlib_package_without_comparable_version_access():
-#   Continue the existing package import sequence without resolving,
-#   converting, or caching THE_COMPARABLE_VERSION_ATTRIBUTE.       [MPL-008]
-#   IF an existing import step fails, propagate that step's existing failure.
-#   OTHERWISE complete the import successfully with no new-version-value work.
-#
-# PROCEDURE resolve_public_version_attribute(requested_name):
-#   INPUT: an attribute name requested from the imported matplotlib package.
-#   IF requested_name is "__version__":               [MPL-007, MPL-008]
-#     Resolve the existing release string through the current source-selection
-#     flow, cache that string as __version__, and return it without changing
-#     its meaning or value format.
-#     Do not resolve or depend on THE_COMPARABLE_VERSION_ATTRIBUTE, so existing
-#     version-reporting consumers follow only the established reporting path.
-#     IF resolution fails, propagate the existing failure without publishing
-#     a partial or differently formatted __version__ value.
-#   ELSE IF requested_name is THE_COMPARABLE_VERSION_ATTRIBUTE: [MPL-001]
-#     Obtain the release string through the same __version__ resolution flow.
-#     Convert that string into one directly orderable version value.
-#     IF conversion fails, propagate the failure and do not cache a value.
-#     Preserve the complete numeric release sequence as ordered numeric
-#     components, so comparison evaluates 3.10 as newer than 3.9 rather than
-#     ordering their textual forms.                                  [MPL-004]
-#     Preserve each supported prerelease label and number, development number,
-#     and post-release number as an identity-bearing component of the converted
-#     value; do not discard or collapse any present component.        [MPL-005]
-#     WHEN this value is compared with a compatible converted value: [MPL-006]
-#       Compare the numeric release components in semantic sequence.
-#       IF those components identify the same base release, compare retained
-#       development, prerelease, final-release, and post-release states so that
-#       development precedes its prerelease, prerelease precedes final release,
-#       and final release precedes its post-release.
-#       IF comparable values differ within the same state, use the retained
-#       state number to determine their order.
-#       Return the resulting less-than, equal-to, or greater-than relation.
-#     IF the converted value identifies a release different from the release
-#     string, reject it and do not publish an inconsistent value.          [MPL-003]
-#     Cache and return the converted value from exactly this one new public
-#     top-level attribute; expose no second comparable representation.     [MPL-002]
-#   ELSE:
-#     Raise AttributeError through the existing unknown-attribute path.
+_VersionInfo = namedtuple(
+    "_VersionInfo", "major minor micro releaselevel serial")
 
-# ARCHITECTURE -- top-level comparable version boundary
-#
-# Ownership: this module's lazy attribute boundary remains the sole publisher of
-# both ``__version__`` and the one new ``__version_info__`` attribute.  The new
-# attribute is a sibling branch of ``__version__`` here, not a second resolver
-# or a declaration in ``_version``.                              [MPL-001, MPL-002]
-# Import boundary: package initialization remains outside both lazy version
-# branches, so consumers that only import Matplotlib introduce no comparable-
-# version resolution dependency.                                  [MPL-008]
-# Dependency direction: ``__version_info__`` depends on the release string
-# returned by the existing ``__version__`` branch and on the already imported
-# packaging version parser; ``__version__`` must not depend on, or be reshaped
-# by, the comparable representation.  Established version reporting therefore
-# terminates in the existing branch without crossing the new sibling seam.
-#                                              [MPL-003, MPL-007, MPL-008]
-# Comparable-value contract: the packaging version object owns numeric release
-# ordering and the identity and ordering of prerelease, development, final, and
-# post-release states.  This boundary must retain that object intact rather than
-# project it to text, a partial tuple, or a Matplotlib-owned ordering adapter.
-#                                                               [MPL-004, MPL-005, MPL-006]
-# Integration contract: conversion and caching terminate at this module
-# boundary.  ``_version`` continues to own generated release data, while
-# ``tests/test_version_contract.py`` owns public-contract verification.
+
+def _parse_to_version_info(version_str):
+    """Parse a version string to a namedtuple analogous to sys.version_info."""
+    version = parse_version(version_str)
+    if version.dev is not None:
+        return _VersionInfo(
+            version.major, version.minor, version.micro,
+            "alpha", version.dev)
+    if version.pre is not None:
+        releaselevel = {
+            "a": "alpha", "b": "beta", "rc": "candidate",
+        }.get(version.pre[0], "alpha")
+        return _VersionInfo(
+            version.major, version.minor, version.micro,
+            releaselevel, version.pre[1])
+    if version.post is not None:
+        # setuptools_scm's post-release scheme describes the next development
+        # version using the previous release plus the post-release distance.
+        return _VersionInfo(
+            version.major, version.minor, version.micro + 1,
+            "alpha", version.post)
+    return _VersionInfo(
+        version.major, version.minor, version.micro, "final", 0)
+
+
+def _get_version():
+    """Return the version string used for __version__."""
+    import setuptools_scm
+    # Only shell out to a git subprocess if really needed, and not on a
+    # shallow clone, such as those used by CI, as the latter would trigger
+    # a warning from setuptools_scm.
+    root = Path(__file__).resolve().parents[2]
+    if (root / ".git").exists() and not (root / ".git/shallow").exists():
+        return setuptools_scm.get_version(
+            root=root,
+            version_scheme="post-release",
+            local_scheme="node-and-date",
+            fallback_version=_version.version,
+        )
+    # Get the version from the _version.py setuptools_scm file.
+    return _version.version
+
+
 def __getattr__(name):
     if name == "__version__":
-        import setuptools_scm
         global __version__  # cache it.
-        # Only shell out to a git subprocess if really needed, and not on a
-        # shallow clone, such as those used by CI, as the latter would trigger
-        # a warning from setuptools_scm.
-        root = Path(__file__).resolve().parents[2]
-        if (root / ".git").exists() and not (root / ".git/shallow").exists():
-            __version__ = setuptools_scm.get_version(
-                root=root,
-                version_scheme="post-release",
-                local_scheme="node-and-date",
-                fallback_version=_version.version,
-            )
-        else:  # Get the version from the _version.py setuptools_scm file.
-            __version__ = _version.version
+        __version__ = _get_version()
         return __version__
     if name == "__version_info__":
         global __version_info__  # cache it.
         if "__version__" not in globals():
             __getattr__("__version__")
-        __version_info__ = parse_version(__version__)
+        __version_info__ = _parse_to_version_info(__version__)
         return __version_info__
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
