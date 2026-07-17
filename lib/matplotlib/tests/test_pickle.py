@@ -108,22 +108,70 @@ def test_complete(fig_test, fig_ref):
 
 def test_mpldrag_001_pickle_draggable_legend_excludes_live_canvas():
     """GUID: MPLDRAG-001 -- complete-figure pickle avoids the live canvas."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    draggable = ax.legend().set_draggable(True)
+    fig.canvas._mpldrag_unpicklable = lambda: None
+
+    loaded = pickle.loads(pickle.dumps(fig))
+
+    loaded_draggable = loaded.axes[0].get_legend()._draggable
+    assert loaded_draggable.canvas is loaded.canvas
+    assert "canvas" not in draggable.__dict__
 
 
 def test_mpldrag_002_pickle_draggable_annotation_excludes_live_canvas():
     """GUID: MPLDRAG-002 -- complete-figure pickle avoids the live canvas."""
-    assert True
+    fig, ax = plt.subplots()
+    annotation = ax.annotate("label", (0, 0))
+    draggable = annotation.draggable(True)
+    fig.canvas._mpldrag_unpicklable = lambda: None
+
+    loaded = pickle.loads(pickle.dumps(fig))
+
+    loaded_draggable = loaded.axes[0].texts[0]._draggable
+    assert loaded_draggable.canvas is loaded.canvas
+    assert "canvas" not in draggable.__dict__
 
 
 def test_mpldrag_003_pickle_excludes_live_reference_preserves_valid_state():
     """GUID: MPLDRAG-003 -- preserve figure, artist, and draggable state."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    legend = ax.legend()
+    draggable = legend.set_draggable(True, use_blit=True, update="bbox")
+    draggable._mpldrag_valid_state = {"drag": "state"}
+
+    state = draggable.__dict__.copy()
+    loaded = pickle.loads(pickle.dumps(fig))
+    loaded_legend = loaded.axes[0].get_legend()
+    loaded_draggable = loaded_legend._draggable
+
+    assert "canvas" not in state
+    assert draggable.canvas is fig.canvas
+    assert state["ref_artist"] is legend
+    assert state["legend"] is legend
+    assert state["offsetbox"] is legend._legend_box
+    assert state["cids"] == draggable.cids
+    assert state["_update"] == "bbox"
+    assert state["_mpldrag_valid_state"] == {"drag": "state"}
+    assert loaded_draggable.ref_artist is loaded_legend
+    assert loaded_draggable.canvas is loaded.canvas
+    assert loaded_draggable._mpldrag_valid_state == {"drag": "state"}
 
 
 def test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception():
     """GUID: MPLDRAG-007 -- supported interactive backends need no special case."""
-    assert True
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], label="line")
+    draggable = ax.legend().set_draggable(True)
+    canvas = draggable.canvas
+    canvas._mpldrag_unpicklable = lambda: None
+
+    pickle.dumps(fig)
+
+    assert draggable.canvas is canvas
+    assert "canvas" not in draggable.__dict__
 
 
 def _pickle_load_subprocess():

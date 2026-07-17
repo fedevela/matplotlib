@@ -1473,7 +1473,7 @@ or callable, default: value of *xycoords*
 
 # Serialization architecture (MPLDRAG-001, MPLDRAG-002, MPLDRAG-003,
 # MPLDRAG-007): DraggableBase owns the helper-local live-canvas boundary.  Its
-# __getstate__ hook is the single integration seam inherited by
+# canvas property is the single integration seam inherited by
 # DraggableOffsetBox (and thus DraggableLegend) and DraggableAnnotation; no
 # subclass or backend adapter owns a separate policy.  The serialized
 # dependency remains helper -> reference artist -> figure, while the direct
@@ -1508,43 +1508,11 @@ class DraggableBase:
     coordinate and set a relevant attribute.
     """
 
-    # Serialization pseudocode
-    #
-    # Logic obligations:
-    # - MPLDRAG-001 / test_mpldrag_001_pickle_draggable_legend_excludes_live_canvas:
-    #   a draggable legend must not carry its live canvas into figure state.
-    # - MPLDRAG-002 / test_mpldrag_002_pickle_draggable_annotation_excludes_live_canvas:
-    #   a draggable annotation must cross the same serialization boundary.
-    # - MPLDRAG-003 /
-    #   test_mpldrag_003_pickle_excludes_live_reference_preserves_valid_state:
-    #   exclude only the live interaction reference; preserve all legitimate
-    #   artist, figure, callback-identifier, drag, and subclass state.
-    # - MPLDRAG-007 /
-    #   test_mpldrag_007_pickle_interactive_backend_requires_no_qt_exception:
-    #   apply the boundary by state identity, without inspecting the backend.
-    #
-    # def __getstate__(self):
-    #     INPUT: this helper is reached while its complete figure is serialized
-    #     COPY the helper's instance state so serialization cannot mutate the
-    #         live draggable helper
-    #     IF the copied state contains the direct live-canvas reference:
-    #         REMOVE that reference unconditionally
-    #     ELSE:
-    #         CONTINUE with the already canvas-free state
-    #     RETAIN every other state entry unchanged, including the reference
-    #         artist and draggable-subclass fields
-    #     HAND OFF the filtered state to the serializer; the figure owns its
-    #         separate canvas-removal and canvas-reconstruction lifecycle
-    #     IF serialization of any retained, legitimate state fails:
-    #         PROPAGATE that failure; do not catch backend-specific exceptions
-    #     OUTPUT: helper state with no live canvas and no other omissions
-
     def __init__(self, ref_artist, use_blit=False):
         self.ref_artist = ref_artist
         if not ref_artist.pickable():
             ref_artist.set_picker(True)
         self.got_artist = False
-        self.canvas = self.ref_artist.figure.canvas
         self._use_blit = use_blit and self.canvas.supports_blit
         self.cids = [
             self.canvas.callbacks._connect_picklable(
@@ -1552,6 +1520,11 @@ class DraggableBase:
             self.canvas.callbacks._connect_picklable(
                 'button_release_event', self.on_release),
         ]
+
+    # MPLDRAG-001, MPLDRAG-002, MPLDRAG-003, MPLDRAG-007: Derive the canvas
+    # from legitimate artist/figure state instead of retaining a direct live
+    # GUI reference.  This is shared by every backend and draggable subclass.
+    canvas = property(lambda self: self.ref_artist.figure.canvas)
 
     def on_motion(self, evt):
         if self._check_still_parented() and self.got_artist:
