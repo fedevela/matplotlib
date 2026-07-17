@@ -1555,6 +1555,19 @@ class DraggableBase:
             self.save_offset()
 
     def on_release(self, event):
+        # MPL-003, MPL-004 release-state flow:
+        # INPUT parent_state <- _check_still_parented()
+        # INPUT drag_state <- got_artist
+        # IF parent_state IS detached:
+        #     LET _check_still_parented perform callback cleanup
+        #     STOP without reading the detached artist's canvas
+        #     LEAVE later, independently-created selections operational
+        # ELSE IF drag_state IS inactive:
+        #     PRESERVE attached artist state and STOP
+        # ELSE:
+        #     FINALIZE the attached artist's offset
+        #     TRANSITION drag_state from active to inactive
+        #     IF blitting is active, TRANSITION artist animation to disabled
         if self._check_still_parented() and self.got_artist:
             self.finalize_offset()
             self.got_artist = False
@@ -1563,13 +1576,18 @@ class DraggableBase:
                 self.ref_artist.set_animated(False)
 
     def _check_still_parented(self):
-        # MPL-001 release-time parenting logic:
+        # MPL-001, MPL-003, MPL-004 release-time parenting logic:
         # INPUT figure <- ref_artist.figure, without traversing to figure.canvas
         # IF figure IS None:
         #     CALL detached-safe MPL-002 disconnection
         #     RETURN False so release handling treats ref_artist as unparented
         # ELSE:
+        #     RETAIN callbacks for the still-attached interactive artist
         #     RETURN True so normal release handling may continue
+        # MPL-003 OUTPUT: a stale selection's release cannot fail while
+        # subsequent QtAgg selections proceed through their own callbacks.
+        # MPL-004 OUTPUT: an attached offset-box keeps its release behavior and
+        # callback lifetime until cleanup is explicitly requested.
         if self.ref_artist.figure is None:
             self.disconnect()
             return False
@@ -1578,7 +1596,16 @@ class DraggableBase:
 
     def disconnect(self):
         """Disconnect the callbacks."""
-        # MPL-002: These disconnectors never traverse ref_artist.figure.canvas.
+        # MPL-002, MPL-003, MPL-004 callback-cleanup flow:
+        # INPUT disconnectors retained from callback registration
+        # FOR EACH registered callback disconnector:
+        #     DISCONNECT it from its original registry
+        #     DO NOT resolve cleanup through ref_artist.figure.canvas
+        # OUTPUT no registered drag callback remains, whether ref_artist is
+        # attached or detached; repeated selection owners remain independent.
+        # FAILURE PATH: absence of a current figure cannot prevent cleanup.
+        # MPL-005 VERIFICATION: test_remove_draggable exercises removal followed
+        # by release cleanup; relevant offset-box tests cover the attached path.
         for disconnector in self._disconnectors:
             disconnector()
 
