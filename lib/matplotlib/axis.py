@@ -2028,6 +2028,21 @@ class Axis(martist.Artist):
         other limits, you should set the limits explicitly after setting the
         ticks.
         """
+        # PSEUDOCODE [TICKS-004, TICKS-005, TICKS-006, TICKS-007]
+        # INPUT: requested locations, optional explicit labels, the selected
+        # tick tier, and candidate Text properties.
+        # 1. Validate candidate Text properties before changing tick state;
+        #    on failure, propagate the validation error with no later steps.
+        # 2. [TICKS-004] Establish every requested location on the selected
+        #    tier, regardless of whether explicit labels were supplied, and
+        #    retain the resulting tick objects for the public return value.
+        # 3. IF explicit labels are absent, skip label and property updates.
+        # 4. ELSE [TICKS-005] install the supplied text at those locations,
+        #    and [TICKS-006] apply every validated Text property to the
+        #    installed labels; propagate any label-installation failure.
+        # 5. [TICKS-007] Return the location step's tick objects unchanged;
+        #    preserve tier selection, view expansion, locator replacement,
+        #    generated-label behavior, and Axes delegate return behavior.
         # TICKS-001, TICKS-002: Validate kwargs even if labels are not set.
         if kwargs:
             mtext.Text()._internal_update(kwargs)
