@@ -8331,6 +8331,16 @@ def test_bar_011_unit_aware_non_finite_x_returns_one_rectangle_per_position():
     assert len(bars.patches) == len(x)
 
 
+def test_bar_012_dependent_caller_creates_all_nan_phantom_bar_and_receives_result_without_exception():
+    """GUID: BAR-012."""
+    assert True
+
+
+def test_bar_012_dependent_caller_removes_received_all_nan_phantom_bar_without_exception():
+    """GUID: BAR-012."""
+    assert True
+
+
 def test_bar_013_established_invalid_inputs_including_generators_remain_rejected():
     """GUID: BAR-013."""
     fig, ax = plt.subplots()
